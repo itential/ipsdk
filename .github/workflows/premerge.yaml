@@ -1,0 +1,36 @@
+# .github/workflows/premerge.yml
+---
+name: Run tests and lint on pull requests
+
+on:
+  pull_request:
+    branches:
+      - devel
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'  # You can specify an exact version like '3.11'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Run lint with Make
+        run: make lint
+
+      - name: Run tests with Make
+        run: make test
+

@@ -1,0 +1,29 @@
+[project]
+name = "ipsdk"
+version = "0.1.0"
+description = "Itential Python SDK"
+authors = [
+    { name="Itential, Inc.", email="support@itential.com" }
+]
+license = {text = "GPL-3.0-or-later"}
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "q>=2.7",
+    "requests",
+    "urllib3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "mypy",
+    "coverage"
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "uv"]
+build-backend = "setuptools.build_meta"

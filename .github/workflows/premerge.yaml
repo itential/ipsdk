@@ -1,6 +1,6 @@
 # .github/workflows/premerge.yml
 ---
-name: Run tests and lint on pull requests
+name: Run pre merge pipeline
 
 on:
   pull_request:
@@ -23,14 +23,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version-file: "pyproject.toml"
+      - name: Install the project
+        run: uv sync --all-extras --dev
 
-      - name: Run lint with Make
+      - name: Run `make lint`
         run: make lint
 
-      - name: Run tests with Make
+      - name: Run `make test`
         run: make test
 

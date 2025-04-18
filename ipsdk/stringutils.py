@@ -4,7 +4,13 @@
 from typing import Optional
 
 
-def string_to_bytes(s: str, encoding: str = "utf-8") -> bytes:
+def tostr(s: str) -> str:
+    if s is not None:
+        s = str(s)
+    return s
+
+
+def tobytes(s: str, encoding: str = "utf-8") -> bytes:
     """
     Convert a string into bytes using the specified encoding.
 
@@ -18,7 +24,7 @@ def string_to_bytes(s: str, encoding: str = "utf-8") -> bytes:
     return s.encode(encoding)
 
 
-def string_to_int(value: str) -> int:
+def toint(value: str) -> int:
     """
     Convert a string representation of an integer to an int type.
 
@@ -31,7 +37,7 @@ def string_to_int(value: str) -> int:
     return int(value)
 
 
-def string_to_bool(value: Optional[str]) -> bool:
+def tobool(value: Optional[str]) -> bool:
     """
     Convert a string representation of a boolean to a bool type.
 

@@ -27,24 +27,24 @@ factory function.
 import ipsdk
 
 # Create a connection to Itential Platform
-server = ipsdk.client.platform(
+server = ipsdk.platform(
     host="platform.itential.com",
     user="admin@pronghorn",
     password="admin"
 )
 
 # Set a GET request to the server
-res = platform.get("/whoami")
+res = server.get("/whoami")
 
 # Print the response information to stdout
-print(response.status_code, response.body)
+print(res.status_code, res.body)
 ```
 
 Different functions provide different configuation options.
 
 ##  Configuration via Environment Variables
 
-You can override constructor parameters using the following environment variables:
+You can set constructor parameters using the following environment variables:
 
 | Variable                 | Description               | Platform  | Gateway   | Cloud     |
 |--------------------------|---------------------------|-----------|-----------|-----------|

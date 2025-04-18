@@ -1,4 +1,6 @@
 
+import sys
+
 import pytest
 from unittest.mock import MagicMock
 from types import SimpleNamespace
@@ -10,7 +12,6 @@ class MockConnection:
         self.session = MagicMock()
 
 # Mock dependencies
-import sys
 module = sys.modules[__name__]
 setattr(module, 'http', SimpleNamespace(Connection=MockConnection, make_url=lambda *a, **kw: "https://mock.url"))
 setattr(module, 'stringutils', SimpleNamespace(

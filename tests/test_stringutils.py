@@ -3,11 +3,9 @@
 
 from ipsdk import stringutils
 
-def test_string_to_bool_cases():
-    assert stringutils.string_to_bool("true")
-    assert stringutils.string_to_bool("yes")
-    assert not stringutils.string_to_bool("false")
-    assert not stringutils.string_to_bool("no")
-    assert not stringutils.string_to_bool(None)
-
-
+def test_tobool():
+    assert stringutils.tobool("true")
+    assert stringutils.tobool("yes")
+    assert not stringutils.tobool("false")
+    assert not stringutils.tobool("no")
+    assert not stringutils.tobool(None)

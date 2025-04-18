@@ -13,6 +13,16 @@ scripts that can make API calls Itential Platform, Itential Automation Gateway
 
 ## Usage
 
+The `ipsdk` package provides three factory functions for connecting to
+different types of servers.
+
+The `platform()` function creates a connection to Itential Platform
+The `gateway()` function creates a connection to Itential Automation Gateway
+The `cloud()` function creates a connection to Itential Automation Service
+
+The below example demonstrates conencting to Itential Platform using the
+factory function.
+
 ```python
 import ipsdk
 
@@ -30,22 +40,23 @@ res = platform.get("/whoami")
 print(response.status_code, response.body)
 ```
 
+Different functions provide different configuation options.
+
 ##  Configuration via Environment Variables
 
 You can override constructor parameters using the following environment variables:
 
-| Variable                 | Description                     |
-|--------------------------|---------------------------------|
-| `ITENTIAL_HOST`          | API host                        |
-| `ITENTIAL_PORT`          | API port                        |
-| `ITENTIAL_USE_TLS`       | Use TLS (true/false)            |
-| `ITENTIAL_VERIFY`        | SSL verify (true/false)         |
-| `ITENTIAL_TIMEOUT`       | Request timeout (seconds)       |
-| `ITENTIAL_USER`          | Username                        |
-| `ITENTIAL_PASSWORD`      | Password                        |
-| `ITENTIAL_CLIENT_ID`     | OAuth client ID                 |
-| `ITENTIAL_CLIENT_SECRET` | OAuth client secret             |
-
+| Variable                 | Description               | Platform  | Gateway   | Cloud     |
+|--------------------------|---------------------------|-----------|-----------|-----------|
+| `ITENTIAL_HOST`          | API host                  | supported | supported | supported |
+| `ITENTIAL_PORT`          | API port                  | supported | supported | supported |
+| `ITENTIAL_USE_TLS`       | Use TLS (true/false)      | supported | supported | supported |
+| `ITENTIAL_VERIFY`        | SSL verify (true/false)   | supported | supported | supported |
+| `ITENTIAL_TIMEOUT`       | Request timeout (seconds) | supported | supported | supported |
+| `ITENTIAL_USER`          | Username                  | supported | supported | n/a       |
+| `ITENTIAL_PASSWORD`      | Password                  | supported | supported | n/a       |
+| `ITENTIAL_CLIENT_ID`     | OAuth client ID           | supported | supported | supported |
+| `ITENTIAL_CLIENT_SECRET` | OAuth client secret       | supported | supported | supported |
 
 
 ## License

@@ -11,8 +11,13 @@ logger = logging.getLogger(__name__)
 
 
 class Gateway(http.Connection):
+    """
+    Gateway is a HTTP connection to an Itential Automation Gateway
+    """
 
     def authenticate(self):
+        """Provides the authentication function for authenticating to the server
+        """
         data = {
             "username": self.user,
             "password": self.password,
@@ -30,8 +35,13 @@ class Gateway(http.Connection):
 
 
 class Cloud(http.Connection):
+    """
+    Cloud is a HTTP connection to Itential Automation Service
+    """
 
     def authenticate(self):
+        """Provides the authentication function for authenticating to the server
+        """
         url = http.make_url(self.host, "/token", port=self.port, use_tls=self.use_tls)
 
         headers = {
@@ -53,8 +63,13 @@ class Cloud(http.Connection):
 
 
 class Platform(http.Connection):
+    """
+    Platform is a HTTP connection to Itential Platform
+    """
 
     def authenticate(self):
+        """Provides the authentication function for authenticating to the server
+        """
         if self.client_id is not None and self.client_secret is not None:
             self.authenticate_oauth()
         elif self.user is not None and self.password is not None:
@@ -64,6 +79,8 @@ class Platform(http.Connection):
         self.authenticated = True
 
     def authenticate_user(self):
+        """Performs authentication for basic authorization
+        """
         data = {
             "user": {
                 "username": self.user,
@@ -75,6 +92,8 @@ class Platform(http.Connection):
         res.raise_for_status()
 
     def authenticate_oauth(self):
+        """Performs authentication for OAuth client credentials
+        """
         url = http.make_url(self.host, "/oauth/token", port=self.port, use_tls=self.use_tls)
 
         headers = {
@@ -94,6 +113,33 @@ class Platform(http.Connection):
 
 
 def cloud(host=None, port=0, use_tls=True, verify=True, client_id=None, client_secret=None, timeout=30):
+    """
+    Create a new instance of a Cloud connection.
+
+    This factory function initializes a Cloud connection using either provided arguments
+    or environment variable overrides. It supports authentication using client credentials.
+
+    Environment Variables (override arguments if set):
+        - ITENTIAL_HOST
+        - ITENTIAL_PORT
+        - ITENTIAL_USE_TLS
+        - ITENTIAL_VERIFY
+        - ITENTIAL_CLIENT_ID
+        - ITENTIAL_CLIENT_SECRET
+        - ITENTIAL_TIMEOUT
+
+    Args:
+        host (str): The target host for the connection.
+        port (int): Port number to connect to.
+        use_tls (bool): Whether to use TLS for the connection.
+        verify (bool): Whether to verify SSL certificates.
+        client_id (str): Client ID for authentication.
+        client_secret (str): Client secret for authentication.
+        timeout (int): Timeout for the connection, in seconds.
+
+    Returns:
+        Cloud: An initialized Cloud connection instance.
+    """
     return Cloud(
         host=os.getenv("ITENTIAL_HOST", host),
         port=stringutils.string_to_int(os.getenv("ITENTIAL_PORT", port)),
@@ -106,6 +152,37 @@ def cloud(host=None, port=0, use_tls=True, verify=True, client_id=None, client_s
 
 
 def platform(host=None, port=0, use_tls=True, verify=True, user="admin", password="admin", client_id=None, client_secret=None, timeout=30):
+    """
+    Create a new instance of a Platform connection.
+
+    This factory function initializes a Platform connection using provided parameters or
+    environment variable overrides. Supports both user/password and client credentials.
+
+    Environment Variables (override arguments if set):
+        - ITENTIAL_HOST
+        - ITENTIAL_PORT
+        - ITENTIAL_USE_TLS
+        - ITENTIAL_VERIFY
+        - ITENTIAL_USER
+        - ITENTIAL_PASSWORD
+        - ITENTIAL_CLIENT_ID
+        - ITENTIAL_CLIENT_SECRET
+        - ITENTIAL_TIMEOUT
+
+    Args:
+        host (str): The target host for the connection.
+        port (int): Port number to connect to.
+        use_tls (bool): Whether to use TLS for the connection.
+        verify (bool): Whether to verify SSL certificates.
+        user (str): Username for authentication.
+        password (str): Password for authentication.
+        client_id (str): Optional client ID for token-based auth.
+        client_secret (str): Optional client secret for token-based auth.
+        timeout (int): Timeout for the connection, in seconds.
+
+    Returns:
+        Platform: An initialized Platform connection instance.
+    """
     return Platform(
         host=os.getenv("ITENTIAL_HOST", host),
         port=stringutils.string_to_int(os.getenv("ITENTIAL_PORT", port)),
@@ -120,6 +197,33 @@ def platform(host=None, port=0, use_tls=True, verify=True, user="admin", passwor
 
 
 def gateway(host=None, port=0, use_tls=True, verify=True, user="admin@itential", password="admin", timeout=30):
+    """
+    Create a new instance of a Gateway connection.
+
+    This factory function initializes a Gateway connection using provided parameters or
+    environment variable overrides. Uses basic username/password authentication.
+
+    Environment Variables (override arguments if set):
+        - ITENTIAL_HOST
+        - ITENTIAL_PORT
+        - ITENTIAL_USE_TLS
+        - ITENTIAL_VERIFY
+        - ITENTIAL_USER
+        - ITENTIAL_PASSWORD
+        - ITENTIAL_TIMEOUT
+
+    Args:
+        host (str): The target host for the connection.
+        port (int): Port number to connect to.
+        use_tls (bool): Whether to use TLS for the connection.
+        verify (bool): Whether to verify SSL certificates.
+        user (str): Username for authentication.
+        password (str): Password for authentication.
+        timeout (int): Timeout for the connection, in seconds.
+
+    Returns:
+        Gateway: An initialized Gateway connection instance with a base API path set.
+    """
     return Gateway(
         host=os.getenv("ITENTIAL_HOST", host),
         port=stringutils.string_to_int(os.getenv("ITENTIAL_PORT", port)),
@@ -130,3 +234,4 @@ def gateway(host=None, port=0, use_tls=True, verify=True, user="admin@itential",
         timeout=stringutils.string_to_int(os.getenv("ITENTIAL_TIMEOUT", timeout)),
         base_path="/api/v2.0"
     )
+

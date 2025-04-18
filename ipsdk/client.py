@@ -114,6 +114,17 @@ class Platform(http.Connection):
         self.token = res.json()["access_token"]
 
 
+def get(f, key, value, default):
+    if value is None:
+        value = os.getenv(f"ITENTIAL_{key}".upper(), default)
+    return f(value)
+
+
+getstr = partial(get, stringutils.tostr)
+getint = partial(get, stringutils.toint)
+getbool = partial(get, stringutils.tobool)
+
+
 def cloud(host=None, port=0, use_tls=True, verify=True, client_id=None, client_secret=None, timeout=30):
     """
     Create a new instance of a Cloud connection.
@@ -143,25 +154,14 @@ def cloud(host=None, port=0, use_tls=True, verify=True, client_id=None, client_s
         Cloud: An initialized Cloud connection instance.
     """
     return Cloud(
-        host=os.getenv("ITENTIAL_HOST", host),
-        port=stringutils.string_to_int(os.getenv("ITENTIAL_PORT", port)),
-        use_tls=stringutils.string_to_bool(os.getenv("ITENTIAL_USE_TLS", use_tls)),
-        verify=stringutils.string_to_bool(os.getenv("ITENTIAL_VERIFY", verify)),
-        client_id=os.getenv("ITENTIAL_CLIENT_ID", client_id),
-        client_secret=os.getenv("ITENTIAL_CLIENT_SECRET", client_secret),
-        timeout=stringutils.string_to_int(os.getenv("ITENTIAL_TIMEOUT", timeout)),
+        host=getstr("host", host, None),
+        port=getint("port", port, 0),
+        use_tls=getbool("use_tls", use_tls, True),
+        verify=getbool("verify", verify, True),
+        client_id=getstr("client_id", client_id, None),
+        client_secret=getstr("client_secret", client_secret, None),
+        timeout=getint("timeout", timeout, 30),
     )
-
-def get(f, key, value, default):
-    if value is None:
-        value = os.getenv(f"ITENTIAL_{key}".upper(), default)
-    return f(value)
-
-
-getstr = partial(get, stringutils.tostr)
-getint = partial(get, stringutils.toint)
-getbool = partial(get, stringutils.tobool)
-
 
 def platform(host=None, port=0, use_tls=True, verify=True, user="admin", password="admin", client_id=None, client_secret=None, timeout=30):
     """
@@ -237,13 +237,11 @@ def gateway(host=None, port=0, use_tls=True, verify=True, user="admin@itential",
         Gateway: An initialized Gateway connection instance with a base API path set.
     """
     return Gateway(
-        host=os.getenv("ITENTIAL_HOST", host),
-        port=stringutils.string_to_int(os.getenv("ITENTIAL_PORT", port)),
-        use_tls=stringutils.string_to_bool(os.getenv("ITENTIAL_USE_TLS", use_tls)),
-        verify=stringutils.string_to_bool(os.getenv("ITENTIAL_VERIFY", verify)),
-        user=os.getenv("ITENTIAL_USER", user),
-        password=os.getenv("ITENTIAL_PASSWORD", password),
-        timeout=stringutils.string_to_int(os.getenv("ITENTIAL_TIMEOUT", timeout)),
-        base_path="/api/v2.0"
+        host=getstr("host", host, None),
+        port=getint("port", port, 0),
+        use_tls=getbool("use_tls", use_tls, True),
+        verify=getbool("verify", verify, True),
+        user=getstr("user", user, "admin"),
+        password=getstr("password", password, "admin"),
+        timeout=getint("timeout", timeout, 30),
     )
-

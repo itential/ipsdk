@@ -244,4 +244,5 @@ def gateway(host=None, port=0, use_tls=True, verify=True, user="admin@itential",
         user=getstr("user", user, "admin"),
         password=getstr("password", password, "admin"),
         timeout=getint("timeout", timeout, 30),
+        base_path="/api/v2.0",
     )

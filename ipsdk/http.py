@@ -184,6 +184,7 @@ class Request(object):
     path: str = None
     body: Union[dict, list, str] = field(default_factory=dict)
     headers: dict = field(default_factory=dict)
+    params: dict = field(default_factory=dict)
     disable_warnings: bool = True
 
 
@@ -241,6 +242,7 @@ class Connection(object):
             url=url,
             headers=headers,
             data=request.body,
+            params=request.params,
             verify=self.verify,
             disable_warnings=request.disable_warnings,
             session=self.session
@@ -257,17 +259,17 @@ class Connection(object):
     def authenticate(self):
         pass
 
-    def get(self, path):
-        return self.send(Request(method="GET", path=path))
+    def get(self, path, params=None):
+        return self.send(Request(method="GET", path=path, params=params))
 
-    def delete(self, path):
-        return self.send(Request(method="DELETE", path=path))
+    def delete(self, path, params=None):
+        return self.send(Request(method="DELETE", path=path, params=params))
 
-    def post(self, path, body=None):
-        return self.send(Request(method="POST", path=path, body=body))
+    def post(self, path, body=None, params=None):
+        return self.send(Request(method="POST", path=path, body=body, params=params))
 
-    def put(self, path, body=None):
-        return self.send(Request(method="PUT", path=path, body=body))
+    def put(self, path, body=None, params=None):
+        return self.send(Request(method="PUT", path=path, body=body, params=params))
 
-    def patch(self, path, body=None):
-        return self.send(Request(method="PATCH", path=path, body=body))
+    def patch(self, path, body=None, params=None):
+        return self.send(Request(method="PATCH", path=path, body=body, params=params))

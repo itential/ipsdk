@@ -10,15 +10,14 @@ readme = "README.md"
 requires-python = ">=3.8"
 
 dependencies = [
-    "q>=2.7",
-    "requests",
-    "urllib3",
+    "httpx>=0.28.1"
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest",
     "pytest-cov",
+    "q>=2.7",
     "ruff",
     "mypy",
     "coverage"

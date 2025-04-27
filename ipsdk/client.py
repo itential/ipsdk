@@ -90,7 +90,7 @@ class Platform(http.Connection):
             }
         }
         url = http.make_url(self.host, "/login", port=self.port, use_tls=self.use_tls)
-        res = self.session.post(url, json=data)
+        res = self.client.post(url, json=data)
         res.raise_for_status()
 
     def authenticate_oauth(self):

@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import abc
+import json
 import logging
 import traceback
 
@@ -48,6 +49,7 @@ def send_request(method, url, headers=None, data=None, params=None, timeout=None
         "timeout": timeout,
     }
 
+
     if data is not None:
         kwargs["data"] = data
 
@@ -56,7 +58,6 @@ def send_request(method, url, headers=None, data=None, params=None, timeout=None
     try:
         resp = client.request(**kwargs)
         resp.raise_for_status()
-
 
         logger.info(f"HTTP response is {resp.status_code} {resp.reason_phrase}")
         logger.debug(f"Start of response body\n{resp.text}\nEnd of response body")
@@ -126,16 +127,13 @@ class Response(object):
 
     Args:
         headers (dict): Set of key/value pairs returned from the API call
-
-        body (bytes): The body of the response
-
+        body (str): The body of the response
         status_code (int): The HTTP status code in the response
-
         status (str):  The HTTP status text in the response
     """
     status_code: int
     status: str
-    body: bytes
+    body: str
     headers: dict = field(default_factory=dict)
 
 
@@ -150,18 +148,15 @@ class Request(object):
     Args:
         method (str): The HTTP method to invoke.  Valid values include
             `GET`, `POST`, `PUT`, `PATCH`, `DELETE`.
-
         path (str): The URI to send the request to.  The URI will be
             combined with the `host` and `port` to construct the full
             URL to send the request to.
-
         body (dict, list, bytes): The body of the HTTP request.
-
         headers (dict): The HTTP headers to set in the API request
     """
     method: str = "GET"
     path: str = None
-    body: Union[dict, list, str] = field(default_factory=dict)
+    body: Union[dict, list, str, bytes] = field(default_factory=dict)
     headers: dict = field(default_factory=dict)
     params: dict = field(default_factory=dict)
 
@@ -209,6 +204,11 @@ class Connection(object):
     def send(self, request) -> Response:
         """ Send will send the request to the API endpoint and return the response
 
+        If the request object provides a body value and the body value is either
+        a list or dict object, this method will jsonify the data and
+        automatically set the `Content-Type` and `Accept` headers to
+        `application/json`.
+
         Args:
             request (Request): A `Request` object used to construct the HTTP
                 API call
@@ -227,6 +227,8 @@ class Connection(object):
             use_tls=self.use_tls,
         )
 
+        body = request.body
+
         headers = request.headers
 
         if isinstance(request.body, (dict, list)):
@@ -234,6 +236,7 @@ class Connection(object):
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             })
+            body = json.dumps(body)
 
         if self.token is not None:
             headers["Authorization"] = f"Bearer {self.token}"
@@ -242,7 +245,7 @@ class Connection(object):
             method=request.method,
             url=url,
             headers=headers,
-            data=request.body,
+            data=body,
             params=request.params,
             timeout=self.timeout,
             client=self.client,

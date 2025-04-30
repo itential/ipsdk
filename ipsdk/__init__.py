@@ -3,9 +3,10 @@
 
 import logging
 
-from .client import platform, gateway, cloud
+from .platform import platform_factory
+from .gateway import gateway_factory
 
-__all__ = [platform, gateway, cloud]
+__all__ = (platform_factory, gateway_factory)
 
 # Configure global logging
 logging_message_format = '%(asctime)s: %(levelname)s: %(message)s'

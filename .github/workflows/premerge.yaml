@@ -26,9 +26,5 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Run `make lint`
-        run: make lint
-
-      - name: Run `make test`
-        run: make test
-
+      - name: Run the permerge target
+        run: make permerge

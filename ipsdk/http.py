@@ -275,6 +275,8 @@ class Connection(object):
 
     @abc.abstractmethod
     def authenticate(self):
+        """ Abstract method that handles authenticateion to the server
+        """
         pass
 
     def get(self, path, params=None):

@@ -23,7 +23,7 @@ class Platform(http.Connection):
         """Return the string representation of the object instance
         """
         cls = self.__class__.__name__
-        return f"{cls}(host={self.host!r}"
+        return f"{cls}(host={self.host!r})"
 
     def authenticate(self):
         """Provides the authentication function for authenticating to the server

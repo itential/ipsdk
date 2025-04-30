@@ -57,11 +57,12 @@ def send_request(method, url, headers=None, data=None, params=None, timeout=None
 
     try:
         resp = client.request(**kwargs)
-        resp.raise_for_status()
 
         logger.info(f"HTTP response is {resp.status_code} {resp.reason_phrase}")
         logger.debug(f"Start of response body\n{resp.text}\nEnd of response body")
         logger.debug(f"Call completed in {resp.elapsed}")
+
+        resp.raise_for_status()
 
     except httpx.RequestError as exc:
         logger.debug(traceback.format_exc())

@@ -6,18 +6,19 @@ import logging
 from .platform import platform_factory
 from .gateway import gateway_factory
 
+__version__ = "devel"
+
 __all__ = (platform_factory, gateway_factory)
+
 
 # Configure global logging
 logging_message_format = '%(asctime)s: %(levelname)s: %(message)s'
 logging.basicConfig(format=logging_message_format)
-logging.getLogger("ipsdk").setLevel(logging.CRITICAL)
+logging.getLogger("ipsdk").setLevel(100)
 
-logger = logging.getLogger(__name__)
 
 def set_logging_level(lvl: int):
-    """
-    Set logging level for all loggers in the current Python process.
+    """Set logging level for all loggers in the current Python process.
 
     Args:
         level (int): Logging level (e.g., logging.INFO, logging.DEBUG)

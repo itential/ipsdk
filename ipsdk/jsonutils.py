@@ -2,13 +2,11 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import json
-import logging
 import traceback
 
 from typing import Union
 
-
-logger = logging.getLogger(__name__)
+from . import logger
 
 
 def loads(s: str) -> Union[dict, list]:

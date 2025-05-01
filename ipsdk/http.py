@@ -3,7 +3,6 @@
 
 import abc
 import json
-import logging
 import traceback
 
 import urllib.parse
@@ -13,8 +12,7 @@ from typing import Union
 
 import httpx
 
-
-logger = logging.getLogger(__name__)
+from . import logger
 
 
 def send_request(method, url, headers=None, data=None, params=None, timeout=None,

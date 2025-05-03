@@ -4,27 +4,46 @@
 import traceback
 
 from . import jsonutils
-from . import http
+from . import connection
 from . import logger
 
+def _make_oauth_headers() -> dict:
+    return {"Content-Type": "application/x-www-form-urlencoded"}
 
-class Platform(http.Connection):
-    """ Platform is a HTTP connection to Itential Platform
+
+def _make_oauth_path() -> str:
+    return "/oauth/token"
+
+
+def _make_oauth_body(client_id: str, client_secret: str) -> dict:
+    return {
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret
+    }
+
+
+def _make_basicauth_body(user: str, password: str) -> dict:
+    return {
+        "user": {
+            "username": user,
+            "password": password,
+        }
+    }
+
+
+def _make_basicauth_path() -> str:
+    return "/login"
+
+
+class AuthMixin(object):
+    """
+    Authoriztion mixin for authenticating to Itential Platform.
     """
 
-    def __str__(self) -> str:
-        """Return the string representation of the object instance
+    def authenticate(self) -> None:
         """
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        """Return the string representation of the object instance
-        """
-        cls = self.__class__.__name__
-        return f"{cls}(host={self.host!r})"
-
-    def authenticate(self):
-        """Provides the authentication function for authenticating to the server
+        Provides the authentication function for authenticating to the server
         """
         if self.client_id is not None and self.client_secret is not None:
             self.authenticate_oauth()
@@ -32,49 +51,98 @@ class Platform(http.Connection):
             self.authenticate_user()
         else:
             raise ValueError("no authentication methods left to try")
-        self.authenticated = True
+        logger.info("client connection successfully authenticated")
 
-    def authenticate_user(self):
-        """Performs authentication for basic authorization
+    def authenticate_user(self) -> None:
         """
-        data = {
-            "user": {
-                "username": self.user,
-                "password": self.password,
-            }
-        }
+        Performs authentication for basic authorization
+        """
+        logger.info("Attempting to perform basic authentication")
 
-        url = http.make_url(self.host, "/login", port=self.port, use_tls=self.use_tls)
+        data = _make_basicauth_body(self.user, self.password)
+        path = _make_basicauth_path()
 
         try:
-            self.client.post(url, json=data)
+            res = self.client.post(path, json=data)
+            res.raise_for_status()
         except Exception:
             logger.error(traceback.format_exc())
+            raise
 
 
-    def authenticate_oauth(self):
-        """Performs authentication for OAuth client credentials
+    def authenticate_oauth(self) -> None:
         """
-        url = http.make_url(self.host, "/oauth/token", port=self.port, use_tls=self.use_tls)
+        Performs authentication for OAuth client credentials
+        """
+        logger.info("Attempting to perform oauth authentication")
 
-        headers = {
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-
-        data={
-            "grant_type": "client_credentials",
-            "client_id": self.client_id,
-            "client_secret": self.client_secret
-        }
+        data = _make_oauth_body(self.client_id, self.client_secret)
+        headers = _make_oauth_headers()
+        path = _make_oauth_path()
 
         try:
-            res = self.client.post(url, headers=headers, data=data)
-            self.token = res.json()["access_token"]
+            res = self.client.post(path, headers=headers, data=data)
+            self.token =  jsonutils.loads(res.text).get("access_token")
         except Exception:
             logger.error(traceback.format_exc())
+            raise
 
-        self.token =  jsonutils.loads(res.body).get("access_token")
 
+class AsyncAuthMixin(object):
+    """
+    Platform is a HTTP connection to Itential Platform
+    """
+
+    async def authenticate(self):
+        """
+        Provides the authentication function for authenticating to the server
+        """
+        if self.client_id is not None and self.client_secret is not None:
+            await self.authenticate_oauth()
+        elif self.user is not None and self.password is not None:
+            await self.authenticate_basicauth()
+        else:
+            raise ValueError("no authentication methods left to try")
+        logger.info("client connection successfully authenticated")
+
+    async def authenticate_basicauth(self):
+        """
+        Performs authentication for basic authorization
+        """
+        logger.info("Attempting to perform basic authentication")
+
+        data = _make_basicauth_body(self.user, self.password)
+        path = _make_basicauth_path()
+
+        try:
+            res = await self.client.post(path, json=data)
+            res.raise_for_status()
+        except Exception:
+            logger.error(traceback.format_exc())
+            raise
+
+
+    async def authenticate_oauth(self):
+        """
+        Performs authentication for OAuth client credentials
+        """
+        logger.info("Attempting to perform oauth authentication")
+
+        data = _make_oauth_body(self.client_id, self.client_secret)
+        headers = _make_oauth_headers()
+        path = _make_oauth_path()
+
+        try:
+            res = await self.client.post(path, headers=headers, data=data)
+            self.token =  jsonutils.loads(res.text).get("access_token")
+        except Exception:
+            logger.error(traceback.format_exc())
+            raise
+
+
+
+Platform = type("Platform", (AuthMixin, connection.Connection), {})
+AsyncPlatform = type("AsyncPlatform", (AsyncAuthMixin, connection.AsyncConnection), {})
 
 
 def platform_factory(
@@ -86,9 +154,11 @@ def platform_factory(
     password: str="admin",
     client_id: str=None,
     client_secret: str=None,
-    timeout: int=30
-) -> Platform:
-    """Create a new instance of a Platform connection.
+    timeout: int=30,
+    want_async: bool=False,
+):
+    """
+    Create a new instance of a Platform connection.
 
     This factory function initializes a Platform connection using provided parameters or
     environment variable overrides. Supports both user/password and client credentials.
@@ -127,10 +197,16 @@ def platform_factory(
         timeout (int): Configures the timeout value for requests sent to the server.
             The default value for timeout is `30`.
 
+        want_async (bool): When set to True, the factory function will return
+            an async connection object and when set to False the factory will
+            return a connection object.
+
     Returns:
         Platform: An initialized Platform connection instance.
     """
-    return Platform(
+
+    factory = AsyncPlatform if want_async is True else Platform
+    return factory(
         host=host,
         port=port,
         use_tls=use_tls,

@@ -3,46 +3,89 @@
 
 import traceback
 
-from . import http
+from . import connection
 from . import logger
 
 
-class Gateway(http.Connection):
-    """ Gateway is a HTTP connection to an Itential Automation Gateway
+def _make_path() -> str:
+    """
+    Utility function that returns the login url
+
+    Returns:
+        A string that provides the login url
+    """
+    return "/login"
+
+
+def _make_body(user: str, password: str) -> dict:
+    """
+    Utility function to make the authentication body used to authenticate to
+    the server
+
+    Args:
+        user (str): The username to use when authenticating
+        password (str): The password to use when authenticating
+
+    Returns:
+        A dict object that can be used to send in the body of the
+            authentication request
+    """
+    return {"username": user, "password": password}
+
+
+def _make_headers() -> dict:
+    """
+    Utility function that returns a dict object of headers
+
+    Returns:
+        A dict object that can be passed to a request to set the headers
+    """
+    return {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+
+class AuthMixin(object):
+    """
+    Authorization mixin for authenticating to Itential Automation Gateway
     """
 
-    def __str__(self) -> str:
-        """Return the string representation of the object instance
+    def authenticate(self) -> None:
         """
-        return self.__repr__()
-
-    def __repr__(self) -> str:
-        """Return the string representation of the object instance
+        Provides the authentication function for authenticating to the server
         """
-        cls = self.__class__.__name__
-        return f"{cls}(host={self.host!r})"
-
-    def authenticate(self):
-        """Provides the authentication function for authenticating to the server
-        """
-        data = {
-            "username": self.user,
-            "password": self.password,
-        }
-
-        url = http.make_url(
-            self.host, "/login", base_path=self.base_path, port=self.port, use_tls=self.use_tls
-        )
-
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        }
+        data = _make_body(self.user, self.password)
+        headers = _make_headers()
+        path = _make_path()
 
         try:
-            self.client.post(url, headers=headers, json=data)
+            self.client.post(path, headers=headers, json=data)
         except Exception:
             logger.error(traceback.format_exc())
+
+
+class AsyncAuthMixin(object):
+    """
+    Async authorization mixin for authenticating to Itential Automation Gateway
+    """
+
+    async def authenticate(self):
+        """
+        Provides the authentication function for authenticating to the server
+        """
+        data = _make_body(self.user, self.password)
+        headers = _make_headers()
+        path = _make_path()
+
+        try:
+            await self.client.post(path, headers=headers, json=data)
+        except Exception:
+            logger.error(traceback.format_exc())
+
+
+Gateway = type("Gateway", (AuthMixin, connection.Connection), {})
+AsyncGateway = type("AsyncGateway", (AsyncAuthMixin, connection.AsyncConnection), {})
 
 
 def gateway_factory(
@@ -52,8 +95,9 @@ def gateway_factory(
     verify: bool=True,
     user: str="admin@itential",
     password: str="admin",
-    timeout: int=30
-) -> Gateway:
+    timeout: int=30,
+    want_async: bool=False,
+):
     """ Create a new instance of a Gateway connection.
 
     This factory function initializes a Gateway connection using provided parameters or
@@ -84,10 +128,16 @@ def gateway_factory(
 
         timeout (int): Timeout for the connection, in seconds.
 
+        want_async (bool): When set to True, the factory function will return
+            an async connection object and when set to False the factory will
+            return a connection object.
+
     Returns:
-        Gateway: An initialized Gateway connection instance with a base API path set.
+        An initialized connection instance
     """
-    return Gateway(
+
+    factory = AsyncGateway if want_async is True else Gateway
+    return factory(
         host=host,
         port=port,
         use_tls=use_tls,

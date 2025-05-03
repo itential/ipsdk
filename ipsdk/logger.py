@@ -5,6 +5,7 @@ import logging
 
 from functools import partial
 
+from . import metadata
 
 def log(lvl: int, msg: str):
     """Send the log message with the specified level
@@ -17,7 +18,7 @@ def log(lvl: int, msg: str):
         lvl (int): The logging level of the message
         msg (str): The message to write to the logger
     """
-    logging.getLogger("ipsdk").log(lvl, msg)
+    logging.getLogger(metadata.name).log(lvl, msg)
 
 
 debug = partial(log, logging.DEBUG)

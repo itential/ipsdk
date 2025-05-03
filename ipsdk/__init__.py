@@ -3,18 +3,19 @@
 
 import logging
 
+from . import metadata
 from .platform import platform_factory
 from .gateway import gateway_factory
 
-__version__ = "devel"
+__version__ = metadata.version
 
 __all__ = (platform_factory, gateway_factory)
 
 
 # Configure global logging
-logging_message_format = '%(asctime)s: %(levelname)s: %(message)s'
+logging_message_format = "%(asctime)s: %(levelname)s: %(message)s"
 logging.basicConfig(format=logging_message_format)
-logging.getLogger("ipsdk").setLevel(100)
+logging.getLogger(metadata.name).setLevel(100)
 
 
 def set_logging_level(lvl: int):
@@ -23,4 +24,6 @@ def set_logging_level(lvl: int):
     Args:
         level (int): Logging level (e.g., logging.INFO, logging.DEBUG)
     """
-    logging.getLogger("ipsdk").setLevel(lvl)
+    logging.getLogger(metadata.name).setLevel(lvl)
+    logging.getLogger("httpx").setLevel(lvl)
+    logging.getLogger("httpcore").setLevel(lvl)

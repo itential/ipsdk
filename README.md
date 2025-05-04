@@ -59,21 +59,38 @@ async def main():
 
     res = await p.get("/adapters")
 
-async def asyncrun():
-    res = await p.get("/adapters")
-    print(res)
-
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
 The connection object supports the following HTTP methods:
 
-- `GET`
-- `POST`
-- `PUT`
-- `DELETE`
-- `PATCH`
+- `GET` - Sends a HTTP GET request to the server and returns the results
+- `POST` - Sends a HTTP POST request to the server and returns the results
+- `PUT` - Sends a HTTP PUT request to the server and returns the results
+- `DELETE` - Sends a HTTP DELETE request to the server and returns the results
+- `PATCH` - Sends a HTTP PATCH request to the server and returns the resutls
+
+The following table shows the keyworkd arguments for each HTTP method:
+
+ | Keyword  | `GET`         | `POST`   | `PUT`    | `DELETE`      | `PATCH`  |
+ |----------|---------------|----------|----------|---------------|----------|
+ | `path`   | Required      | Required | Required | Required      | Required |
+ | `params` | Optional      | Optional | Optional | Optional      | Optional |
+ | `json`   | Not Supported | Optional | Optional | Not Supported | Optional |
+
+The `path` argument specifies the relative path of the URI.   This value is
+prepended to the base URL.  The base URL for Itential Platform is `<host>` and
+the base URL for Itential Automation Gateway is `<host>/api/v2.0`.
+
+The `params` argument accepts a `dict` object that is transformed into the URL
+query string.  For example, if `params={"foo": "bar"}` the resulting query
+string would be `?foo=bar`
+
+The `json` argument accepts the payload to send in the requeset as JSON.  This
+argument accepts either a `list` or `dict` object.  When specified, the data
+will automatically be converted to a JSON string and the `Content-Type` and
+`Accept` headers will be set to `application/json`.
 
 ## Configuration
 

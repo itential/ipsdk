@@ -10,6 +10,7 @@ import httpx
 
 from . import logger
 from . import metadata
+from . import jsonutils
 
 
 class HTTPMethod:
@@ -153,6 +154,9 @@ class Connection(ConnectionBase):
             self.authenticate()
             self.authenticated = True
 
+        if isinstance(data, (dict, list)):
+            data = jsonutils.dumps(data)
+
         request = self._build_request(
             method=method,
             url=url,
@@ -244,6 +248,9 @@ class AsyncConnection(ConnectionBase):
         if self.authenticated is False:
             await self.authenticate()
             self.authenticated = True
+
+        if isinstance(data, (dict, list)):
+            data = jsonutils.dumps(data)
 
         request = self._build_request(
             method=method,

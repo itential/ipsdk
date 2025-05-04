@@ -23,3 +23,19 @@ def loads(s: str) -> Union[dict, list]:
     except:
         logger.error(traceback.format_exc())
         raise
+
+
+def dumps(o: Union[dict, list]) -> str:
+    """Convert a dict or list to a JSON string
+
+    Args:
+        o (list, dict): The list or dict object to dump to a string
+
+    Returns:
+        A JSON string representation
+    """
+    try:
+        return json.dumps(o)
+    except:
+        logger.error(traceback.format_exc())
+        raise

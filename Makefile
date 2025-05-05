@@ -15,7 +15,7 @@ help:
 	@echo "  clean      - Cleans the development environment"
 	@echo "  coverage   - Run test coverage report"
 	@echo "  lint       - Run analysis on source files"
-	@echo "  premerge   - Run the permerge tests locallly
+	@echo "  premerge   - Run the permerge tests locallly"
 	@echo "  test       - Run test suite"
 	@echo ""
 
@@ -40,7 +40,6 @@ lint:
 # part of the application and get created by other targets.
 clean:
 	@rm -rf .pytest_cache coverage.* htmlcov dist build *.egg-info
-
 
 # The premerge target will run the permerge tests locally.  This is
 # the same target that is invoked in the permerge pipeline.

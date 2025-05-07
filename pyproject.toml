@@ -21,7 +21,8 @@ dev = [
     "q>=2.7",
     "ruff",
     "mypy",
-    "coverage"
+    "coverage",
+    "build>=1.2.2.post1",
 ]
 
 [tools.setuptools_scm]

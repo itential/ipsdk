@@ -1,13 +1,13 @@
 [project]
 name = "ipsdk"
 description = "Itential Python SDK"
+version = "0.1.0"
 authors = [
     { name="Itential, Inc.", email="opensource@itential.com" }
 ]
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
 requires-python = ">=3.8"
-dynamic = [ "version" ]
 
 dependencies = [
     "httpx>=0.28.1"

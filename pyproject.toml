@@ -2,7 +2,7 @@
 name = "ipsdk"
 description = "Itential Python SDK"
 authors = [
-    { name="Itential, Inc.", email="support@itential.com" }
+    { name="Itential, Inc.", email="opensource@itential.com" }
 ]
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"

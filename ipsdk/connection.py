@@ -557,7 +557,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `httpx.Response` object
         """
-        return await self._send_request(HTTPMethod.GET, url=path, params=params)
+        return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
     async def delete(self, path: str, params: dict=None) -> httpx.Response:
         """
@@ -578,7 +578,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `httpx.Response` object
         """
-        return await self._send_request(HTTPMethod.DELETE, url=path, params=params)
+        return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
     async def post(self, path: str, params: dict=None, json: Union[str, bytes, dict, list]=None) -> httpx.Response:
         """
@@ -605,7 +605,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `httpx.Response` object
         """
-        return await self._send_request(HTTPMethod.POST, url=path, params=params, json=json)
+        return await self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
     async def put(self, path: str, params: dict=None, json: Union[str, bytes, dict, list]=None) -> httpx.Response:
         """
@@ -632,7 +632,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `httpx.Response` object
         """
-        return await self._send_request(HTTPMethod.PUT, url=path, params=params, json=json)
+        return await self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
     async def patch(self, path: str, params: dict=None, json: Union[str, bytes, dict, list]=None) -> httpx.Response:
         """
@@ -659,4 +659,4 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `httpx.Response` object
         """
-        return await self._send_request(HTTPMethod.PATCH, url=path, params=params, json=json)
+        return await self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)

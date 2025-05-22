@@ -99,6 +99,7 @@ class ConnectionBase(object):
         self.client = self._init_client(
             base_url=self._make_base_url(host, port, base_path, use_tls),
             verify=verify,
+            timeout=timeout,
         )
         self.client.headers["User-Agent"] = f"ipsdk/{metadata.version}"
 
@@ -205,7 +206,10 @@ class ConnectionBase(object):
         )
 
     @abc.abstractmethod
-    def _init_client(self, base_url: str=None, verify: bool=True):
+    def _init_client(self,
+                     base_url: str | None = None,
+                     verify: bool = True,
+                     timeout: int = 30):
         """
         Abstract method that will initialize the client
 
@@ -216,6 +220,9 @@ class ConnectionBase(object):
             verify (bool): Enable or disable certificate verification.  The
                 default value is True
 
+            timeout (int): Sets the connection timeout value for each sent
+                request in seconds.  The default value is 30
+
         Returns:
             A valid httpx client object.
         """
@@ -224,7 +231,10 @@ class ConnectionBase(object):
 
 class Connection(ConnectionBase):
 
-    def _init_client(self, base_url: str=None, verify: bool=True) -> httpx.Client:
+    def _init_client(self,
+                     base_url: str | None = None,
+                     verify: bool = True,
+                     timeout: int = 30) -> httpx.Client:
         """
         Initialize the httpx.Client instance
 
@@ -239,6 +249,9 @@ class Connection(ConnectionBase):
             verify (bool): Enable or disable the validation of certificates
                 when connecting to a server over TLS
 
+            timeout (int): Set the connection timeout value when sending
+                requests.  The default value is 30 seconds
+
         Returns:
             An instance of `httpx.Client`
         """
@@ -248,6 +261,7 @@ class Connection(ConnectionBase):
         return httpx.Client(
             base_url=base_url,
             verify=verify,
+            timeout=timeout,
         )
 
     @abc.abstractmethod
@@ -446,7 +460,10 @@ class Connection(ConnectionBase):
 
 class AsyncConnection(ConnectionBase):
 
-    def _init_client(self, base_url: str=None, verify: bool=True) -> httpx.AsyncClient:
+    def _init_client(self,
+                     base_url: str | None = None,
+                     verify: bool = True,
+                     timeout: int = 30) -> httpx.AsyncClient:
         """
         Initialize the httpx.AsyncClient instance
 
@@ -460,6 +477,9 @@ class AsyncConnection(ConnectionBase):
             verify (bool): Enable or disable the validation of certificates
                 when connecting to a server over TLS
 
+            timeout (int): Set the connection timeout value to be used for
+                each request in seconds.  The default value is 30.
+
         Returns:
             An instance of `httpx.AsyncClient`
         """
@@ -468,7 +488,8 @@ class AsyncConnection(ConnectionBase):
 
         return httpx.AsyncClient(
             base_url=base_url,
-            verify=verify
+            verify=verify,
+            timeout=timeout
         )
 
     @abc.abstractmethod

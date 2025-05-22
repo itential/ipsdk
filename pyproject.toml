@@ -1,10 +1,9 @@
 [project]
 name = "ipsdk"
 description = "Itential Python SDK"
-version = "0.1.1"
-authors = [
-    { name="Itential, Inc.", email="opensource@itential.com" }
-]
+
+version = "0.2.0"
+
 license = {text = "GPL-3.0-or-later"}
 readme = "README.md"
 requires-python = ">=3.8"
@@ -12,6 +11,37 @@ requires-python = ">=3.8"
 dependencies = [
     "httpx>=0.28.1"
 ]
+
+keywords = [
+    "itential",
+    "automation",
+    "platform",
+    "gateway",
+    "rest",
+    "api",
+]
+
+
+classifiers = [
+    "Intended Audience :: Developers",
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Typing :: Typed",
+]
+
+[[project.authors]]
+name = "Itential"
+email = "opensource@itential.com"
+
+[project.urls]
+Homepage = "https://itential.com"
+Repository = "https://github.com/itential/ipsdk"
+Documentation = "https://github.com/itential/ipsdk"
+
 
 [dependency-groups]
 dev = [

@@ -318,7 +318,6 @@ class Connection(ConnectionBase):
 
         try:
             res = self.client.send(request)
-            res.raise_for_status()
 
         except httpx.RequestError as exc:
             logger.debug(traceback.format_exc())
@@ -543,7 +542,6 @@ class AsyncConnection(ConnectionBase):
 
         try:
             res = await self.client.send(request)
-            res.raise_for_status()
 
         except httpx.RequestError as exc:
             logger.debug(traceback.format_exc())

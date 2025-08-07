@@ -7,7 +7,7 @@ from functools import partial
 
 from . import metadata
 
-def log(lvl: int, msg: str):
+def log(lvl: int, msg: str) -> None:
     """Send the log message with the specified level
 
     This function will send the log message to the logger with the specified

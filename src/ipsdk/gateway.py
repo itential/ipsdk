@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import traceback
+from typing import Optional, Any
 
 import httpx
 
@@ -20,7 +21,7 @@ def _make_path() -> str:
     return "/login"
 
 
-def _make_body(user: str, password: str) -> dict:
+def _make_body(user: str, password: str) -> dict[str, str]:
     """
     Utility function to make the authentication body used to authenticate to
     the server
@@ -36,7 +37,7 @@ def _make_body(user: str, password: str) -> dict:
     return {"username": user, "password": password}
 
 
-def _make_headers() -> dict:
+def _make_headers() -> dict[str, str]:
     """
     Utility function that returns a dict object of headers
 
@@ -53,11 +54,17 @@ class AuthMixin(object):
     """
     Authorization mixin for authenticating to Itential Automation Gateway
     """
+    
+    # Attributes that should be provided by ConnectionBase
+    user: Optional[str]
+    password: Optional[str]
+    client: httpx.Client
 
     def authenticate(self) -> None:
         """
         Provides the authentication function for authenticating to the server
         """
+        assert self.user is not None and self.password is not None
         data = _make_body(self.user, self.password)
         headers = _make_headers()
         path = _make_path()
@@ -98,11 +105,17 @@ class AsyncAuthMixin(object):
     """
     Async authorization mixin for authenticating to Itential Automation Gateway
     """
+    
+    # Attributes that should be provided by ConnectionBase
+    user: Optional[str]
+    password: Optional[str]
+    client: httpx.AsyncClient
 
     async def authenticate(self):
         """
         Provides the authentication function for authenticating to the server
         """
+        assert self.user is not None and self.password is not None
         data = _make_body(self.user, self.password)
         headers = _make_headers()
         path = _make_path()
@@ -142,6 +155,10 @@ class AsyncAuthMixin(object):
 Gateway = type("Gateway", (AuthMixin, connection.Connection), {})
 AsyncGateway = type("AsyncGateway", (AsyncAuthMixin, connection.AsyncConnection), {})
 
+# Type aliases for mypy
+GatewayType = Gateway
+AsyncGatewayType = AsyncGateway
+
 
 def gateway_factory(
     host: str="localhost",
@@ -152,7 +169,7 @@ def gateway_factory(
     password: str="admin",
     timeout: int=30,
     want_async: bool=False,
-):
+) -> Any:
     """ Create a new instance of a Gateway connection.
 
     This factory function initializes a Gateway connection using provided parameters or

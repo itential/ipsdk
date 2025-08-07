@@ -2,7 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import traceback
-from typing import Optional
+from typing import Optional, Any
 
 import httpx
 
@@ -11,7 +11,7 @@ from . import connection
 from . import logger
 from . import exceptions
 
-def _make_oauth_headers() -> dict:
+def _make_oauth_headers() -> dict[str, str]:
     return {"Content-Type": "application/x-www-form-urlencoded"}
 
 
@@ -19,7 +19,7 @@ def _make_oauth_path() -> str:
     return "/oauth/token"
 
 
-def _make_oauth_body(client_id: str, client_secret: str) -> dict:
+def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
     return {
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -27,7 +27,7 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict:
     }
 
 
-def _make_basicauth_body(user: str, password: str) -> dict:
+def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
     return {
         "user": {
             "username": user,
@@ -44,6 +44,14 @@ class AuthMixin(object):
     """
     Authoriztion mixin for authenticating to Itential Platform.
     """
+    
+    # Attributes that should be provided by ConnectionBase
+    user: Optional[str]
+    password: Optional[str]
+    client_id: Optional[str]
+    client_secret: Optional[str]
+    client: httpx.Client
+    token: Optional[str]
 
     def authenticate(self) -> None:
         """
@@ -66,6 +74,7 @@ class AuthMixin(object):
         """
         logger.info("Attempting to perform basic authentication")
 
+        assert self.user is not None and self.password is not None
         data = _make_basicauth_body(self.user, self.password)
         path = _make_basicauth_path()
 
@@ -107,6 +116,7 @@ class AuthMixin(object):
         """
         logger.info("Attempting to perform oauth authentication")
 
+        assert self.client_id is not None and self.client_secret is not None
         data = _make_oauth_body(self.client_id, self.client_secret)
         headers = _make_oauth_headers()
         path = _make_oauth_path()
@@ -117,14 +127,24 @@ class AuthMixin(object):
             
             # Parse the response to extract the token
             response_data = jsonutils.loads(res.text)
-            access_token = response_data.get("access_token")
+            if isinstance(response_data, dict):
+                access_token = response_data.get("access_token")
+            else:
+                access_token = None
             
             if not access_token:
-                raise exceptions.TokenError(
-                    "OAuth response missing access_token field",
-                    auth_type="oauth",
-                    details={"response_keys": list(response_data.keys())}
-                )
+                if isinstance(response_data, dict):
+                    raise exceptions.TokenError(
+                        "OAuth response missing access_token field",
+                        auth_type="oauth",
+                        details={"response_keys": list(response_data.keys())}
+                    )
+                else:
+                    raise exceptions.TokenError(
+                        "OAuth response is not a JSON object",
+                        auth_type="oauth",
+                        details={"response_type": str(type(response_data))}
+                    )
             
             self.token = access_token
             
@@ -171,6 +191,14 @@ class AsyncAuthMixin(object):
     """
     Platform is a HTTP connection to Itential Platform
     """
+    
+    # Attributes that should be provided by ConnectionBase
+    user: Optional[str]
+    password: Optional[str]
+    client_id: Optional[str]
+    client_secret: Optional[str]
+    client: httpx.AsyncClient
+    token: Optional[str]
 
     async def authenticate(self):
         """
@@ -193,6 +221,7 @@ class AsyncAuthMixin(object):
         """
         logger.info("Attempting to perform basic authentication")
 
+        assert self.user is not None and self.password is not None
         data = _make_basicauth_body(self.user, self.password)
         path = _make_basicauth_path()
 
@@ -234,6 +263,7 @@ class AsyncAuthMixin(object):
         """
         logger.info("Attempting to perform oauth authentication")
 
+        assert self.client_id is not None and self.client_secret is not None
         data = _make_oauth_body(self.client_id, self.client_secret)
         headers = _make_oauth_headers()
         path = _make_oauth_path()
@@ -244,14 +274,24 @@ class AsyncAuthMixin(object):
             
             # Parse the response to extract the token
             response_data = jsonutils.loads(res.text)
-            access_token = response_data.get("access_token")
+            if isinstance(response_data, dict):
+                access_token = response_data.get("access_token")
+            else:
+                access_token = None
             
             if not access_token:
-                raise exceptions.TokenError(
-                    "OAuth response missing access_token field",
-                    auth_type="oauth",
-                    details={"response_keys": list(response_data.keys())}
-                )
+                if isinstance(response_data, dict):
+                    raise exceptions.TokenError(
+                        "OAuth response missing access_token field",
+                        auth_type="oauth",
+                        details={"response_keys": list(response_data.keys())}
+                    )
+                else:
+                    raise exceptions.TokenError(
+                        "OAuth response is not a JSON object",
+                        auth_type="oauth",
+                        details={"response_type": str(type(response_data))}
+                    )
             
             self.token = access_token
             
@@ -295,8 +335,13 @@ class AsyncAuthMixin(object):
 
 
 
+# Define type aliases for the dynamically created classes
 Platform = type("Platform", (AuthMixin, connection.Connection), {})
 AsyncPlatform = type("AsyncPlatform", (AsyncAuthMixin, connection.AsyncConnection), {})
+
+# Type aliases for mypy
+PlatformType = Platform
+AsyncPlatformType = AsyncPlatform
 
 
 def platform_factory(
@@ -310,7 +355,7 @@ def platform_factory(
     client_secret: Optional[str]=None,
     timeout: int=30,
     want_async: bool=False,
-):
+) -> Any:
     """
     Create a new instance of a Platform connection.
 

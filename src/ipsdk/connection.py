@@ -212,6 +212,7 @@ class Response(object):
 
 
 class ConnectionBase(object):
+    client: Union[httpx.Client, httpx.AsyncClient]
 
     def __init__(self,
                  host: str,
@@ -336,7 +337,7 @@ class ConnectionBase(object):
                        method: str,
                        path: str,
                        json: Optional[Union[str, bytes, dict, list]]=None,
-                       params: Optional[dict]=None) -> httpx.Request:
+                       params: Optional[Dict[str, Any]]=None) -> httpx.Request:
         """
         Create a new instance of httpx.Request
 
@@ -394,7 +395,7 @@ class ConnectionBase(object):
     def _init_client(self,
                      base_url: Optional[str] = None,
                      verify: bool = True,
-                     timeout: int = 30):
+                     timeout: int = 30) -> Union[httpx.Client, httpx.AsyncClient]:
         """
         Abstract method that will initialize the client
 
@@ -415,6 +416,7 @@ class ConnectionBase(object):
 
 
 class Connection(ConnectionBase):
+    client: httpx.Client  # Override the Union type from base class
 
     def _init_client(self,
                      base_url: Optional[str] = None,
@@ -450,7 +452,7 @@ class Connection(ConnectionBase):
         )
 
     @abc.abstractmethod
-    def authenticate(self):
+    def authenticate(self) -> None:
         """
         Abstract method for implementing authentication
         """
@@ -459,7 +461,7 @@ class Connection(ConnectionBase):
     def _send_request(self,
                       method: str,
                       path: str,
-                      params: Optional[dict]=None,
+                      params: Optional[Dict[str, Any]]=None,
                       json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send will send the request to the API endpoint and return the response
@@ -536,7 +538,7 @@ class Connection(ConnectionBase):
 
         return Response(res)
 
-    def get(self, path: str, params: Optional[dict]=None) -> Response:
+    def get(self, path: str, params: Optional[Dict[str, Any]]=None) -> Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -557,7 +559,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    def delete(self, path: str, params: Optional[dict]=None) -> Response:
+    def delete(self, path: str, params: Optional[Dict[str, Any]]=None) -> Response:
         """
         Send a HTTP DELETE request to the server and return the response.
 
@@ -578,7 +580,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
-    def post(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
+    def post(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
         """
         Send a HTTP POST request to the server and return the response.
 
@@ -605,7 +607,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
-    def put(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
+    def put(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
         """
         Send a HTTP PUT request to the server and return the response.
 
@@ -632,7 +634,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
-    def patch(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
+    def patch(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
         """
         Send a HTTP PATCH request to the server and return the response.
 
@@ -661,6 +663,7 @@ class Connection(ConnectionBase):
 
 
 class AsyncConnection(ConnectionBase):
+    client: httpx.AsyncClient  # Override the Union type from base class
 
     def _init_client(self,
                      base_url: Optional[str] = None,
@@ -695,13 +698,13 @@ class AsyncConnection(ConnectionBase):
         )
 
     @abc.abstractmethod
-    async def authenticate(self):
+    async def authenticate(self) -> None:
         pass
 
     async def _send_request(self,
                             method: str,
                             path: str,
-                            params: Optional[dict]=None,
+                            params: Optional[Dict[str, Any]]=None,
                             json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send will send the request to the API endpoint and return the response
@@ -778,7 +781,7 @@ class AsyncConnection(ConnectionBase):
 
         return Response(res)
 
-    async def get(self, path: str, params: Optional[dict]=None) -> Response:
+    async def get(self, path: str, params: Optional[Dict[str, Any]]=None) -> Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -799,7 +802,7 @@ class AsyncConnection(ConnectionBase):
         """
         return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    async def delete(self, path: str, params: Optional[dict]=None) -> Response:
+    async def delete(self, path: str, params: Optional[Dict[str, Any]]=None) -> Response:
         """
         Send a HTTP DELETE request to the server and return the response.
 
@@ -820,7 +823,7 @@ class AsyncConnection(ConnectionBase):
         """
         return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
-    async def post(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
+    async def post(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send a HTTP POST request to the server and return the response.
 
@@ -847,7 +850,7 @@ class AsyncConnection(ConnectionBase):
         """
         return await self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
-    async def put(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
+    async def put(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send a HTTP PUT request to the server and return the response.
 
@@ -874,7 +877,7 @@ class AsyncConnection(ConnectionBase):
         """
         return await self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
-    async def patch(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
+    async def patch(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send a HTTP PATCH request to the server and return the response.
 

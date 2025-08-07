@@ -6,7 +6,7 @@ import traceback
 
 import urllib.parse
 
-from typing import Union, Optional, Dict, Any
+from typing import Union, Dict, Any, Optional
 
 import httpx
 
@@ -15,7 +15,7 @@ from . import metadata
 from . import exceptions
 
 
-class HTTPMethod:
+class HTTPMethod(object):
     """
     The HTTPMethod class acts as an enum for specifying the HTTP method to use
     when constructing requests
@@ -25,6 +25,190 @@ class HTTPMethod:
     DELETE = "DELETE"
     PUT = "PUT"
     PATCH = "PATCH"
+
+
+class Request(object):
+    """
+    Wrapper class for HTTP requests that provides a clean interface for request data
+
+    The Request class encapsulates all the information needed to make an HTTP request,
+    including the method, path, parameters, headers, and body data. This provides a
+    consistent interface for working with requests across the SDK.
+
+    Args:
+        method (str): The HTTP method (GET, POST, PUT, DELETE, PATCH)
+        path (str): The URL path for the request
+        params (Dict[str, Any], optional): Query parameters for the request
+        headers (Dict[str, str], optional): HTTP headers for the request
+        json (Union[str, bytes, dict, list], optional): JSON data for the request body
+
+    Raises:
+        ValueError: If required parameters are missing or invalid
+    """
+
+    def __init__(self,
+                 method: str,
+                 path: str,
+                 params: Optional[Dict[str, Any]] = None,
+                 headers: Optional[Dict[str, str]] = None,
+                 json: Optional[Union[str, bytes, dict, list]] = None):
+        self.method = method
+        self.path = path
+        self.params = params or {}
+        self.headers = headers or {}
+        self.json = json
+
+    @property
+    def url(self) -> str:
+        """
+        Get the full URL for this request
+
+        Returns:
+            str: The complete URL including path and query parameters
+        """
+        return self.path
+
+    def __repr__(self) -> str:
+        """
+        String representation of the request
+
+        Returns:
+            str: A string representation of the request
+        """
+        return f"Request(method='{self.method}', path='{self.path}')"
+
+
+class Response(object):
+    """
+    Wrapper class for HTTP responses that provides enhanced functionality over httpx.Response
+
+    The Response class wraps an httpx.Response object and provides additional convenience
+    methods and properties for working with API responses. It maintains compatibility
+    with the underlying httpx.Response while adding SDK-specific functionality.
+
+    Args:
+        httpx_response (httpx.Response): The underlying httpx response object
+
+    Raises:
+        ValueError: If the httpx_response is None or invalid
+    """
+
+    def __init__(self, httpx_response: httpx.Response):
+        if httpx_response is None:
+            raise ValueError("httpx_response cannot be None")
+
+        self._response = httpx_response
+
+    @property
+    def status_code(self) -> int:
+        """
+        Get the HTTP status code
+
+        Returns:
+            int: The HTTP status code
+        """
+        return self._response.status_code
+
+    @property
+    def headers(self) -> httpx.Headers:
+        """
+        Get the response headers
+
+        Returns:
+            httpx.Headers: The response headers
+        """
+        return self._response.headers
+
+    @property
+    def content(self) -> bytes:
+        """
+        Get the raw response content as bytes
+
+        Returns:
+            bytes: The raw response content
+        """
+        return self._response.content
+
+    @property
+    def text(self) -> str:
+        """
+        Get the response content as text
+
+        Returns:
+            str: The response content decoded as text
+        """
+        return self._response.text
+
+    @property
+    def url(self) -> httpx.URL:
+        """
+        Get the request URL
+
+        Returns:
+            httpx.URL: The URL that was requested
+        """
+        return self._response.url
+
+    @property
+    def request(self) -> httpx.Request:
+        """
+        Get the original request object
+
+        Returns:
+            httpx.Request: The original request that generated this response
+        """
+        return self._response.request
+
+    def json(self) -> Dict[str, Any]:
+        """
+        Parse the response content as JSON
+
+        Returns:
+            Dict[str, Any]: The parsed JSON response
+
+        Raises:
+            ValueError: If the response content is not valid JSON
+        """
+        try:
+            return self._response.json()
+        except Exception as exc:
+            raise ValueError(f"Failed to parse response as JSON: {str(exc)}")
+
+    def raise_for_status(self) -> None:
+        """
+        Raise an exception if the response status indicates an error
+
+        Raises:
+            httpx.HTTPStatusError: If the response status code indicates an error
+        """
+        self._response.raise_for_status()
+
+    def is_success(self) -> bool:
+        """
+        Check if the response indicates success (2xx status code)
+
+        Returns:
+            bool: True if the status code is in the 2xx range, False otherwise
+        """
+        return 200 <= self.status_code < 300
+
+    def is_error(self) -> bool:
+        """
+        Check if the response indicates an error (4xx or 5xx status code)
+
+        Returns:
+            bool: True if the status code indicates an error, False otherwise
+        """
+        return self.status_code >= 400
+
+    def __repr__(self) -> str:
+        """
+        String representation of the response
+
+        Returns:
+            str: A string representation of the response
+        """
+        return f"Response(status_code={self.status_code}, url='{self.url}')"
 
 
 class ConnectionBase(object):
@@ -151,8 +335,8 @@ class ConnectionBase(object):
     def _build_request(self,
                        method: str,
                        path: str,
-                       json: Optional[Union[str, bytes, Dict[str, Any], list]]=None,
-                       params: Optional[Dict[str, Any]]=None) -> httpx.Request:
+                       json: Optional[Union[str, bytes, dict, list]]=None,
+                       params: Optional[dict]=None) -> httpx.Request:
         """
         Create a new instance of httpx.Request
 
@@ -208,7 +392,7 @@ class ConnectionBase(object):
 
     @abc.abstractmethod
     def _init_client(self,
-                     base_url: str | None = None,
+                     base_url: Optional[str] = None,
                      verify: bool = True,
                      timeout: int = 30):
         """
@@ -233,7 +417,7 @@ class ConnectionBase(object):
 class Connection(ConnectionBase):
 
     def _init_client(self,
-                     base_url: str | None = None,
+                     base_url: Optional[str] = None,
                      verify: bool = True,
                      timeout: int = 30) -> httpx.Client:
         """
@@ -260,7 +444,7 @@ class Connection(ConnectionBase):
         logger.info(f"Creating new client for {base_url}")
 
         return httpx.Client(
-            base_url=base_url,
+            base_url=base_url or "",
             verify=verify,
             timeout=timeout,
         )
@@ -275,8 +459,8 @@ class Connection(ConnectionBase):
     def _send_request(self,
                       method: str,
                       path: str,
-                      params: Optional[Dict[str, Any]]=None,
-                      json: Optional[Union[str, bytes, Dict[str, Any], list]]=None) -> httpx.Response:
+                      params: Optional[dict]=None,
+                      json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send will send the request to the API endpoint and return the response
 
@@ -304,7 +488,7 @@ class Connection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         if self.authenticated is not True:
             self.authenticate()
@@ -319,7 +503,7 @@ class Connection(ConnectionBase):
 
         try:
             res = self.client.send(request)
-            
+
             # Check for HTTP status errors
             if res.status_code >= 400:
                 logger.debug(f"HTTP {res.status_code} response from {request.url}")
@@ -342,7 +526,7 @@ class Connection(ConnectionBase):
         except exceptions.IpsdkError:
             # Re-raise our own exceptions
             raise
-            
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             raise exceptions.IpsdkError(
@@ -350,9 +534,9 @@ class Connection(ConnectionBase):
                 details={"request_url": str(request.url), "original_error": str(exc)}
             )
 
-        return res
+        return Response(res)
 
-    def get(self, path: str, params: Optional[Dict[str, Any]]=None) -> httpx.Response:
+    def get(self, path: str, params: Optional[dict]=None) -> Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -369,11 +553,11 @@ class Connection(ConnectionBase):
                 value of params is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    def delete(self, path: str, params: Optional[Dict[str, Any]]=None) -> httpx.Response:
+    def delete(self, path: str, params: Optional[dict]=None) -> Response:
         """
         Send a HTTP DELETE request to the server and return the response.
 
@@ -390,11 +574,11 @@ class Connection(ConnectionBase):
                 value of params is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
-    def post(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, Dict[str, Any]]]=None) -> httpx.Response:
+    def post(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
         """
         Send a HTTP POST request to the server and return the response.
 
@@ -417,11 +601,11 @@ class Connection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
-    def put(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, Dict[str, Any]]]=None) -> httpx.Response:
+    def put(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
         """
         Send a HTTP PUT request to the server and return the response.
 
@@ -444,11 +628,11 @@ class Connection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
-    def patch(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, Dict[str, Any]]]=None) -> httpx.Response:
+    def patch(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, list, dict]]=None) -> Response:
         """
         Send a HTTP PATCH request to the server and return the response.
 
@@ -471,7 +655,7 @@ class Connection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)
 
@@ -479,7 +663,7 @@ class Connection(ConnectionBase):
 class AsyncConnection(ConnectionBase):
 
     def _init_client(self,
-                     base_url: str | None = None,
+                     base_url: Optional[str] = None,
                      verify: bool = True,
                      timeout: int = 30) -> httpx.AsyncClient:
         """
@@ -505,7 +689,7 @@ class AsyncConnection(ConnectionBase):
         logger.info(f"Creating new async client for {base_url}")
 
         return httpx.AsyncClient(
-            base_url=base_url,
+            base_url=base_url or "",
             verify=verify,
             timeout=timeout
         )
@@ -517,8 +701,8 @@ class AsyncConnection(ConnectionBase):
     async def _send_request(self,
                             method: str,
                             path: str,
-                            params: Optional[Dict[str, Any]]=None,
-                            json: Optional[Union[str, bytes, Dict[str, Any], list]]=None) -> httpx.Response:
+                            params: Optional[dict]=None,
+                            json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send will send the request to the API endpoint and return the response
 
@@ -561,7 +745,7 @@ class AsyncConnection(ConnectionBase):
 
         try:
             res = await self.client.send(request)
-            
+
             # Check for HTTP status errors
             if res.status_code >= 400:
                 logger.debug(f"HTTP {res.status_code} response from {request.url}")
@@ -584,7 +768,7 @@ class AsyncConnection(ConnectionBase):
         except exceptions.IpsdkError:
             # Re-raise our own exceptions
             raise
-            
+
         except Exception as exc:
             logger.debug(traceback.format_exc())
             raise exceptions.IpsdkError(
@@ -592,9 +776,9 @@ class AsyncConnection(ConnectionBase):
                 details={"request_url": str(request.url), "original_error": str(exc)}
             )
 
-        return res
+        return Response(res)
 
-    async def get(self, path: str, params: dict=None) -> httpx.Response:
+    async def get(self, path: str, params: Optional[dict]=None) -> Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -611,11 +795,11 @@ class AsyncConnection(ConnectionBase):
                 value of params is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    async def delete(self, path: str, params: dict=None) -> httpx.Response:
+    async def delete(self, path: str, params: Optional[dict]=None) -> Response:
         """
         Send a HTTP DELETE request to the server and return the response.
 
@@ -632,11 +816,11 @@ class AsyncConnection(ConnectionBase):
                 value of params is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
-    async def post(self, path: str, params: dict=None, json: Union[str, bytes, dict, list]=None) -> httpx.Response:
+    async def post(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send a HTTP POST request to the server and return the response.
 
@@ -659,11 +843,11 @@ class AsyncConnection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return await self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
-    async def put(self, path: str, params: dict=None, json: Union[str, bytes, dict, list]=None) -> httpx.Response:
+    async def put(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send a HTTP PUT request to the server and return the response.
 
@@ -686,11 +870,11 @@ class AsyncConnection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return await self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
-    async def patch(self, path: str, params: dict=None, json: Union[str, bytes, dict, list]=None) -> httpx.Response:
+    async def patch(self, path: str, params: Optional[dict]=None, json: Optional[Union[str, bytes, dict, list]]=None) -> Response:
         """
         Send a HTTP PATCH request to the server and return the response.
 
@@ -713,6 +897,6 @@ class AsyncConnection(ConnectionBase):
                 default value for json is None
 
         Returns:
-            A `httpx.Response` object
+            A `Response` object
         """
         return await self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)

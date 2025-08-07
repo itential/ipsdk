@@ -3,8 +3,11 @@
 
 import traceback
 
+import httpx
+
 from . import connection
 from . import logger
+from . import exceptions
 
 
 def _make_path() -> str:
@@ -60,9 +63,35 @@ class AuthMixin(object):
         path = _make_path()
 
         try:
-            self.client.post(path, headers=headers, json=data)
-        except Exception:
+            res = self.client.post(path, headers=headers, json=data)
+            res.raise_for_status()
+        except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
+            if exc.response.status_code in (401, 403):
+                raise exceptions.CredentialsError(
+                    "Gateway authentication failed - invalid username or password",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+            else:
+                raise exceptions.AuthenticationError(
+                    f"Gateway authentication failed with status {exc.response.status_code}",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+        except httpx.RequestError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.NetworkError(
+                "Network error during gateway authentication",
+                details={"original_error": str(exc)}
+            )
+        except Exception as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.AuthenticationError(
+                f"Unexpected error during gateway authentication: {str(exc)}",
+                auth_type="basic",
+                details={"original_error": str(exc)}
+            )
 
 
 class AsyncAuthMixin(object):
@@ -79,9 +108,35 @@ class AsyncAuthMixin(object):
         path = _make_path()
 
         try:
-            await self.client.post(path, headers=headers, json=data)
-        except Exception:
+            res = await self.client.post(path, headers=headers, json=data)
+            res.raise_for_status()
+        except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
+            if exc.response.status_code in (401, 403):
+                raise exceptions.CredentialsError(
+                    "Gateway authentication failed - invalid username or password",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+            else:
+                raise exceptions.AuthenticationError(
+                    f"Gateway authentication failed with status {exc.response.status_code}",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+        except httpx.RequestError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.NetworkError(
+                "Network error during gateway authentication",
+                details={"original_error": str(exc)}
+            )
+        except Exception as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.AuthenticationError(
+                f"Unexpected error during gateway authentication: {str(exc)}",
+                auth_type="basic",
+                details={"original_error": str(exc)}
+            )
 
 
 Gateway = type("Gateway", (AuthMixin, connection.Connection), {})

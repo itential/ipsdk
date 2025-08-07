@@ -6,6 +6,7 @@ import pytest
 from unittest.mock import Mock, patch, AsyncMock
 
 from ipsdk.connection import Connection, AsyncConnection
+from ipsdk import exceptions
 
 from ipsdk.platform import (
     _make_oauth_headers,
@@ -44,7 +45,7 @@ def test_platform_factory_returns_async():
 def test_platform_authentication_fallback():
     conn = platform_factory(client_id=None, client_secret=None)
     # auth should fail gracefully since no server is running
-    with pytest.raises(ValueError, match="no authentication methods left to try"):
+    with pytest.raises(exceptions.CredentialsError, match="No valid authentication credentials provided"):
         conn.client_id = None
         conn.client_secret = None
         conn.user = None
@@ -118,7 +119,7 @@ def test_authenticate_value_error():
     mixin.user = None
     mixin.password = None
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exceptions.CredentialsError):
         mixin.authenticate()
 
 
@@ -163,6 +164,6 @@ async def test_async_authenticate_value_error():
     mixin.user = None
     mixin.password = None
 
-    with pytest.raises(ValueError):
+    with pytest.raises(exceptions.CredentialsError):
         await mixin.authenticate()
 

@@ -2,10 +2,14 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import traceback
+from typing import Optional
+
+import httpx
 
 from . import jsonutils
 from . import connection
 from . import logger
+from . import exceptions
 
 def _make_oauth_headers() -> dict:
     return {"Content-Type": "application/x-www-form-urlencoded"}
@@ -50,7 +54,10 @@ class AuthMixin(object):
         elif self.user is not None and self.password is not None:
             self.authenticate_user()
         else:
-            raise ValueError("no authentication methods left to try")
+            raise exceptions.CredentialsError(
+                "No valid authentication credentials provided. "
+                "Required: (client_id + client_secret) or (user + password)"
+            )
         logger.info("client connection successfully authenticated")
 
     def authenticate_user(self) -> None:
@@ -65,9 +72,33 @@ class AuthMixin(object):
         try:
             res = self.client.post(path, json=data)
             res.raise_for_status()
-        except Exception:
+        except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
-            raise
+            if exc.response.status_code in (401, 403):
+                raise exceptions.CredentialsError(
+                    "Basic authentication failed - invalid username or password",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+            else:
+                raise exceptions.AuthenticationError(
+                    f"Authentication failed with status {exc.response.status_code}",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+        except httpx.RequestError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.NetworkError(
+                "Network error during basic authentication",
+                details={"original_error": str(exc)}
+            )
+        except Exception as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.AuthenticationError(
+                f"Unexpected error during basic authentication: {str(exc)}",
+                auth_type="basic",
+                details={"original_error": str(exc)}
+            )
 
 
     def authenticate_oauth(self) -> None:
@@ -82,10 +113,58 @@ class AuthMixin(object):
 
         try:
             res = self.client.post(path, headers=headers, data=data)
-            self.token =  jsonutils.loads(res.text).get("access_token")
-        except Exception:
+            res.raise_for_status()
+            
+            # Parse the response to extract the token
+            response_data = jsonutils.loads(res.text)
+            access_token = response_data.get("access_token")
+            
+            if not access_token:
+                raise exceptions.TokenError(
+                    "OAuth response missing access_token field",
+                    auth_type="oauth",
+                    details={"response_keys": list(response_data.keys())}
+                )
+            
+            self.token = access_token
+            
+        except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
+            if exc.response.status_code in (401, 403):
+                raise exceptions.CredentialsError(
+                    "OAuth authentication failed - invalid client credentials",
+                    auth_type="oauth",
+                    details={"status_code": exc.response.status_code}
+                )
+            else:
+                raise exceptions.AuthenticationError(
+                    f"OAuth authentication failed with status {exc.response.status_code}",
+                    auth_type="oauth",
+                    details={"status_code": exc.response.status_code}
+                )
+        except httpx.RequestError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.NetworkError(
+                "Network error during OAuth authentication",
+                details={"original_error": str(exc)}
+            )
+        except exceptions.JSONError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.TokenError(
+                "Failed to parse OAuth response",
+                auth_type="oauth",
+                details={"json_error": str(exc)}
+            )
+        except exceptions.IpsdkError:
+            # Re-raise our own exceptions
             raise
+        except Exception as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.AuthenticationError(
+                f"Unexpected error during OAuth authentication: {str(exc)}",
+                auth_type="oauth",
+                details={"original_error": str(exc)}
+            )
 
 
 class AsyncAuthMixin(object):
@@ -102,7 +181,10 @@ class AsyncAuthMixin(object):
         elif self.user is not None and self.password is not None:
             await self.authenticate_basicauth()
         else:
-            raise ValueError("no authentication methods left to try")
+            raise exceptions.CredentialsError(
+                "No valid authentication credentials provided. "
+                "Required: (client_id + client_secret) or (user + password)"
+            )
         logger.info("client connection successfully authenticated")
 
     async def authenticate_basicauth(self):
@@ -117,9 +199,33 @@ class AsyncAuthMixin(object):
         try:
             res = await self.client.post(path, json=data)
             res.raise_for_status()
-        except Exception:
+        except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
-            raise
+            if exc.response.status_code in (401, 403):
+                raise exceptions.CredentialsError(
+                    "Basic authentication failed - invalid username or password",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+            else:
+                raise exceptions.AuthenticationError(
+                    f"Authentication failed with status {exc.response.status_code}",
+                    auth_type="basic",
+                    details={"status_code": exc.response.status_code}
+                )
+        except httpx.RequestError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.NetworkError(
+                "Network error during basic authentication",
+                details={"original_error": str(exc)}
+            )
+        except Exception as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.AuthenticationError(
+                f"Unexpected error during basic authentication: {str(exc)}",
+                auth_type="basic",
+                details={"original_error": str(exc)}
+            )
 
 
     async def authenticate_oauth(self):
@@ -134,10 +240,58 @@ class AsyncAuthMixin(object):
 
         try:
             res = await self.client.post(path, headers=headers, data=data)
-            self.token =  jsonutils.loads(res.text).get("access_token")
-        except Exception:
+            res.raise_for_status()
+            
+            # Parse the response to extract the token
+            response_data = jsonutils.loads(res.text)
+            access_token = response_data.get("access_token")
+            
+            if not access_token:
+                raise exceptions.TokenError(
+                    "OAuth response missing access_token field",
+                    auth_type="oauth",
+                    details={"response_keys": list(response_data.keys())}
+                )
+            
+            self.token = access_token
+            
+        except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
+            if exc.response.status_code in (401, 403):
+                raise exceptions.CredentialsError(
+                    "OAuth authentication failed - invalid client credentials",
+                    auth_type="oauth",
+                    details={"status_code": exc.response.status_code}
+                )
+            else:
+                raise exceptions.AuthenticationError(
+                    f"OAuth authentication failed with status {exc.response.status_code}",
+                    auth_type="oauth",
+                    details={"status_code": exc.response.status_code}
+                )
+        except httpx.RequestError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.NetworkError(
+                "Network error during OAuth authentication",
+                details={"original_error": str(exc)}
+            )
+        except exceptions.JSONError as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.TokenError(
+                "Failed to parse OAuth response",
+                auth_type="oauth",
+                details={"json_error": str(exc)}
+            )
+        except exceptions.IpsdkError:
+            # Re-raise our own exceptions
             raise
+        except Exception as exc:
+            logger.error(traceback.format_exc())
+            raise exceptions.AuthenticationError(
+                f"Unexpected error during OAuth authentication: {str(exc)}",
+                auth_type="oauth",
+                details={"original_error": str(exc)}
+            )
 
 
 
@@ -152,8 +306,8 @@ def platform_factory(
     verify: bool=True,
     user: str="admin",
     password: str="admin",
-    client_id: str=None,
-    client_secret: str=None,
+    client_id: Optional[str]=None,
+    client_secret: Optional[str]=None,
     timeout: int=30,
     want_async: bool=False,
 ):

@@ -23,15 +23,17 @@ def loads(s: str) -> Union[dict, list]:
         return json.loads(s)
     except json.JSONDecodeError as exc:
         logger.error(traceback.format_exc())
+        input_data = str(s)[:200] if s is not None else "None"
         raise exceptions.JSONError(
             f"Failed to parse JSON: {str(exc)}",
-            details={"input_data": s[:200], "json_error": str(exc)}
+            details={"input_data": input_data, "json_error": str(exc)}
         )
     except Exception as exc:
         logger.error(traceback.format_exc())
+        input_data = str(s)[:200] if s is not None else "None"
         raise exceptions.JSONError(
             f"Unexpected error parsing JSON: {str(exc)}",
-            details={"input_data": s[:200], "original_error": str(exc)}
+            details={"input_data": input_data, "original_error": str(exc)}
         )
 
 

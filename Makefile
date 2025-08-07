@@ -28,12 +28,12 @@ test:
 # display a summary of the unit test coverage as well as output the coverage
 # data report
 coverage:
-	uv run pytest --cov=ipsdk --cov-report=term --cov-report=html tests/
+	uv run pytest --cov=src/ipsdk --cov-report=term --cov-report=html tests/
 
 # The lint target invokes ruff to run the linter against both the library
 # and test code.   This target is invoked in the premerge pipeline.
 lint:
-	uv run ruff check ipsdk
+	uv run ruff check src/ipsdk
 	uv run ruff check tests
 
 # The clean target will remove build and dev artififacts that are not 

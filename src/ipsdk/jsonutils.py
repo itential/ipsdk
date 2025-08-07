@@ -7,6 +7,7 @@ import traceback
 from typing import Union
 
 from . import logger
+from . import exceptions
 
 
 def loads(s: str) -> Union[dict, list]:
@@ -20,9 +21,18 @@ def loads(s: str) -> Union[dict, list]:
     """
     try:
         return json.loads(s)
-    except:
+    except json.JSONDecodeError as exc:
         logger.error(traceback.format_exc())
-        raise
+        raise exceptions.JSONError(
+            f"Failed to parse JSON: {str(exc)}",
+            details={"input_data": s[:200], "json_error": str(exc)}
+        )
+    except Exception as exc:
+        logger.error(traceback.format_exc())
+        raise exceptions.JSONError(
+            f"Unexpected error parsing JSON: {str(exc)}",
+            details={"input_data": s[:200], "original_error": str(exc)}
+        )
 
 
 def dumps(o: Union[dict, list]) -> str:
@@ -36,6 +46,15 @@ def dumps(o: Union[dict, list]) -> str:
     """
     try:
         return json.dumps(o)
-    except:
+    except (TypeError, ValueError) as exc:
         logger.error(traceback.format_exc())
-        raise
+        raise exceptions.JSONError(
+            f"Failed to serialize object to JSON: {str(exc)}",
+            details={"object_type": str(type(o)), "json_error": str(exc)}
+        )
+    except Exception as exc:
+        logger.error(traceback.format_exc())
+        raise exceptions.JSONError(
+            f"Unexpected error serializing JSON: {str(exc)}",
+            details={"object_type": str(type(o)), "original_error": str(exc)}
+        )

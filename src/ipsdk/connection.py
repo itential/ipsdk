@@ -6,12 +6,13 @@ import traceback
 
 import urllib.parse
 
-from typing import Union
+from typing import Union, Optional, Dict, Any
 
 import httpx
 
 from . import logger
 from . import metadata
+from . import exceptions
 
 
 class HTTPMethod:
@@ -31,13 +32,13 @@ class ConnectionBase(object):
     def __init__(self,
                  host: str,
                  port: int=0,
-                 base_path: str=None,
+                 base_path: Optional[str]=None,
                  use_tls: bool=True,
                  verify: bool=True,
-                 user: str=None,
-                 password: str=None,
-                 client_id: str=None,
-                 client_secret: str=None,
+                 user: Optional[str]=None,
+                 password: Optional[str]=None,
+                 client_id: Optional[str]=None,
+                 client_secret: Optional[str]=None,
                  timeout: int=30):
         """
         Base class for all connection classes
@@ -105,7 +106,7 @@ class ConnectionBase(object):
 
     def _make_base_url(self, host: str,
                        port: int=0,
-                       base_path: str=None,
+                       base_path: Optional[str]=None,
                        use_tls: bool=True) -> str:
         """
         Join parts of the request to construct a valid URL
@@ -150,8 +151,8 @@ class ConnectionBase(object):
     def _build_request(self,
                        method: str,
                        path: str,
-                       json: [str, bytes, dict, list]=None,
-                       params: dict=None) -> httpx.Request:
+                       json: Optional[Union[str, bytes, Dict[str, Any], list]]=None,
+                       params: Optional[Dict[str, Any]]=None) -> httpx.Request:
         """
         Create a new instance of httpx.Request
 
@@ -272,10 +273,10 @@ class Connection(ConnectionBase):
         pass
 
     def _send_request(self,
-                      method: HTTPMethod,
+                      method: str,
                       path: str,
-                      params: dict=None,
-                      json: [str, bytes, dict, list]=None) -> httpx.Response:
+                      params: Optional[Dict[str, Any]]=None,
+                      json: Optional[Union[str, bytes, Dict[str, Any], list]]=None) -> httpx.Response:
         """
         Send will send the request to the API endpoint and return the response
 
@@ -318,22 +319,40 @@ class Connection(ConnectionBase):
 
         try:
             res = self.client.send(request)
+            
+            # Check for HTTP status errors
+            if res.status_code >= 400:
+                logger.debug(f"HTTP {res.status_code} response from {request.url}")
+                raise exceptions.classify_http_error(
+                    res.status_code,
+                    res,
+                    str(request.url)
+                )
 
         except httpx.RequestError as exc:
             logger.debug(traceback.format_exc())
-            raise ValueError(f"An error occurred while requesting {exc.request.url!r}.")
+            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
+            raise sdk_exc
 
         except httpx.HTTPStatusError as exc:
             logger.debug(traceback.format_exc())
-            raise ValueError(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
+            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
+            raise sdk_exc
 
+        except exceptions.IpsdkError:
+            # Re-raise our own exceptions
+            raise
+            
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            raise ValueError(f"unknown error occurred: {str(exc)}")
+            raise exceptions.IpsdkError(
+                f"Unexpected error occurred: {str(exc)}",
+                details={"request_url": str(request.url), "original_error": str(exc)}
+            )
 
         return res
 
-    def get(self, path: str, params: dict=None) -> httpx.Response:
+    def get(self, path: str, params: Optional[Dict[str, Any]]=None) -> httpx.Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -354,7 +373,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    def delete(self, path: str, params: dict=None) -> httpx.Response:
+    def delete(self, path: str, params: Optional[Dict[str, Any]]=None) -> httpx.Response:
         """
         Send a HTTP DELETE request to the server and return the response.
 
@@ -375,7 +394,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
-    def post(self, path: str, params: dict=None, json: Union[str, bytes, list, dict]=None) -> httpx.Response:
+    def post(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, Dict[str, Any]]]=None) -> httpx.Response:
         """
         Send a HTTP POST request to the server and return the response.
 
@@ -402,7 +421,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
-    def put(self, path: str, params: dict=None, json: Union[str, bytes, list, dict]=None) -> httpx.Response:
+    def put(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, Dict[str, Any]]]=None) -> httpx.Response:
         """
         Send a HTTP PUT request to the server and return the response.
 
@@ -429,7 +448,7 @@ class Connection(ConnectionBase):
         """
         return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
-    def patch(self, path: str, params: dict=None, json: Union[str, bytes, list, dict]=None) -> httpx.Response:
+    def patch(self, path: str, params: Optional[Dict[str, Any]]=None, json: Optional[Union[str, bytes, list, Dict[str, Any]]]=None) -> httpx.Response:
         """
         Send a HTTP PATCH request to the server and return the response.
 
@@ -496,10 +515,10 @@ class AsyncConnection(ConnectionBase):
         pass
 
     async def _send_request(self,
-                            method: HTTPMethod,
+                            method: str,
                             path: str,
-                            params: dict=None,
-                            json: [str, bytes, dict, list]=None) -> httpx.Response:
+                            params: Optional[Dict[str, Any]]=None,
+                            json: Optional[Union[str, bytes, Dict[str, Any], list]]=None) -> httpx.Response:
         """
         Send will send the request to the API endpoint and return the response
 
@@ -542,18 +561,36 @@ class AsyncConnection(ConnectionBase):
 
         try:
             res = await self.client.send(request)
+            
+            # Check for HTTP status errors
+            if res.status_code >= 400:
+                logger.debug(f"HTTP {res.status_code} response from {request.url}")
+                raise exceptions.classify_http_error(
+                    res.status_code,
+                    res,
+                    str(request.url)
+                )
 
         except httpx.RequestError as exc:
             logger.debug(traceback.format_exc())
-            raise ValueError(f"An error occurred while requesting {exc.request.url!r}.")
+            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
+            raise sdk_exc
 
         except httpx.HTTPStatusError as exc:
             logger.debug(traceback.format_exc())
-            raise ValueError(f"Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
+            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
+            raise sdk_exc
 
+        except exceptions.IpsdkError:
+            # Re-raise our own exceptions
+            raise
+            
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            raise ValueError(f"unknown error occurred: {str(exc)}")
+            raise exceptions.IpsdkError(
+                f"Unexpected error occurred: {str(exc)}",
+                details={"request_url": str(request.url), "original_error": str(exc)}
+            )
 
         return res
 

@@ -10,7 +10,7 @@ from .gateway import gateway_factory
 
 __version__ = metadata.version
 
-__all__ = (platform_factory, gateway_factory)
+__all__ = ("platform_factory", "gateway_factory")
 
 
 # Configure global logging

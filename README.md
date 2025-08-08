@@ -1,7 +1,7 @@
 # ipsdk
 
 The Itential Python SDK provides a client implementation in Python for writing
-scripts that can make API calls Itential Platform or Itential Automation
+scripts that can make API calls to Itential Platform or Itential Automation
 Gateway 4.x.
 
 ## Features
@@ -13,10 +13,23 @@ Gateway 4.x.
 
 ## Getting started
 
+## Requirements
+
+- Python 3.8 or higher
+- httpx >= 0.28.1
+
+## Installation
+
 Install `ipsdk` using pip:
 
-```python
+```bash
 $ pip install ipsdk
+```
+
+Or using uv (recommended for development):
+
+```bash
+$ uv add ipsdk
 ```
 
 The `ipsdk` package provides factory functions for connecting to either
@@ -43,8 +56,8 @@ The above works the same for Itential Automation Gateway, simply use
 Automation Gateway.
 
 Itential Python SDK also supports using `asyncio` to connect to servers as
-well.  The example below demostrates how to connect to the server using an
-async connections.
+well. The example below demonstrates how to connect to the server using an
+async connection.
 
 ```python
 import asyncio
@@ -69,9 +82,9 @@ The connection object supports the following HTTP methods:
 - `POST` - Sends a HTTP POST request to the server and returns the results
 - `PUT` - Sends a HTTP PUT request to the server and returns the results
 - `DELETE` - Sends a HTTP DELETE request to the server and returns the results
-- `PATCH` - Sends a HTTP PATCH request to the server and returns the resutls
+- `PATCH` - Sends a HTTP PATCH request to the server and returns the results
 
-The following table shows the keyworkd arguments for each HTTP method:
+The following table shows the keyword arguments for each HTTP method:
 
  | Keyword  | `GET`         | `POST`   | `PUT`    | `DELETE`      | `PATCH`  |
  |----------|---------------|----------|----------|---------------|----------|
@@ -87,15 +100,15 @@ The `params` argument accepts a `dict` object that is transformed into the URL
 query string.  For example, if `params={"foo": "bar"}` the resulting query
 string would be `?foo=bar`
 
-The `json` argument accepts the payload to send in the requeset as JSON.  This
-argument accepts either a `list` or `dict` object.  When specified, the data
+The `json` argument accepts the payload to send in the request as JSON. This
+argument accepts either a `list` or `dict` object. When specified, the data
 will automatically be converted to a JSON string and the `Content-Type` and
 `Accept` headers will be set to `application/json`.
 
 ## Configuration
 
-Both the `platform_factory` and `gateway_factory` functions supporting
-configuration using keyword arguments.  The table below shows the keyword
+Both the `platform_factory` and `gateway_factory` functions support
+configuration using keyword arguments. The table below shows the keyword
 arguments for each function along with their default value.
 
  | Keyword         | `platform_factory` | `gateway_factory` |
@@ -108,12 +121,44 @@ arguments for each function along with their default value.
  | `password`      | `admin`            | `admin`           |
  | `client_id`     | `None`             | Not Supported     |
  | `client_secret` | `None`             | Not Supported     |
+ | `timeout`       | `30`               | `30`              |
  | `want_async`    | `False`            | `False`           |
+
+## Development
+
+This project uses `uv` as the Python package manager and build tool. Here are the key development commands:
+
+```bash
+# Install dependencies and create virtual environment
+$ uv sync
+
+# Run tests
+$ uv run pytest tests
+$ make test
+
+# Run tests with coverage
+$ uv run pytest --cov=src/ipsdk --cov-report=term --cov-report=html tests/
+$ make coverage
+
+# Lint code
+$ uv run ruff check src/ipsdk
+$ uv run ruff check tests
+$ make lint
+
+# Type checking
+$ uv run mypy src/ipsdk
+
+# Clean build artifacts
+$ make clean
+
+# Run premerge checks (clean, lint, and test)
+$ make premerge
+```
 
 ## Logging
 
-By default all logging is turned off for `ipsdk`.  To enable logging to
-`stdout`, using the `set_logging_level` function.
+By default all logging is turned off for `ipsdk`. To enable logging to
+`stdout`, use the `set_logging_level` function.
 
 ```python
 >>> import ipsdk

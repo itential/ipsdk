@@ -181,6 +181,59 @@ The SDK provides the following logging level constants:
 - `ipsdk.logger.CRITICAL` - Critical error messages (50)
 - `ipsdk.logger.FATAL` - Fatal error messages (90)
 
+### File Logging
+
+The SDK supports optional file logging in addition to console logging. You can configure file logging using several approaches:
+
+#### Quick Setup with `configure_file_logging`
+
+The easiest way to enable both console and file logging:
+
+```python
+>>> import ipsdk
+
+# Enable both console and file logging
+>>> ipsdk.logger.configure_file_logging("/path/to/app.log", level=ipsdk.logger.DEBUG)
+
+# With propagation to httpx/httpcore loggers
+>>> ipsdk.logger.configure_file_logging("/path/to/app.log", level=ipsdk.logger.INFO, propagate=True)
+```
+
+#### Manual File Handler Management
+
+For more control, you can add and remove file handlers manually:
+
+```python
+>>> import ipsdk
+
+# First set the console logging level
+>>> ipsdk.logger.set_level(ipsdk.logger.INFO)
+
+# Add a file handler
+>>> ipsdk.logger.add_file_handler("/path/to/app.log")
+
+# Add multiple file handlers with different levels
+>>> ipsdk.logger.add_file_handler("/path/to/debug.log", level=ipsdk.logger.DEBUG)
+>>> ipsdk.logger.add_file_handler("/path/to/errors.log", level=ipsdk.logger.ERROR)
+
+# Remove all file handlers when done
+>>> ipsdk.logger.remove_file_handlers()
+```
+
+#### Custom Log Formatting
+
+You can specify custom format strings for file handlers:
+
+```python
+>>> custom_format = "%(asctime)s [%(levelname)s] %(message)s"
+>>> ipsdk.logger.add_file_handler("/path/to/app.log", format_string=custom_format)
+
+# Or with configure_file_logging
+>>> ipsdk.logger.configure_file_logging("/path/to/app.log", format_string=custom_format)
+```
+
+**Note:** File logging automatically creates parent directories if they don't exist.
+
 ## License
 
 This project is licensed under the GPLv3 open source license.  See

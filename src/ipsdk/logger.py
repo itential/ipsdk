@@ -17,6 +17,15 @@ logging.getLogger(metadata.name).setLevel(100)
 logging.addLevelName(90, "FATAL")
 setattr(logging, "FATAL", 90)
 
+# Logging level constants that wrap stdlib logging module constants
+NOTSET = logging.NOTSET
+DEBUG = logging.DEBUG
+INFO = logging.INFO
+WARNING = logging.WARNING
+ERROR = logging.ERROR
+CRITICAL = logging.CRITICAL
+FATAL = logging.FATAL
+
 # Set the default logging level to 100
 logging.getLogger(metadata.name).setLevel(100)
 
@@ -77,7 +86,7 @@ def fatal(msg: str) -> None:
     sys.exit(1)
 
 
-def set_logging_level(lvl: int, propagate: bool=False) -> None:
+def set_level(lvl: int, propagate: bool=False) -> None:
     """Set logging level for all loggers in the current Python process.
 
     Args:

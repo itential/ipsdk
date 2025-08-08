@@ -145,15 +145,15 @@ class TestFatalFunction:
             mock_exit.assert_called_once_with(1)
 
 
-class TestSetLoggingLevel:
-    """Test the set_logging_level function."""
+class TestSetLevel:
+    """Test the set_level function."""
 
-    def test_set_logging_level_basic(self):
-        """Test set_logging_level sets the logger level correctly."""
+    def test_set_level_basic(self):
+        """Test set_level sets the logger level correctly."""
         with patch.object(logging.getLogger(metadata.name), 'setLevel') as mock_setLevel, \
              patch.object(logging.getLogger(metadata.name), 'log') as mock_log:
             
-            logger.set_logging_level(logging.DEBUG)
+            logger.set_level(logging.DEBUG)
             
             mock_setLevel.assert_called_once_with(logging.DEBUG)
             
@@ -162,27 +162,27 @@ class TestSetLoggingLevel:
             mock_log.assert_any_call(logging.INFO, f"Logging level set to {logging.DEBUG}")
             mock_log.assert_any_call(logging.INFO, "Logging propagation is False")
 
-    def test_set_logging_level_with_propagate_false(self):
-        """Test set_logging_level with propagate=False (default)."""
+    def test_set_level_with_propagate_false(self):
+        """Test set_level with propagate=False (default)."""
         with patch.object(logging.getLogger(metadata.name), 'setLevel') as mock_ipsdk_setLevel, \
              patch.object(logging.getLogger("httpx"), 'setLevel') as mock_httpx_setLevel, \
              patch.object(logging.getLogger("httpcore"), 'setLevel') as mock_httpcore_setLevel, \
              patch.object(logging.getLogger(metadata.name), 'log'):
             
-            logger.set_logging_level(logging.INFO, propagate=False)
+            logger.set_level(logging.INFO, propagate=False)
             
             mock_ipsdk_setLevel.assert_called_once_with(logging.INFO)
             mock_httpx_setLevel.assert_not_called()
             mock_httpcore_setLevel.assert_not_called()
 
-    def test_set_logging_level_with_propagate_true(self):
-        """Test set_logging_level with propagate=True."""
+    def test_set_level_with_propagate_true(self):
+        """Test set_level with propagate=True."""
         with patch.object(logging.getLogger(metadata.name), 'setLevel') as mock_ipsdk_setLevel, \
              patch.object(logging.getLogger("httpx"), 'setLevel') as mock_httpx_setLevel, \
              patch.object(logging.getLogger("httpcore"), 'setLevel') as mock_httpcore_setLevel, \
              patch.object(logging.getLogger(metadata.name), 'log') as mock_log:
             
-            logger.set_logging_level(logging.WARNING, propagate=True)
+            logger.set_level(logging.WARNING, propagate=True)
             
             mock_ipsdk_setLevel.assert_called_once_with(logging.WARNING)
             mock_httpx_setLevel.assert_called_once_with(logging.WARNING)
@@ -193,8 +193,8 @@ class TestSetLoggingLevel:
             mock_log.assert_any_call(logging.INFO, f"Logging level set to {logging.WARNING}")
             mock_log.assert_any_call(logging.INFO, "Logging propagation is True")
 
-    def test_set_logging_level_different_levels(self):
-        """Test set_logging_level with different logging levels."""
+    def test_set_level_different_levels(self):
+        """Test set_level with different logging levels."""
         test_levels = [
             logging.DEBUG,
             logging.INFO,
@@ -208,7 +208,7 @@ class TestSetLoggingLevel:
             with patch.object(logging.getLogger(metadata.name), 'setLevel') as mock_setLevel, \
                  patch.object(logging.getLogger(metadata.name), 'log') as mock_log:
                 
-                logger.set_logging_level(level)
+                logger.set_level(level)
                 
                 mock_setLevel.assert_called_once_with(level)
                 
@@ -273,14 +273,14 @@ class TestErrorConditions:
             logger.exception(test_exception)
             mock_log.assert_called_once_with(logging.ERROR, "")
 
-    def test_set_logging_level_with_custom_level(self):
-        """Test set_logging_level with custom numeric level."""
+    def test_set_level_with_custom_level(self):
+        """Test set_level with custom numeric level."""
         custom_level = 25  # Between INFO (20) and WARNING (30)
         
         with patch.object(logging.getLogger(metadata.name), 'setLevel') as mock_setLevel, \
              patch.object(logging.getLogger(metadata.name), 'log') as mock_log:
             
-            logger.set_logging_level(custom_level)
+            logger.set_level(custom_level)
             
             mock_setLevel.assert_called_once_with(custom_level)
             

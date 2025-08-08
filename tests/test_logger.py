@@ -3,6 +3,8 @@
 
 import logging
 import sys
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 from ipsdk import logger, metadata
@@ -285,3 +287,169 @@ class TestErrorConditions:
             mock_setLevel.assert_called_once_with(custom_level)
             
             mock_log.assert_any_call(logging.INFO, f"Logging level set to {custom_level}")
+
+
+class TestFileLogging:
+    """Test file logging functionality."""
+
+    def test_add_file_handler_creates_directories(self):
+        """Test that add_file_handler creates parent directories."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "logs" / "sub" / "test.log"
+            
+            logger.add_file_handler(str(log_file))
+            
+            # Check that directories were created
+            assert log_file.parent.exists()
+            
+            # Check that file handler was added
+            ipsdk_logger = logging.getLogger(metadata.name)
+            file_handlers = [h for h in ipsdk_logger.handlers if isinstance(h, logging.FileHandler)]
+            assert len(file_handlers) > 0
+            
+            # Clean up
+            for handler in file_handlers:
+                ipsdk_logger.removeHandler(handler)
+                handler.close()
+
+    def test_add_file_handler_with_custom_level(self):
+        """Test add_file_handler with custom logging level."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "test.log"
+            custom_level = logging.WARNING
+            
+            logger.add_file_handler(str(log_file), level=custom_level)
+            
+            # Check that file handler was added with correct level
+            ipsdk_logger = logging.getLogger(metadata.name)
+            file_handlers = [h for h in ipsdk_logger.handlers if isinstance(h, logging.FileHandler)]
+            assert len(file_handlers) > 0
+            assert file_handlers[0].level == custom_level
+            
+            # Clean up
+            for handler in file_handlers:
+                ipsdk_logger.removeHandler(handler)
+                handler.close()
+
+    def test_add_file_handler_with_custom_format(self):
+        """Test add_file_handler with custom format string."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "test.log"
+            custom_format = "%(levelname)s - %(message)s"
+            
+            logger.add_file_handler(str(log_file), format_string=custom_format)
+            
+            # Check that file handler was added with correct formatter
+            ipsdk_logger = logging.getLogger(metadata.name)
+            file_handlers = [h for h in ipsdk_logger.handlers if isinstance(h, logging.FileHandler)]
+            assert len(file_handlers) > 0
+            assert file_handlers[0].formatter._fmt == custom_format
+            
+            # Clean up
+            for handler in file_handlers:
+                ipsdk_logger.removeHandler(handler)
+                handler.close()
+
+    def test_remove_file_handlers(self):
+        """Test remove_file_handlers removes all file handlers."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file1 = Path(temp_dir) / "test1.log"
+            log_file2 = Path(temp_dir) / "test2.log"
+            
+            # Add two file handlers
+            logger.add_file_handler(str(log_file1))
+            logger.add_file_handler(str(log_file2))
+            
+            ipsdk_logger = logging.getLogger(metadata.name)
+            file_handlers_before = [h for h in ipsdk_logger.handlers if isinstance(h, logging.FileHandler)]
+            assert len(file_handlers_before) == 2
+            
+            # Remove all file handlers
+            logger.remove_file_handlers()
+            
+            file_handlers_after = [h for h in ipsdk_logger.handlers if isinstance(h, logging.FileHandler)]
+            assert len(file_handlers_after) == 0
+
+    def test_configure_file_logging(self):
+        """Test configure_file_logging sets level and adds file handler."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "test.log"
+            
+            with patch.object(logger, 'set_level') as mock_set_level, \
+                 patch.object(logger, 'add_file_handler') as mock_add_file_handler:
+                
+                logger.configure_file_logging(str(log_file), level=logging.DEBUG, propagate=True)
+                
+                mock_set_level.assert_called_once_with(logging.DEBUG, True)
+                mock_add_file_handler.assert_called_once_with(str(log_file), logging.DEBUG, None)
+
+    def test_configure_file_logging_with_custom_format(self):
+        """Test configure_file_logging with custom format."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "test.log"
+            custom_format = "%(levelname)s - %(message)s"
+            
+            with patch.object(logger, 'set_level') as mock_set_level, \
+                 patch.object(logger, 'add_file_handler') as mock_add_file_handler:
+                
+                logger.configure_file_logging(str(log_file), format_string=custom_format)
+                
+                mock_set_level.assert_called_once_with(logging.INFO, False)
+                mock_add_file_handler.assert_called_once_with(str(log_file), logging.INFO, custom_format)
+
+
+class TestFileLoggingIntegration:
+    """Integration tests for file logging."""
+
+    def test_file_logging_writes_to_file(self):
+        """Test that file logging actually writes messages to file."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "integration_test.log"
+            
+            # Configure file logging
+            logger.configure_file_logging(str(log_file), level=logging.DEBUG)
+            
+            try:
+                # Write some log messages
+                logger.info("Test info message")
+                logger.debug("Test debug message")
+                logger.warning("Test warning message")
+                
+                # Check that messages were written to file
+                assert log_file.exists()
+                log_content = log_file.read_text()
+                
+                assert "Test info message" in log_content
+                assert "Test debug message" in log_content
+                assert "Test warning message" in log_content
+                
+            finally:
+                # Clean up
+                logger.remove_file_handlers()
+
+    def test_file_logging_respects_level(self):
+        """Test that file logging respects the specified level."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            log_file = Path(temp_dir) / "level_test.log"
+            
+            # Configure file logging with WARNING level
+            logger.configure_file_logging(str(log_file), level=logging.WARNING)
+            
+            try:
+                # Write messages at different levels
+                logger.debug("Debug message - should not appear")
+                logger.info("Info message - should not appear")
+                logger.warning("Warning message - should appear")
+                logger.error("Error message - should appear")
+                
+                # Check file content
+                log_content = log_file.read_text()
+                
+                assert "Debug message" not in log_content
+                assert "Info message" not in log_content
+                assert "Warning message" in log_content
+                assert "Error message" in log_content
+                
+            finally:
+                # Clean up
+                logger.remove_file_handlers()

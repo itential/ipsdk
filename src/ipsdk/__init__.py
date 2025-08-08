@@ -3,10 +3,10 @@
 
 from . import metadata
 
+from . import logger
 from .platform import platform_factory
 from .gateway import gateway_factory
-from .logger import set_logging_level
 
 __version__ = metadata.version
 
-__all__ = ("platform_factory", "gateway_factory", "set_logging_level")
+__all__ = ("platform_factory", "gateway_factory", "logger")

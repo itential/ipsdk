@@ -42,9 +42,9 @@ def _make_basicauth_path() -> str:
 
 class AuthMixin(object):
     """
-    Authoriztion mixin for authenticating to Itential Platform.
+    Authorization mixin for authenticating to Itential Platform.
     """
-    
+
     # Attributes that should be provided by ConnectionBase
     user: Optional[str]
     password: Optional[str]
@@ -124,14 +124,14 @@ class AuthMixin(object):
         try:
             res = self.client.post(path, headers=headers, data=data)
             res.raise_for_status()
-            
+
             # Parse the response to extract the token
             response_data = jsonutils.loads(res.text)
             if isinstance(response_data, dict):
                 access_token = response_data.get("access_token")
             else:
                 access_token = None
-            
+
             if not access_token:
                 if isinstance(response_data, dict):
                     raise exceptions.TokenError(
@@ -145,9 +145,9 @@ class AuthMixin(object):
                         auth_type="oauth",
                         details={"response_type": str(type(response_data))}
                     )
-            
+
             self.token = access_token
-            
+
         except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
@@ -191,7 +191,7 @@ class AsyncAuthMixin(object):
     """
     Platform is a HTTP connection to Itential Platform
     """
-    
+
     # Attributes that should be provided by ConnectionBase
     user: Optional[str]
     password: Optional[str]
@@ -271,14 +271,14 @@ class AsyncAuthMixin(object):
         try:
             res = await self.client.post(path, headers=headers, data=data)
             res.raise_for_status()
-            
+
             # Parse the response to extract the token
             response_data = jsonutils.loads(res.text)
             if isinstance(response_data, dict):
                 access_token = response_data.get("access_token")
             else:
                 access_token = None
-            
+
             if not access_token:
                 if isinstance(response_data, dict):
                     raise exceptions.TokenError(
@@ -292,9 +292,9 @@ class AsyncAuthMixin(object):
                         auth_type="oauth",
                         details={"response_type": str(type(response_data))}
                     )
-            
+
             self.token = access_token
-            
+
         except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
@@ -364,7 +364,7 @@ def platform_factory(
 
     Args:
         host (str): The target host for the connection.  The default value for
-            host is `loclahost`
+            host is `localhost`
 
         port (int): Port number to connect to.   The default value for port
             is `0`.   When the value is set to `0`, the port will be automatically
@@ -379,10 +379,10 @@ def platform_factory(
             certificates and when this value is set to `False` Certificate
             verification will be disabled.  The default value is `True`
 
-        user (str): The username to ues when authenticating to the server.  The
+        user (str): The username to use when authenticating to the server.  The
             default value is `admin`
 
-        password (str): The password to use when authenticaing to the server.  The
+        password (str): The password to use when authenticating to the server.  The
             default value is `admin`
 
         client_id (str): Optional client ID for token-based authentication.  When

@@ -229,7 +229,7 @@ class ConnectionBase(object):
         Base class for all connection classes
 
         ConnectionBase is the base connection type that all connection classes
-        are derived from.  It provides a set of common proprties used by both
+        are derived from.  It provides a set of common properties used by both
         the sync and async connection types.
 
         Args:
@@ -297,7 +297,7 @@ class ConnectionBase(object):
         Join parts of the request to construct a valid URL
 
         This function will take the request object and join the
-        individual parts together to cnstruct a full URL.
+        individual parts together to construct a full URL.
 
         Args:
             host (str): The hostname or IP address of the API endpoint.  This
@@ -314,7 +314,7 @@ class ConnectionBase(object):
                 this value is False, TLS will be disabled.  The default value
                 is True
 
-            base_path (str): Base path to prepend when consructing the final
+            base_path (str): Base path to prepend when constructing the final
                 URL.   The default value is None
 
         Returns:
@@ -425,7 +425,7 @@ class Connection(ConnectionBase):
         """
         Initialize the httpx.Client instance
 
-        The `httpx.Client` instance provides the conenction to the server
+        The `httpx.Client` instance provides the connection to the server
         for sending requests and receiving responses.   This method will
         initialize the client and return it to the calling function.
 
@@ -672,7 +672,7 @@ class AsyncConnection(ConnectionBase):
         """
         Initialize the httpx.AsyncClient instance
 
-        The `httpx.AsyncClient` instance provides the conenction to the server
+        The `httpx.AsyncClient` instance provides the connection to the server
         for sending requests and receiving responses.   This method will
         initialize the client and return it to the calling function.
 

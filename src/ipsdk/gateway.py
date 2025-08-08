@@ -177,7 +177,7 @@ def gateway_factory(
 
     Args:
         host (str): The target host for the connection. The default value for host
-            is `admin@itential`
+            is `localhost`
 
         port (int): Port number to use when connecting to the server.  The default
             value for port is `0`.  When the port value is set to 0, it will be

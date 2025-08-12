@@ -62,7 +62,7 @@ requires = ["hatchling", "uv-dynamic-versioning>=0.7.0"]
 build-backend = "hatchling.build"
 
 [tool.setuptools.dynamic]
-version = { attr = "itential_mcp.metadata.version" } 
+version = { attr = "ipsdk.metadata.version" } 
 
 [tool.hatch.version]
 source = "uv-dynamic-versioning"

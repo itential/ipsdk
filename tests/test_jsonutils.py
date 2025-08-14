@@ -251,3 +251,156 @@ def test_round_trip_consistency():
     parsed_data = jsonutils.loads(json_string)
     
     assert parsed_data == test_data
+
+
+def test_dumps_tuple_serialization():
+    """Test that tuples are serialized as arrays."""
+    data = {"tuple": (1, 2, 3)}
+    result = jsonutils.dumps(data)
+    parsed = json.loads(result)
+    assert parsed == {"tuple": [1, 2, 3]}
+
+
+def test_loads_unicode_strings():
+    """Test loading JSON with unicode characters."""
+    json_str = '{"message": "Hello 世界", "emoji": "🚀", "accent": "café"}'
+    result = jsonutils.loads(json_str)
+    assert result["message"] == "Hello 世界"
+    assert result["emoji"] == "🚀"
+    assert result["accent"] == "café"
+
+
+def test_dumps_unicode_strings():
+    """Test dumping data with unicode characters."""
+    data = {"message": "Hello 世界", "emoji": "🚀", "accent": "café"}
+    result = jsonutils.dumps(data)
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert parsed == data
+
+
+def test_loads_large_numbers():
+    """Test loading JSON with large numbers."""
+    json_str = '{"large_int": 9223372036854775807, "large_float": 1.7976931348623157e+308}'
+    result = jsonutils.loads(json_str)
+    assert result["large_int"] == 9223372036854775807
+    assert result["large_float"] == 1.7976931348623157e+308
+
+
+def test_dumps_large_numbers():
+    """Test dumping large numbers."""
+    data = {"large_int": 9223372036854775807, "large_float": 1.7976931348623157e+308}
+    result = jsonutils.dumps(data)
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert parsed == data
+
+
+def test_loads_deeply_nested():
+    """Test loading deeply nested JSON structures."""
+    # Create a deeply nested structure
+    nested = {"level": 1}
+    current = nested
+    for i in range(2, 21):  # Nest 20 levels deep
+        current["child"] = {"level": i}
+        current = current["child"]
+    
+    json_str = jsonutils.dumps(nested)
+    result = jsonutils.loads(json_str)
+    assert result["level"] == 1
+    
+    # Navigate to the deepest level
+    current_result = result
+    for i in range(2, 21):
+        assert "child" in current_result
+        current_result = current_result["child"]
+        assert current_result["level"] == i
+
+
+def test_loads_empty_string_raises_error():
+    """Test that loading an empty string raises JSONError."""
+    with pytest.raises(exceptions.JSONError) as exc_info:
+        jsonutils.loads("")
+    
+    assert "Failed to parse JSON" in str(exc_info.value)
+
+
+def test_loads_whitespace_only():
+    """Test loading JSON with only whitespace."""
+    with pytest.raises(exceptions.JSONError):
+        jsonutils.loads("   \n\t  ")
+
+
+def test_dumps_edge_case_values():
+    """Test dumping edge case numeric values."""
+    data = {
+        "zero": 0,
+        "negative": -123,
+        "negative_float": -3.14,
+        "scientific": 1e10,
+        "small_scientific": 1e-10
+    }
+    result = jsonutils.dumps(data)
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert parsed == data
+
+
+def test_loads_scientific_notation():
+    """Test loading JSON with scientific notation."""
+    json_str = '{"big": 1.23e+10, "small": 4.56e-5}'
+    result = jsonutils.loads(json_str)
+    assert result["big"] == 1.23e10
+    assert result["small"] == 4.56e-5
+
+
+def test_dumps_unexpected_error():
+    """Test dumps with an object that raises unexpected exceptions during serialization."""
+    import unittest.mock
+    
+    # Mock json.dumps to raise a RuntimeError instead of TypeError/ValueError
+    with unittest.mock.patch('json.dumps') as mock_dumps:
+        mock_dumps.side_effect = RuntimeError("Unexpected error during serialization")
+        
+        with pytest.raises(exceptions.JSONError) as exc_info:
+            jsonutils.dumps({"test": "data"})
+        
+        # Should catch the general exception case (not TypeError/ValueError)
+        assert "Unexpected error serializing JSON" in str(exc_info.value)
+        assert "original_error" in exc_info.value.details
+        assert "object_type" in exc_info.value.details
+
+
+def test_loads_very_long_string():
+    """Test loading JSON with very long string values."""
+    long_string = "x" * 10000
+    json_str = f'{{"long_value": "{long_string}"}}'
+    result = jsonutils.loads(json_str)
+    assert result["long_value"] == long_string
+
+
+def test_dumps_very_long_string():
+    """Test dumping very long string values."""
+    long_string = "x" * 10000
+    data = {"long_value": long_string}
+    result = jsonutils.dumps(data)
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert parsed == data
+
+
+def test_loads_array_of_mixed_types():
+    """Test loading JSON array with mixed data types."""
+    json_str = '[1, "string", true, null, {"key": "value"}, [1, 2, 3]]'
+    result = jsonutils.loads(json_str)
+    expected = [1, "string", True, None, {"key": "value"}, [1, 2, 3]]
+    assert result == expected
+
+
+def test_dumps_array_of_mixed_types():
+    """Test dumping array with mixed data types."""
+    data = [1, "string", True, None, {"key": "value"}, [1, 2, 3]]
+    result = jsonutils.dumps(data)
+    assert isinstance(result, str)
+    parsed = json.loads(result)
+    assert parsed == data

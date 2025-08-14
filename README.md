@@ -18,6 +18,18 @@ Gateway 4.x.
 - Python 3.8 or higher
 - httpx >= 0.28.1
 
+### Tested Python Versions
+
+| Python Version | Status | Notes |
+|----------------|--------|-------|
+| 3.10           | ✅ Tested | Minimum recommended version |
+| 3.11           | ✅ Tested | Full support |
+| 3.12           | ✅ Tested | Full support |
+| 3.13           | ✅ Tested | Latest stable release |
+| 3.14           | 🔄 Beta | Development/preview testing |
+
+The SDK is automatically tested against Python 3.10-3.13 in our CI pipeline to ensure compatibility across all supported versions.
+
 ## Installation
 
 Install `ipsdk` using pip:

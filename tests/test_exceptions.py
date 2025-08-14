@@ -152,6 +152,26 @@ class TestHTTPError:
         exc = exceptions.HTTPError("Error", response=mock_response)
         assert len(exc.details["response_body"]) == 500  # Should be truncated
 
+    def test_http_error_handles_response_text_exception(self):
+        """Test that HTTPError handles exceptions when accessing response.text."""
+        mock_response = Mock()
+        # Make response.text property raise an exception when accessed
+        type(mock_response).text = MagicMock(side_effect=Exception("Cannot access text"))
+        
+        # Should not raise an exception, should handle gracefully
+        exc = exceptions.HTTPError("Error", response=mock_response)
+        assert exc.message == "Error"
+        assert "response_body" not in exc.details  # Should not be added due to exception
+
+    def test_http_error_non_string_response_text(self):
+        """Test HTTPError when response.text is not a string."""
+        mock_response = Mock()
+        mock_response.text = 12345  # Non-string value
+        
+        exc = exceptions.HTTPError("Error", response=mock_response)
+        assert exc.message == "Error"
+        assert "response_body" not in exc.details  # Should not be added for non-string
+
     def test_client_error_inheritance(self):
         """Test that ClientError inherits from HTTPError."""
         exc = exceptions.ClientError("Client error", status_code=400)
@@ -389,6 +409,7 @@ class TestClassifyHttpxError:
         assert exc.status_code == 500
 
 
+
 class TestExceptionHierarchy:
     """Test cases to verify the exception hierarchy is correct."""
 
@@ -500,3 +521,202 @@ class TestExceptionUsagePatterns:
         exc2 = exceptions.IpsdkError("Same message")
         assert exc1 is not exc2
         assert exc1 != exc2  # Different instances should not be equal
+
+
+class TestAdditionalEdgeCases:
+    """Test additional edge cases and comprehensive scenarios."""
+
+    def test_validation_error_with_none_value(self):
+        """Test ValidationError with None as value."""
+        exc = exceptions.ValidationError("Invalid value", field="test", value=None)
+        assert exc.field == "test"
+        assert exc.value is None
+        # None should not be added to details (value is not None check)
+        assert "value" not in exc.details
+        assert exc.details["field"] == "test"
+
+    def test_validation_error_with_zero_value(self):
+        """Test ValidationError with zero value."""
+        exc = exceptions.ValidationError("Invalid value", field="count", value=0)
+        assert exc.value == 0
+        assert exc.details["value"] == "0"  # Should be converted to string
+
+    def test_http_error_response_without_text_attribute(self):
+        """Test HTTPError with response object that doesn't have text attribute."""
+        mock_response = Mock()
+        # Remove the text attribute entirely
+        delattr(mock_response, 'text') if hasattr(mock_response, 'text') else None
+        
+        exc = exceptions.HTTPError("Error", response=mock_response)
+        assert exc.message == "Error"
+        assert "response_body" not in exc.details
+
+    def test_classify_http_error_with_empty_response_text(self):
+        """Test classify_http_error with empty response text."""
+        mock_response = Mock()
+        mock_response.text = ""
+        
+        exc = exceptions.classify_http_error(422, response=mock_response)
+        assert isinstance(exc, exceptions.ClientError)
+        assert exc.status_code == 422
+        assert "HTTP 422 error" in exc.message  # Should use default message for empty text
+
+    def test_classify_http_error_boundary_status_codes(self):
+        """Test classification of boundary status codes."""
+        # Test edge of 4xx range
+        exc399 = exceptions.classify_http_error(399)
+        assert isinstance(exc399, exceptions.HTTPError)
+        assert not isinstance(exc399, (exceptions.ClientError, exceptions.ServerError))
+
+        exc400 = exceptions.classify_http_error(400)
+        assert isinstance(exc400, exceptions.ClientError)
+
+        exc499 = exceptions.classify_http_error(499)
+        assert isinstance(exc499, exceptions.ClientError)
+
+        exc500 = exceptions.classify_http_error(500)
+        assert isinstance(exc500, exceptions.ServerError)
+
+        exc599 = exceptions.classify_http_error(599)
+        assert isinstance(exc599, exceptions.ServerError)
+
+        exc600 = exceptions.classify_http_error(600)
+        assert isinstance(exc600, exceptions.HTTPError)
+        assert not isinstance(exc600, (exceptions.ClientError, exceptions.ServerError))
+
+    def test_timeout_error_without_timeout_value(self):
+        """Test TimeoutError without timeout value."""
+        exc = exceptions.TimeoutError("Timeout occurred")
+        assert exc.timeout is None
+        assert "timeout" not in exc.details
+
+    def test_connection_error_with_only_host(self):
+        """Test ConnectionError with only host specified."""
+        exc = exceptions.ConnectionError("Connection failed", host="example.com")
+        assert exc.host == "example.com"
+        assert exc.port is None
+        assert exc.details["host"] == "example.com"
+        assert "port" not in exc.details
+
+    def test_connection_error_with_only_port(self):
+        """Test ConnectionError with only port specified."""
+        exc = exceptions.ConnectionError("Connection failed", port=8080)
+        assert exc.host is None
+        assert exc.port == 8080
+        assert exc.details["port"] == 8080
+        assert "host" not in exc.details
+
+    def test_authentication_error_without_auth_type(self):
+        """Test AuthenticationError without auth_type."""
+        exc = exceptions.AuthenticationError("Auth failed")
+        assert exc.auth_type is None
+        assert "auth_type" not in exc.details
+
+    def test_configuration_error_without_config_key(self):
+        """Test ConfigurationError without config_key."""
+        exc = exceptions.ConfigurationError("Config error")
+        assert exc.config_key is None
+        assert "config_key" not in exc.details
+
+    def test_api_error_without_optional_params(self):
+        """Test APIError without optional parameters."""
+        exc = exceptions.APIError("API error")
+        assert exc.api_endpoint is None
+        assert exc.api_version is None
+        assert "api_endpoint" not in exc.details
+        assert "api_version" not in exc.details
+
+    def test_api_error_with_only_endpoint(self):
+        """Test APIError with only endpoint specified."""
+        exc = exceptions.APIError("API error", api_endpoint="/api/v1/users")
+        assert exc.api_endpoint == "/api/v1/users"
+        assert exc.api_version is None
+        assert exc.details["api_endpoint"] == "/api/v1/users"
+        assert "api_version" not in exc.details
+
+    def test_api_error_with_only_version(self):
+        """Test APIError with only version specified."""
+        exc = exceptions.APIError("API error", api_version="v2")
+        assert exc.api_endpoint is None
+        assert exc.api_version == "v2"
+        assert exc.details["api_version"] == "v2"
+        assert "api_endpoint" not in exc.details
+
+    def test_exception_details_are_mutable_dict(self):
+        """Test that exception details dictionary can be modified."""
+        exc = exceptions.IpsdkError("Error")
+        original_details = exc.details
+        exc.details["new_key"] = "new_value"
+        assert original_details is exc.details  # Same object
+        assert exc.details["new_key"] == "new_value"
+
+    def test_exception_with_complex_details(self):
+        """Test exception with complex details containing nested structures."""
+        complex_details = {
+            "nested": {"key": "value"},
+            "list": [1, 2, 3],
+            "boolean": True,
+            "number": 42
+        }
+        exc = exceptions.IpsdkError("Complex error", details=complex_details)
+        assert exc.details == complex_details
+        assert "nested" in str(exc)
+
+    def test_classify_httpx_error_with_none_request_url(self):
+        """Test classify_httpx_error with None request_url."""
+        httpx_exc = httpx.ConnectError("Connection failed")
+        exc = exceptions.classify_httpx_error(httpx_exc, None)
+        
+        assert isinstance(exc, exceptions.NetworkError)
+        assert exc.details["request_url"] is None
+
+    def test_all_exception_types_can_be_instantiated_minimally(self):
+        """Test that all exception types can be instantiated with just a message."""
+        exception_classes = [
+            exceptions.IpsdkError,
+            exceptions.ConnectionError,
+            exceptions.NetworkError, 
+            exceptions.TimeoutError,
+            exceptions.AuthenticationError,
+            exceptions.TokenError,
+            exceptions.CredentialsError,
+            exceptions.HTTPError,
+            exceptions.ClientError,
+            exceptions.ServerError,
+            exceptions.ValidationError,
+            exceptions.JSONError,
+            exceptions.ConfigurationError,
+            exceptions.APIError,
+        ]
+        
+        for exc_class in exception_classes:
+            exc = exc_class("Test message")
+            assert exc.message == "Test message"
+            assert isinstance(exc.details, dict)
+            assert str(exc) == "Test message"
+
+    def test_classify_special_http_status_codes(self):
+        """Test classification of special HTTP status codes."""
+        # Test 401 and 403 specifically 
+        exc401 = exceptions.classify_http_error(401)
+        assert "Authentication failed" in exc401.message
+        assert "invalid credentials or expired token" in exc401.message
+        
+        exc403 = exceptions.classify_http_error(403)
+        assert "Access forbidden" in exc403.message
+        assert "insufficient permissions" in exc403.message
+        
+        # Ensure they're still HTTPError instances, not ClientError
+        assert isinstance(exc401, exceptions.HTTPError)
+        assert isinstance(exc403, exceptions.HTTPError)
+        assert not isinstance(exc401, exceptions.ClientError)
+        assert not isinstance(exc403, exceptions.ClientError)
+
+    def test_http_error_with_response_hasattr_check(self):
+        """Test HTTPError response handling when response doesn't have text attribute."""
+        # Create a mock that fails hasattr check
+        mock_response = object()  # Plain object with no attributes
+        
+        exc = exceptions.HTTPError("Error", response=mock_response)
+        assert exc.response is mock_response
+        assert "response_body" not in exc.details

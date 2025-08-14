@@ -2,13 +2,14 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import traceback
-from typing import Optional, Any
+from typing import Any
+from typing import Optional
 
 import httpx
 
 from . import connection
-from . import logger
 from . import exceptions
+from . import logger
 
 
 def _make_path() -> str:
@@ -50,11 +51,11 @@ def _make_headers() -> dict[str, str]:
     }
 
 
-class AuthMixin(object):
+class AuthMixin:
     """
     Authorization mixin for authenticating to Itential Automation Gateway
     """
-    
+
     # Attributes that should be provided by ConnectionBase
     user: Optional[str]
     password: Optional[str]
@@ -64,7 +65,8 @@ class AuthMixin(object):
         """
         Provides the authentication function for authenticating to the server
         """
-        assert self.user is not None and self.password is not None
+        assert self.user is not None
+        assert self.password is not None
         data = _make_body(self.user, self.password)
         headers = _make_headers()
         path = _make_path()
@@ -75,47 +77,53 @@ class AuthMixin(object):
         except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
+                msg = "Gateway authentication failed - invalid username or password"
                 raise exceptions.CredentialsError(
-                    "Gateway authentication failed - invalid username or password",
+                    msg,
                     auth_type="basic",
-                    details={"status_code": exc.response.status_code}
+                    details={"status_code": exc.response.status_code},
                 )
-            else:
-                raise exceptions.AuthenticationError(
-                    f"Gateway authentication failed with status {exc.response.status_code}",
-                    auth_type="basic",
-                    details={"status_code": exc.response.status_code}
-                )
+            msg = (
+                f"Gateway authentication failed with status {exc.response.status_code}"
+            )
+            raise exceptions.AuthenticationError(
+                msg,
+                auth_type="basic",
+                details={"status_code": exc.response.status_code},
+            )
         except httpx.RequestError as exc:
             logger.error(traceback.format_exc())
+            msg = "Network error during gateway authentication"
             raise exceptions.NetworkError(
-                "Network error during gateway authentication",
-                details={"original_error": str(exc)}
+                msg,
+                details={"original_error": str(exc)},
             )
         except Exception as exc:
             logger.error(traceback.format_exc())
+            msg = f"Unexpected error during gateway authentication: {exc!s}"
             raise exceptions.AuthenticationError(
-                f"Unexpected error during gateway authentication: {str(exc)}",
+                msg,
                 auth_type="basic",
-                details={"original_error": str(exc)}
+                details={"original_error": str(exc)},
             )
 
 
-class AsyncAuthMixin(object):
+class AsyncAuthMixin:
     """
     Async authorization mixin for authenticating to Itential Automation Gateway
     """
-    
+
     # Attributes that should be provided by ConnectionBase
     user: Optional[str]
     password: Optional[str]
     client: httpx.AsyncClient
 
-    async def authenticate(self):
+    async def authenticate(self) -> None:
         """
         Provides the authentication function for authenticating to the server
         """
-        assert self.user is not None and self.password is not None
+        assert self.user is not None
+        assert self.password is not None
         data = _make_body(self.user, self.password)
         headers = _make_headers()
         path = _make_path()
@@ -126,29 +134,34 @@ class AsyncAuthMixin(object):
         except httpx.HTTPStatusError as exc:
             logger.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
+                msg = "Gateway authentication failed - invalid username or password"
                 raise exceptions.CredentialsError(
-                    "Gateway authentication failed - invalid username or password",
+                    msg,
                     auth_type="basic",
-                    details={"status_code": exc.response.status_code}
+                    details={"status_code": exc.response.status_code},
                 )
-            else:
-                raise exceptions.AuthenticationError(
-                    f"Gateway authentication failed with status {exc.response.status_code}",
-                    auth_type="basic",
-                    details={"status_code": exc.response.status_code}
-                )
+            msg = (
+                f"Gateway authentication failed with status {exc.response.status_code}"
+            )
+            raise exceptions.AuthenticationError(
+                msg,
+                auth_type="basic",
+                details={"status_code": exc.response.status_code},
+            )
         except httpx.RequestError as exc:
             logger.error(traceback.format_exc())
+            msg = "Network error during gateway authentication"
             raise exceptions.NetworkError(
-                "Network error during gateway authentication",
-                details={"original_error": str(exc)}
+                msg,
+                details={"original_error": str(exc)},
             )
         except Exception as exc:
             logger.error(traceback.format_exc())
+            msg = f"Unexpected error during gateway authentication: {exc!s}"
             raise exceptions.AuthenticationError(
-                f"Unexpected error during gateway authentication: {str(exc)}",
+                msg,
                 auth_type="basic",
-                details={"original_error": str(exc)}
+                details={"original_error": str(exc)},
             )
 
 
@@ -161,16 +174,16 @@ AsyncGatewayType = AsyncGateway
 
 
 def gateway_factory(
-    host: str="localhost",
-    port: int=0,
-    use_tls: bool=True,
-    verify: bool=True,
-    user: str="admin@itential",
-    password: str="admin",
-    timeout: int=30,
-    want_async: bool=False,
+    host: str = "localhost",
+    port: int = 0,
+    use_tls: bool = True,
+    verify: bool = True,
+    user: str = "admin@itential",
+    password: str = "admin",
+    timeout: int = 30,
+    want_async: bool = False,
 ) -> Any:
-    """ Create a new instance of a Gateway connection.
+    """Create a new instance of a Gateway connection.
 
     This factory function initializes a Gateway connection using provided parameters or
     environment variable overrides. Uses basic username/password authentication.

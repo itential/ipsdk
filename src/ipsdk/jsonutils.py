@@ -3,11 +3,10 @@
 
 import json
 import traceback
-
 from typing import Union
 
-from . import logger
 from . import exceptions
+from . import logger
 
 
 def loads(s: str) -> Union[dict, list]:
@@ -24,16 +23,18 @@ def loads(s: str) -> Union[dict, list]:
     except json.JSONDecodeError as exc:
         logger.error(traceback.format_exc())
         input_data = str(s)[:200] if s is not None else "None"
+        msg = f"Failed to parse JSON: {exc!s}"
         raise exceptions.JSONError(
-            f"Failed to parse JSON: {str(exc)}",
-            details={"input_data": input_data, "json_error": str(exc)}
+            msg,
+            details={"input_data": input_data, "json_error": str(exc)},
         )
     except Exception as exc:
         logger.error(traceback.format_exc())
         input_data = str(s)[:200] if s is not None else "None"
+        msg = f"Unexpected error parsing JSON: {exc!s}"
         raise exceptions.JSONError(
-            f"Unexpected error parsing JSON: {str(exc)}",
-            details={"input_data": input_data, "original_error": str(exc)}
+            msg,
+            details={"input_data": input_data, "original_error": str(exc)},
         )
 
 
@@ -50,13 +51,15 @@ def dumps(o: Union[dict, list]) -> str:
         return json.dumps(o)
     except (TypeError, ValueError) as exc:
         logger.error(traceback.format_exc())
+        msg = f"Failed to serialize object to JSON: {exc!s}"
         raise exceptions.JSONError(
-            f"Failed to serialize object to JSON: {str(exc)}",
-            details={"object_type": str(type(o)), "json_error": str(exc)}
+            msg,
+            details={"object_type": str(type(o)), "json_error": str(exc)},
         )
     except Exception as exc:
         logger.error(traceback.format_exc())
+        msg = f"Unexpected error serializing JSON: {exc!s}"
         raise exceptions.JSONError(
-            f"Unexpected error serializing JSON: {str(exc)}",
-            details={"object_type": str(type(o)), "original_error": str(exc)}
+            msg,
+            details={"object_type": str(type(o)), "original_error": str(exc)},
         )

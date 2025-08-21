@@ -55,6 +55,7 @@ dev = [
     "mypy",
     "coverage",
     "build",
+    "bandit",
     "pre-commit",
 ]
 
@@ -73,6 +74,7 @@ vcs = "git"
 style = "pep440"
 bump = true
 fallback-version = "0.0.0"
+
 
 [tool.ruff]
 # Same as Black.
@@ -301,3 +303,7 @@ skip-magic-trailing-comma = false
 
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
+
+[tool.bandit]
+exclude_dirs = ["tests", "build", "dist"]
+skips = ["B101", "B107", "B110"]  # Skip assert_used, hardcoded_password_default, try_except_pass

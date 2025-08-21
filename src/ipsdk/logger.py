@@ -1,12 +1,11 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import sys
 import logging
+import sys
+from functools import partial
 from pathlib import Path
 from typing import Optional
-
-from functools import partial
 
 from . import metadata
 
@@ -17,7 +16,7 @@ logging.getLogger(metadata.name).setLevel(100)
 
 # Add the FATAL logging level
 logging.addLevelName(90, "FATAL")
-setattr(logging, "FATAL", 90)
+logging.FATAL = 90
 
 # Logging level constants that wrap stdlib logging module constants
 NOTSET = logging.NOTSET
@@ -88,7 +87,7 @@ def fatal(msg: str) -> None:
     sys.exit(1)
 
 
-def set_level(lvl: int, propagate: bool=False) -> None:
+def set_level(lvl: int, propagate: bool = False) -> None:
     """Set logging level for all loggers in the current Python process.
 
     Args:
@@ -110,18 +109,24 @@ def set_level(lvl: int, propagate: bool=False) -> None:
         logging.getLogger("httpx").setLevel(lvl)
         logging.getLogger("httpcore").setLevel(lvl)
 
-    logging.getLogger(metadata.name).log(logging.INFO, f"ipsdk version {metadata.version}")
+    logging.getLogger(metadata.name).log(
+        logging.INFO, f"ipsdk version {metadata.version}"
+    )
     logging.getLogger(metadata.name).log(logging.INFO, f"Logging level set to {lvl}")
-    logging.getLogger(metadata.name).log(logging.INFO, f"Logging propagation is {propagate}")
+    logging.getLogger(metadata.name).log(
+        logging.INFO, f"Logging propagation is {propagate}"
+    )
 
 
-def add_file_handler(file_path: str, level: Optional[int] = None, format_string: Optional[str] = None) -> None:
+def add_file_handler(
+    file_path: str, level: Optional[int] = None, format_string: Optional[str] = None
+) -> None:
     """Add a file handler to the ipsdk logger.
 
     Args:
         file_path (str): Path to the log file. Parent directories will be created if they don't exist.
         level (Optional[int]): Logging level for the file handler. If None, uses the logger's current level.
-        format_string (Optional[str]): Custom format string for the file handler. 
+        format_string (Optional[str]): Custom format string for the file handler.
                                      If None, uses the default logging_message_format.
 
     Returns:
@@ -131,31 +136,31 @@ def add_file_handler(file_path: str, level: Optional[int] = None, format_string:
         OSError: If the log file cannot be created or accessed.
     """
     logger = logging.getLogger(metadata.name)
-    
+
     # Create parent directories if they don't exist
     log_file = Path(file_path)
     log_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Create file handler
     file_handler = logging.FileHandler(file_path)
-    
+
     # Set level - use provided level or current logger level
     if level is not None:
         file_handler.setLevel(level)
     else:
         file_handler.setLevel(logger.level)
-    
+
     # Set format - use provided format or default
     if format_string is not None:
         formatter = logging.Formatter(format_string)
     else:
         formatter = logging.Formatter(logging_message_format)
-    
+
     file_handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     logger.addHandler(file_handler)
-    
+
     logger.log(logging.INFO, f"File logging enabled: {file_path}")
 
 
@@ -166,29 +171,36 @@ def remove_file_handlers() -> None:
         None
     """
     logger = logging.getLogger(metadata.name)
-    
+
     # Get all file handlers
     file_handlers = [h for h in logger.handlers if isinstance(h, logging.FileHandler)]
-    
+
     # Remove each file handler
     for handler in file_handlers:
         logger.removeHandler(handler)
         handler.close()
-    
+
     if file_handlers:
         logger.log(logging.INFO, f"Removed {len(file_handlers)} file handler(s)")
 
 
-def configure_file_logging(file_path: str, level: int = logging.INFO, 
-                          propagate: bool = False, format_string: Optional[str] = None) -> None:
+def configure_file_logging(
+    file_path: str,
+    level: int = logging.INFO,
+    propagate: bool = False,
+    format_string: Optional[str] = None,
+) -> None:
     """Configure both console and file logging in one call.
 
     This is a convenience function that sets the logging level and adds file logging.
 
     Args:
-        file_path (str): Path to the log file. Parent directories will be created if they don't exist.
-        level (int): Logging level (e.g., logging.INFO, logging.DEBUG). Default is INFO.
-        propagate (bool): Setting this value to True will also turn on logging for httpx and httpcore.
+        file_path (str): Path to the log file. Parent directories will be created
+            if they don't exist.
+        level (int): Logging level (e.g., logging.INFO, logging.DEBUG).
+            Default is INFO.
+        propagate (bool): Setting this value to True will also turn on logging
+            for httpx and httpcore.
         format_string (Optional[str]): Custom format string for the file handler.
                                      If None, uses the default logging_message_format.
 
@@ -200,6 +212,6 @@ def configure_file_logging(file_path: str, level: int = logging.INFO,
     """
     # Set the logging level first
     set_level(level, propagate)
-    
+
     # Add file handler
     add_file_handler(file_path, level, format_string)

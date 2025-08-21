@@ -1,9 +1,11 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock
+from unittest.mock import Mock
+
 import httpx
+import pytest
 
 from ipsdk import exceptions
 
@@ -56,7 +58,9 @@ class TestConnectionError:
 
     def test_connection_error_with_host_port(self):
         """Test ConnectionError with host and port information."""
-        exc = exceptions.ConnectionError("Failed to connect", host="example.com", port=443)
+        exc = exceptions.ConnectionError(
+            "Failed to connect", host="example.com", port=443
+        )
         assert exc.message == "Failed to connect"
         assert exc.host == "example.com"
         assert exc.port == 443
@@ -128,14 +132,14 @@ class TestHTTPError:
         """Test HTTPError with all parameters."""
         mock_response = Mock()
         mock_response.text = "Error response body"
-        
+
         exc = exceptions.HTTPError(
             "HTTP 500 error",
             status_code=500,
             response=mock_response,
-            request_url="https://example.com/api"
+            request_url="https://example.com/api",
         )
-        
+
         assert exc.message == "HTTP 500 error"
         assert exc.status_code == 500
         assert exc.response == mock_response
@@ -148,7 +152,7 @@ class TestHTTPError:
         """Test that HTTPError truncates long response bodies."""
         mock_response = Mock()
         mock_response.text = "x" * 1000  # Long response body
-        
+
         exc = exceptions.HTTPError("Error", response=mock_response)
         assert len(exc.details["response_body"]) == 500  # Should be truncated
 
@@ -156,18 +160,20 @@ class TestHTTPError:
         """Test that HTTPError handles exceptions when accessing response.text."""
         mock_response = Mock()
         # Make response.text property raise an exception when accessed
-        type(mock_response).text = MagicMock(side_effect=Exception("Cannot access text"))
-        
+        type(mock_response).text = MagicMock(
+            side_effect=Exception("Cannot access text")
+        )
+
         # Should not raise an exception, should handle gracefully
         exc = exceptions.HTTPError("Error", response=mock_response)
         assert exc.message == "Error"
-        assert "response_body" not in exc.details  # Should not be added due to exception
+        assert "response_body" not in exc.details
 
     def test_http_error_non_string_response_text(self):
         """Test HTTPError when response.text is not a string."""
         mock_response = Mock()
         mock_response.text = 12345  # Non-string value
-        
+
         exc = exceptions.HTTPError("Error", response=mock_response)
         assert exc.message == "Error"
         assert "response_body" not in exc.details  # Should not be added for non-string
@@ -199,7 +205,9 @@ class TestValidationError:
 
     def test_validation_error_with_field_value(self):
         """Test ValidationError with field and value."""
-        exc = exceptions.ValidationError("Invalid value", field="username", value="invalid@")
+        exc = exceptions.ValidationError(
+            "Invalid value", field="username", value="invalid@"
+        )
         assert exc.message == "Invalid value"
         assert exc.field == "username"
         assert exc.value == "invalid@"
@@ -243,9 +251,7 @@ class TestAPIError:
     def test_api_error_with_endpoint_version(self):
         """Test APIError with endpoint and version."""
         exc = exceptions.APIError(
-            "API deprecated", 
-            api_endpoint="/v1/users",
-            api_version="v1"
+            "API deprecated", api_endpoint="/v1/users", api_version="v1"
         )
         assert exc.message == "API deprecated"
         assert exc.api_endpoint == "/v1/users"
@@ -310,7 +316,7 @@ class TestClassifyHTTPError:
         """Test classification with response text."""
         mock_response = Mock()
         mock_response.text = "Detailed error message"
-        
+
         exc = exceptions.classify_http_error(400, response=mock_response)
         assert "Detailed error message" in exc.message
         assert isinstance(exc, exceptions.ClientError)
@@ -319,7 +325,7 @@ class TestClassifyHTTPError:
         """Test classification truncates long response text."""
         mock_response = Mock()
         mock_response.text = "x" * 300  # Long response
-        
+
         exc = exceptions.classify_http_error(400, response=mock_response)
         assert len(exc.message) < 250  # Should be truncated
 
@@ -328,7 +334,7 @@ class TestClassifyHTTPError:
         mock_response = Mock()
         # Make response.text property raise an exception when accessed
         type(mock_response).text = MagicMock(side_effect=Exception("Parse error"))
-        
+
         exc = exceptions.classify_http_error(500, response=mock_response)
         assert isinstance(exc, exceptions.ServerError)
         assert "HTTP 500 error" in exc.message
@@ -343,7 +349,7 @@ class TestClassifyHttpxError:
         """Test classification of httpx.TimeoutException."""
         httpx_exc = httpx.TimeoutException("Request timeout")
         exc = exceptions.classify_httpx_error(httpx_exc, "https://example.com")
-        
+
         assert isinstance(exc, exceptions.TimeoutError)
         assert "Request timed out" in exc.message
         assert exc.details["request_url"] == "https://example.com"
@@ -353,7 +359,7 @@ class TestClassifyHttpxError:
         """Test classification of httpx.ConnectError."""
         httpx_exc = httpx.ConnectError("Connection refused")
         exc = exceptions.classify_httpx_error(httpx_exc, "https://example.com")
-        
+
         assert isinstance(exc, exceptions.NetworkError)
         assert "Failed to connect" in exc.message
         assert exc.details["request_url"] == "https://example.com"
@@ -362,14 +368,16 @@ class TestClassifyHttpxError:
         """Test classification of httpx.HTTPStatusError."""
         mock_request = Mock()
         mock_request.url = "https://example.com/api"
-        
+
         mock_response = Mock()
         mock_response.status_code = 404
         mock_response.text = "Not found"
-        
-        httpx_exc = httpx.HTTPStatusError("404 Not Found", request=mock_request, response=mock_response)
+
+        httpx_exc = httpx.HTTPStatusError(
+            "404 Not Found", request=mock_request, response=mock_response
+        )
         exc = exceptions.classify_httpx_error(httpx_exc)
-        
+
         assert isinstance(exc, exceptions.ClientError)
         assert exc.status_code == 404
 
@@ -377,7 +385,7 @@ class TestClassifyHttpxError:
         """Test classification of generic httpx.RequestError."""
         httpx_exc = httpx.RequestError("Generic request error")
         exc = exceptions.classify_httpx_error(httpx_exc)
-        
+
         assert isinstance(exc, exceptions.NetworkError)
         assert "Request error" in exc.message
         assert exc.details["original_error"] == "Generic request error"
@@ -386,7 +394,7 @@ class TestClassifyHttpxError:
         """Test classification of unknown exceptions."""
         unknown_exc = ValueError("Unknown error")
         exc = exceptions.classify_httpx_error(unknown_exc, "https://example.com")
-        
+
         assert isinstance(exc, exceptions.IpsdkError)
         assert "Unexpected error" in exc.message
         assert exc.details["request_url"] == "https://example.com"
@@ -396,15 +404,17 @@ class TestClassifyHttpxError:
         """Test classification of HTTPStatusError without request object."""
         mock_response = Mock()
         mock_response.status_code = 500
-        
+
         # Create a mock HTTPStatusError that behaves like the real one
         mock_httpx_exc = Mock(spec=httpx.HTTPStatusError)
         mock_httpx_exc.response = mock_response
         # Simulate request property access raising RuntimeError
-        type(mock_httpx_exc).request = MagicMock(side_effect=RuntimeError("The .request property has not been set."))
-        
+        type(mock_httpx_exc).request = MagicMock(
+            side_effect=RuntimeError("The .request property has not been set.")
+        )
+
         exc = exceptions.classify_httpx_error(mock_httpx_exc, "https://fallback.com")
-        
+
         assert isinstance(exc, exceptions.ServerError)
         assert exc.status_code == 500
 
@@ -430,7 +440,7 @@ class TestExceptionHierarchy:
             exceptions.ConfigurationError,
             exceptions.APIError,
         ]
-        
+
         for exc_class in exception_classes:
             exc = exc_class("Test message")
             assert isinstance(exc, exceptions.IpsdkError)
@@ -441,13 +451,13 @@ class TestExceptionHierarchy:
         network_exc = exceptions.NetworkError("Network error")
         assert isinstance(network_exc, exceptions.ConnectionError)
         assert isinstance(network_exc, exceptions.IpsdkError)
-        
+
         # TimeoutError -> NetworkError -> ConnectionError -> IpsdkError
         timeout_exc = exceptions.TimeoutError("Timeout")
         assert isinstance(timeout_exc, exceptions.NetworkError)
         assert isinstance(timeout_exc, exceptions.ConnectionError)
         assert isinstance(timeout_exc, exceptions.IpsdkError)
-        
+
         # ClientError -> HTTPError -> IpsdkError
         client_exc = exceptions.ClientError("Client error")
         assert isinstance(client_exc, exceptions.HTTPError)
@@ -456,14 +466,16 @@ class TestExceptionHierarchy:
     def test_can_catch_by_base_class(self):
         """Test that exceptions can be caught by their base classes."""
         try:
-            raise exceptions.TokenError("Invalid token")
+            msg = "Invalid token"
+            raise exceptions.TokenError(msg)
         except exceptions.AuthenticationError as e:
             assert isinstance(e, exceptions.TokenError)
         except Exception:
             pytest.fail("Should have been caught as AuthenticationError")
-        
+
         try:
-            raise exceptions.ClientError("Bad request")
+            msg = "Bad request"
+            raise exceptions.ClientError(msg)
         except exceptions.HTTPError as e:
             assert isinstance(e, exceptions.ClientError)
         except Exception:
@@ -478,7 +490,7 @@ class TestExceptionHierarchy:
             exceptions.JSONError("JSON"),
             exceptions.ConfigurationError("Config"),
         ]
-        
+
         for exc in exceptions_to_test:
             try:
                 raise exc
@@ -495,9 +507,11 @@ class TestExceptionUsagePatterns:
         """Test that exceptions can be properly chained."""
         try:
             try:
-                raise ValueError("Original error")
+                msg = "Original error"
+                raise ValueError(msg)
             except ValueError as e:
-                raise exceptions.ValidationError("Validation failed") from e
+                msg = "Validation failed"
+                raise exceptions.ValidationError(msg) from e
         except exceptions.ValidationError as exc:
             assert exc.__cause__ is not None
             assert str(exc.__cause__) == "Original error"
@@ -545,8 +559,8 @@ class TestAdditionalEdgeCases:
         """Test HTTPError with response object that doesn't have text attribute."""
         mock_response = Mock()
         # Remove the text attribute entirely
-        delattr(mock_response, 'text') if hasattr(mock_response, 'text') else None
-        
+        delattr(mock_response, "text") if hasattr(mock_response, "text") else None
+
         exc = exceptions.HTTPError("Error", response=mock_response)
         assert exc.message == "Error"
         assert "response_body" not in exc.details
@@ -555,11 +569,11 @@ class TestAdditionalEdgeCases:
         """Test classify_http_error with empty response text."""
         mock_response = Mock()
         mock_response.text = ""
-        
+
         exc = exceptions.classify_http_error(422, response=mock_response)
         assert isinstance(exc, exceptions.ClientError)
         assert exc.status_code == 422
-        assert "HTTP 422 error" in exc.message  # Should use default message for empty text
+        assert "HTTP 422 error" in exc.message
 
     def test_classify_http_error_boundary_status_codes(self):
         """Test classification of boundary status codes."""
@@ -666,7 +680,7 @@ class TestAdditionalEdgeCases:
         """Test classify_httpx_error with None request_url."""
         httpx_exc = httpx.ConnectError("Connection failed")
         exc = exceptions.classify_httpx_error(httpx_exc, None)
-        
+
         assert isinstance(exc, exceptions.NetworkError)
         assert exc.details["request_url"] is None
 
@@ -675,7 +689,7 @@ class TestAdditionalEdgeCases:
         exception_classes = [
             exceptions.IpsdkError,
             exceptions.ConnectionError,
-            exceptions.NetworkError, 
+            exceptions.NetworkError,
             exceptions.TimeoutError,
             exceptions.AuthenticationError,
             exceptions.TokenError,
@@ -688,7 +702,7 @@ class TestAdditionalEdgeCases:
             exceptions.ConfigurationError,
             exceptions.APIError,
         ]
-        
+
         for exc_class in exception_classes:
             exc = exc_class("Test message")
             assert exc.message == "Test message"
@@ -697,15 +711,15 @@ class TestAdditionalEdgeCases:
 
     def test_classify_special_http_status_codes(self):
         """Test classification of special HTTP status codes."""
-        # Test 401 and 403 specifically 
+        # Test 401 and 403 specifically
         exc401 = exceptions.classify_http_error(401)
         assert "Authentication failed" in exc401.message
         assert "invalid credentials or expired token" in exc401.message
-        
+
         exc403 = exceptions.classify_http_error(403)
         assert "Access forbidden" in exc403.message
         assert "insufficient permissions" in exc403.message
-        
+
         # Ensure they're still HTTPError instances, not ClientError
         assert isinstance(exc401, exceptions.HTTPError)
         assert isinstance(exc403, exceptions.HTTPError)
@@ -713,10 +727,13 @@ class TestAdditionalEdgeCases:
         assert not isinstance(exc403, exceptions.ClientError)
 
     def test_http_error_with_response_hasattr_check(self):
-        """Test HTTPError response handling when response doesn't have text attribute."""
+        """
+        Test HTTPError response handling when response doesn't
+        have text attribute.
+        """
         # Create a mock that fails hasattr check
         mock_response = object()  # Plain object with no attributes
-        
+
         exc = exceptions.HTTPError("Error", response=mock_response)
         assert exc.response is mock_response
         assert "response_body" not in exc.details

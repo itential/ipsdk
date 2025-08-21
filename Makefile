@@ -5,7 +5,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: test coverage clean lint
+.PHONY: test coverage clean lint format ruff-fix
 
 # The help target displays a help message that includes the avialable targets
 # in this `Makefile`.  It is the default target if `make` is run without any
@@ -14,8 +14,10 @@ help:
 	@echo "Available targets:"
 	@echo "  clean      - Cleans the development environment"
 	@echo "  coverage   - Run test coverage report"
+	@echo "  format     - Format source files with ruff"
 	@echo "  lint       - Run analysis on source files"
 	@echo "  premerge   - Run the permerge tests locallly"
+	@echo "  ruff-fix   - Run ruff with --fix to auto-fix issues"
 	@echo "  test       - Run test suite"
 	@echo ""
 
@@ -40,6 +42,17 @@ lint:
 # part of the application and get created by other targets.
 clean:
 	@rm -rf .pytest_cache coverage.* htmlcov dist build *.egg-info
+	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+# The format target will format source files using ruff
+format:
+	uv run ruff format src/ipsdk tests
+
+# The ruff-fix target will run ruff with --fix to automatically fix
+# fixable issues in the source code
+ruff-fix:
+	uv run ruff check --fix src/ipsdk
+	uv run ruff check --fix tests
 
 # The premerge target will run the permerge tests locally.  This is
 # the same target that is invoked in the permerge pipeline.

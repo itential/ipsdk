@@ -2,10 +2,11 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import json
+
 import pytest
 
-from ipsdk import jsonutils
 from ipsdk import exceptions
+from ipsdk import jsonutils
 
 
 def test_loads_valid_dict():
@@ -19,7 +20,7 @@ def test_loads_valid_dict():
 
 def test_loads_valid_list():
     """Test loading a valid JSON list string."""
-    json_str = '[1, 2, 3, 4]'
+    json_str = "[1, 2, 3, 4]"
     result = jsonutils.loads(json_str)
     assert isinstance(result, list)
     assert result == [1, 2, 3, 4]
@@ -38,11 +39,11 @@ def test_loads_valid_nested():
 def test_loads_valid_empty():
     """Test loading valid empty JSON structures."""
     # Empty dict
-    result = jsonutils.loads('{}')
+    result = jsonutils.loads("{}")
     assert result == {}
-    
+
     # Empty list
-    result = jsonutils.loads('[]')
+    result = jsonutils.loads("[]")
     assert result == []
 
 
@@ -60,7 +61,7 @@ def test_loads_invalid_json():
     json_str = '{"key": "value", "missing_end": '
     with pytest.raises(exceptions.JSONError) as exc_info:
         jsonutils.loads(json_str)
-    
+
     # Check that the exception contains helpful information
     assert "Failed to parse JSON" in str(exc_info.value)
     assert "input_data" in exc_info.value.details
@@ -70,21 +71,21 @@ def test_loads_invalid_json():
 def test_loads_invalid_json_various():
     """Test various malformed JSON inputs."""
     invalid_inputs = [
-        '{"unclosed": ',              # Unclosed object
-        '[1, 2, 3',                   # Unclosed array
-        '{"key": value}',             # Unquoted value
-        '{key: "value"}',             # Unquoted key
+        '{"unclosed": ',  # Unclosed object
+        "[1, 2, 3",  # Unclosed array
+        '{"key": value}',  # Unquoted value
+        '{key: "value"}',  # Unquoted key
         '{"duplicate": 1, "duplicate": 2}',  # This is actually valid JSON
-        'undefined',                  # Invalid literal
-        '{,}',                        # Invalid syntax
-        '{"trailing": "comma",}',     # Trailing comma (invalid in JSON)
+        "undefined",  # Invalid literal
+        "{,}",  # Invalid syntax
+        '{"trailing": "comma",}',  # Trailing comma (invalid in JSON)
     ]
-    
+
     for invalid_json in invalid_inputs:
         if invalid_json == '{"duplicate": 1, "duplicate": 2}':
             # This is actually valid JSON, so skip
             continue
-            
+
         with pytest.raises(exceptions.JSONError):
             jsonutils.loads(invalid_json)
 
@@ -92,8 +93,8 @@ def test_loads_invalid_json_various():
 def test_loads_type_error():
     """Test loads with non-string input raises JSONError."""
     with pytest.raises(exceptions.JSONError) as exc_info:
-        jsonutils.loads(123)  # type: ignore
-    
+        jsonutils.loads(123)  # type: ignore[arg-type]
+
     assert "Unexpected error parsing JSON" in str(exc_info.value)
     assert "original_error" in exc_info.value.details
 
@@ -101,7 +102,7 @@ def test_loads_type_error():
 def test_loads_none_input():
     """Test loads with None input raises JSONError."""
     with pytest.raises(exceptions.JSONError):
-        jsonutils.loads(None)  # type: ignore
+        jsonutils.loads(None)  # type: ignore[arg-type]
 
 
 def test_dumps_valid_dict():
@@ -129,10 +130,10 @@ def test_dumps_valid_nested():
     data = {
         "users": [
             {"name": "Alice", "age": 30, "active": True},
-            {"name": "Bob", "age": 25, "active": False}
+            {"name": "Bob", "age": 25, "active": False},
         ],
         "total": 2,
-        "metadata": None
+        "metadata": None,
     }
     result = jsonutils.dumps(data)
     assert isinstance(result, str)
@@ -150,9 +151,9 @@ def test_dumps_valid_primitives():
         {"boolean": True},
         {"null": None},
         {"empty_list": []},
-        {"empty_dict": {}}
+        {"empty_dict": {}},
     ]
-    
+
     for data in test_cases:
         result = jsonutils.dumps(data)
         assert isinstance(result, str)
@@ -162,14 +163,15 @@ def test_dumps_valid_primitives():
 
 def test_dumps_non_serializable():
     """Test dumping non-JSON-serializable objects raises JSONError."""
+
     class NonSerializable:
         def __init__(self):
             self.value = "test"
-    
+
     non_serializable_obj = NonSerializable()
     with pytest.raises(exceptions.JSONError) as exc_info:
         jsonutils.dumps(non_serializable_obj)
-    
+
     assert "Failed to serialize object to JSON" in str(exc_info.value)
     assert "object_type" in exc_info.value.details
     assert "json_error" in exc_info.value.details
@@ -179,10 +181,10 @@ def test_dumps_circular_reference():
     """Test dumping objects with circular references raises JSONError."""
     data = {"key": "value"}
     data["self"] = data  # Create circular reference
-    
+
     with pytest.raises(exceptions.JSONError) as exc_info:
         jsonutils.dumps(data)
-    
+
     assert "Failed to serialize object to JSON" in str(exc_info.value)
     assert "object_type" in exc_info.value.details
 
@@ -191,20 +193,20 @@ def test_dumps_complex_types():
     """Test dumping complex Python types that aren't JSON serializable."""
     import datetime
     import decimal
-    
+
     non_serializable_objects = [
-        datetime.datetime.now(),
-        decimal.Decimal('10.5'),
+        datetime.datetime.now(tz=datetime.timezone.utc),
+        decimal.Decimal("10.5"),
         {1, 2, 3},  # set
         (1, 2, 3),  # tuple - actually this might be serializable
-        bytes(b'hello'),
+        b"hello",
     ]
-    
+
     for obj in non_serializable_objects:
         if isinstance(obj, tuple):
             # Tuples are actually serialized as arrays
             continue
-            
+
         with pytest.raises(exceptions.JSONError):
             jsonutils.dumps(obj)
 
@@ -212,11 +214,11 @@ def test_dumps_complex_types():
 def test_error_details_truncation():
     """Test that large input data is properly truncated in error details."""
     # Create a long invalid JSON string
-    long_invalid_json = '{"key": "' + 'x' * 300 + '"'  # Missing closing quote and brace
-    
+    long_invalid_json = '{"key": "' + "x" * 300 + '"'  # Missing closing quote and brace
+
     with pytest.raises(exceptions.JSONError) as exc_info:
         jsonutils.loads(long_invalid_json)
-    
+
     # Check that input_data is truncated to 200 characters
     input_data = exc_info.value.details.get("input_data", "")
     assert len(input_data) <= 200
@@ -225,10 +227,10 @@ def test_error_details_truncation():
 def test_exception_inheritance():
     """Test that JSONError is properly inherited from ValidationError."""
     with pytest.raises(exceptions.ValidationError):  # Should catch JSONError
-        jsonutils.loads('invalid json')
-    
+        jsonutils.loads("invalid json")
+
     with pytest.raises(exceptions.IpsdkError):  # Should catch JSONError
-        jsonutils.loads('invalid json')
+        jsonutils.loads("invalid json")
 
 
 def test_round_trip_consistency():
@@ -240,16 +242,13 @@ def test_round_trip_consistency():
         "boolean": True,
         "null": None,
         "list": [1, 2, 3, "four", False],
-        "nested": {
-            "inner": "value",
-            "array": [{"a": 1}, {"b": 2}]
-        }
+        "nested": {"inner": "value", "array": [{"a": 1}, {"b": 2}]},
     }
-    
+
     # dumps -> loads should preserve the data
     json_string = jsonutils.dumps(test_data)
     parsed_data = jsonutils.loads(json_string)
-    
+
     assert parsed_data == test_data
 
 
@@ -281,7 +280,10 @@ def test_dumps_unicode_strings():
 
 def test_loads_large_numbers():
     """Test loading JSON with large numbers."""
-    json_str = '{"large_int": 9223372036854775807, "large_float": 1.7976931348623157e+308}'
+    json_str = """{
+        "large_int": 9223372036854775807,
+        "large_float": 1.7976931348623157e+308
+    }"""
     result = jsonutils.loads(json_str)
     assert result["large_int"] == 9223372036854775807
     assert result["large_float"] == 1.7976931348623157e+308
@@ -304,11 +306,11 @@ def test_loads_deeply_nested():
     for i in range(2, 21):  # Nest 20 levels deep
         current["child"] = {"level": i}
         current = current["child"]
-    
+
     json_str = jsonutils.dumps(nested)
     result = jsonutils.loads(json_str)
     assert result["level"] == 1
-    
+
     # Navigate to the deepest level
     current_result = result
     for i in range(2, 21):
@@ -321,7 +323,7 @@ def test_loads_empty_string_raises_error():
     """Test that loading an empty string raises JSONError."""
     with pytest.raises(exceptions.JSONError) as exc_info:
         jsonutils.loads("")
-    
+
     assert "Failed to parse JSON" in str(exc_info.value)
 
 
@@ -355,16 +357,19 @@ def test_loads_scientific_notation():
 
 
 def test_dumps_unexpected_error():
-    """Test dumps with an object that raises unexpected exceptions during serialization."""
+    """
+    Test dumps with an object that raises unexpected exceptions
+    during serialization.
+    """
     import unittest.mock
-    
+
     # Mock json.dumps to raise a RuntimeError instead of TypeError/ValueError
-    with unittest.mock.patch('json.dumps') as mock_dumps:
+    with unittest.mock.patch("json.dumps") as mock_dumps:
         mock_dumps.side_effect = RuntimeError("Unexpected error during serialization")
-        
+
         with pytest.raises(exceptions.JSONError) as exc_info:
             jsonutils.dumps({"test": "data"})
-        
+
         # Should catch the general exception case (not TypeError/ValueError)
         assert "Unexpected error serializing JSON" in str(exc_info.value)
         assert "original_error" in exc_info.value.details

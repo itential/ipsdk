@@ -1,27 +1,29 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import pytest
+from unittest.mock import AsyncMock
+from unittest.mock import Mock
+from unittest.mock import patch
+
 import httpx
-from unittest.mock import Mock, patch, AsyncMock
+import pytest
 
-from ipsdk.connection import Connection, AsyncConnection, Response
 from ipsdk import exceptions
-
-from ipsdk.platform import (
-    _make_oauth_headers,
-    _make_oauth_path,
-    _make_oauth_body,
-    _make_basicauth_body,
-    _make_basicauth_path,
-    AuthMixin,
-    AsyncAuthMixin,
-    platform_factory,
-    Platform
-)
-
+from ipsdk.connection import AsyncConnection
+from ipsdk.connection import Connection
+from ipsdk.connection import Response
+from ipsdk.platform import AsyncAuthMixin
+from ipsdk.platform import AuthMixin
+from ipsdk.platform import Platform
+from ipsdk.platform import _make_basicauth_body
+from ipsdk.platform import _make_basicauth_path
+from ipsdk.platform import _make_oauth_body
+from ipsdk.platform import _make_oauth_headers
+from ipsdk.platform import _make_oauth_path
+from ipsdk.platform import platform_factory
 
 # --------- Factory Tests ---------
+
 
 def test_platform_factory_default():
     """Test platform_factory with default parameters."""
@@ -56,7 +58,7 @@ def test_platform_factory_custom_params():
         client_secret="test_secret",
         use_tls=True,
         verify=False,
-        timeout=120
+        timeout=120,
     )
     assert isinstance(conn, Platform)
     assert conn.user == "custom_user"
@@ -68,10 +70,7 @@ def test_platform_factory_custom_params():
 def test_platform_factory_oauth_only():
     """Test platform_factory with only OAuth credentials."""
     conn = platform_factory(
-        client_id="oauth_client",
-        client_secret="oauth_secret",
-        user=None,
-        password=None
+        client_id="oauth_client", client_secret="oauth_secret", user=None, password=None
     )
     assert conn.client_id == "oauth_client"
     assert conn.client_secret == "oauth_secret"
@@ -83,15 +82,19 @@ def test_platform_authentication_fallback():
     """Test platform authentication fails when no credentials provided."""
     conn = platform_factory(client_id=None, client_secret=None)
     # auth should fail gracefully since no server is running
-    with pytest.raises(exceptions.CredentialsError, match="No valid authentication credentials provided"):
-        conn.client_id = None
-        conn.client_secret = None
-        conn.user = None
-        conn.password = None
+    conn.client_id = None
+    conn.client_secret = None
+    conn.user = None
+    conn.password = None
+    with pytest.raises(
+        exceptions.CredentialsError,
+        match="No valid authentication credentials provided",
+    ):
         conn.authenticate()
 
 
 # --------- Helper Function Tests ---------
+
 
 def test_make_oauth_headers():
     """Test _make_oauth_headers utility function."""
@@ -110,7 +113,7 @@ def test_make_oauth_body():
     expected = {
         "grant_type": "client_credentials",
         "client_id": "test_id",
-        "client_secret": "test_secret"
+        "client_secret": "test_secret",
     }
     assert result == expected
 
@@ -121,7 +124,7 @@ def test_make_oauth_body_special_chars():
     expected = {
         "grant_type": "client_credentials",
         "client_id": "client@domain.com",
-        "client_secret": "secret!@#$%"
+        "client_secret": "secret!@#$%",
     }
     assert result == expected
 
@@ -129,9 +132,7 @@ def test_make_oauth_body_special_chars():
 def test_make_basicauth_body():
     """Test _make_basicauth_body utility function."""
     result = _make_basicauth_body("testuser", "testpass")
-    expected = {
-        "user": {"username": "testuser", "password": "testpass"}
-    }
+    expected = {"user": {"username": "testuser", "password": "testpass"}}
     assert result == expected
 
 
@@ -141,6 +142,7 @@ def test_make_basicauth_path():
 
 
 # --------- Sync AuthMixin Tests ---------
+
 
 def test_authenticate_oauth_success():
     """Test AuthMixin.authenticate_oauth successful authentication."""
@@ -155,7 +157,9 @@ def test_authenticate_oauth_success():
     mock_response.raise_for_status.return_value = None
     mixin.client.post.return_value = mock_response
 
-    with patch("ipsdk.jsonutils.loads", return_value={"access_token": "test_token_123"}):
+    with patch(
+        "ipsdk.jsonutils.loads", return_value={"access_token": "test_token_123"}
+    ):
         mixin.authenticate_oauth()
 
     assert mixin.token == "test_token_123"
@@ -165,8 +169,8 @@ def test_authenticate_oauth_success():
         data={
             "grant_type": "client_credentials",
             "client_id": "test_id",
-            "client_secret": "test_secret"
-        }
+            "client_secret": "test_secret",
+        },
     )
 
 
@@ -182,18 +186,18 @@ def test_authenticate_oauth_401_unauthorized():
     mock_response.status_code = 401
     mock_request = Mock()
     mock_request.url = "https://platform.example.com/oauth/token"
-    
+
     exception = httpx.HTTPStatusError(
-        "Unauthorized", 
-        request=mock_request, 
-        response=mock_response
+        "Unauthorized", request=mock_request, response=mock_response
     )
     mixin.client.post.side_effect = exception
 
     with pytest.raises(exceptions.CredentialsError) as exc_info:
         mixin.authenticate_oauth()
-    
-    assert "OAuth authentication failed - invalid client credentials" in str(exc_info.value)
+
+    assert "OAuth authentication failed - invalid client credentials" in str(
+        exc_info.value
+    )
     assert exc_info.value.auth_type == "oauth"
 
 
@@ -212,7 +216,7 @@ def test_authenticate_oauth_network_error():
 
     with pytest.raises(exceptions.NetworkError) as exc_info:
         mixin.authenticate_oauth()
-    
+
     assert "Network error during OAuth authentication" in str(exc_info.value)
 
 
@@ -231,8 +235,7 @@ def test_authenticate_user_success():
     mixin.authenticate_user()
 
     mixin.client.post.assert_called_once_with(
-        "/login",
-        json={"user": {"username": "testuser", "password": "testpass"}}
+        "/login", json={"user": {"username": "testuser", "password": "testpass"}}
     )
 
 
@@ -248,18 +251,18 @@ def test_authenticate_user_401_unauthorized():
     mock_response.status_code = 401
     mock_request = Mock()
     mock_request.url = "https://platform.example.com/login"
-    
+
     exception = httpx.HTTPStatusError(
-        "Unauthorized", 
-        request=mock_request, 
-        response=mock_response
+        "Unauthorized", request=mock_request, response=mock_response
     )
     mixin.client.post.side_effect = exception
 
     with pytest.raises(exceptions.CredentialsError) as exc_info:
         mixin.authenticate_user()
-    
-    assert "Basic authentication failed - invalid username or password" in str(exc_info.value)
+
+    assert "Basic authentication failed - invalid username or password" in str(
+        exc_info.value
+    )
     assert exc_info.value.auth_type == "basic"
 
 
@@ -288,14 +291,15 @@ def test_authenticate_prefers_oauth():
         data={
             "grant_type": "client_credentials",
             "client_id": "test_id",
-            "client_secret": "test_secret"
-        }
+            "client_secret": "test_secret",
+        },
     )
     assert mixin.token == "oauth_token"
 
 
 def test_authenticate_oauth_preferred_over_basic():
-    """Test that authenticate uses OAuth when both OAuth and basic credentials are available."""
+    """Test that authenticate uses OAuth when both OAuth and basic credentials are
+    available."""
     mixin = AuthMixin()
     mixin.client_id = "test_id"
     mixin.client_secret = "test_secret"
@@ -319,8 +323,8 @@ def test_authenticate_oauth_preferred_over_basic():
         data={
             "grant_type": "client_credentials",
             "client_id": "test_id",
-            "client_secret": "test_secret"
-        }
+            "client_secret": "test_secret",
+        },
     )
     assert mixin.token == "oauth_token"
 
@@ -333,11 +337,15 @@ def test_authenticate_no_credentials_error():
     mixin.user = None
     mixin.password = None
 
-    with pytest.raises(exceptions.CredentialsError, match="No valid authentication credentials provided"):
+    with pytest.raises(
+        exceptions.CredentialsError,
+        match="No valid authentication credentials provided",
+    ):
         mixin.authenticate()
 
 
 # --------- Async AuthMixin Tests ---------
+
 
 @pytest.mark.asyncio
 async def test_async_authenticate_oauth_success():
@@ -353,7 +361,9 @@ async def test_async_authenticate_oauth_success():
     mock_response.raise_for_status = Mock()
     mixin.client.post.return_value = mock_response
 
-    with patch("ipsdk.jsonutils.loads", return_value={"access_token": "async_token_123"}):
+    with patch(
+        "ipsdk.jsonutils.loads", return_value={"access_token": "async_token_123"}
+    ):
         await mixin.authenticate_oauth()
 
     assert mixin.token == "async_token_123"
@@ -390,18 +400,18 @@ async def test_async_authenticate_oauth_401_unauthorized():
     mock_response.status_code = 401
     mock_request = Mock()
     mock_request.url = "https://platform.example.com/oauth/token"
-    
+
     exception = httpx.HTTPStatusError(
-        "Unauthorized", 
-        request=mock_request, 
-        response=mock_response
+        "Unauthorized", request=mock_request, response=mock_response
     )
     mixin.client.post.side_effect = exception
 
     with pytest.raises(exceptions.CredentialsError) as exc_info:
         await mixin.authenticate_oauth()
-    
-    assert "OAuth authentication failed - invalid client credentials" in str(exc_info.value)
+
+    assert "OAuth authentication failed - invalid client credentials" in str(
+        exc_info.value
+    )
     assert exc_info.value.auth_type == "oauth"
 
 
@@ -414,24 +424,28 @@ async def test_async_authenticate_no_credentials_error():
     mixin.user = None
     mixin.password = None
 
-    with pytest.raises(exceptions.CredentialsError, match="No valid authentication credentials provided"):
+    with pytest.raises(
+        exceptions.CredentialsError,
+        match="No valid authentication credentials provided",
+    ):
         await mixin.authenticate()
 
 
 # --------- Integration Tests ---------
 
+
 def test_platform_integration_with_connection():
     """Test that Platform integrates properly with Connection base class."""
     platform = platform_factory()
-    
+
     # Verify it has the expected connection methods
-    assert hasattr(platform, 'get')
-    assert hasattr(platform, 'post')
-    assert hasattr(platform, 'put')
-    assert hasattr(platform, 'delete')
-    assert hasattr(platform, 'patch')
-    assert hasattr(platform, 'authenticate')
-    
+    assert hasattr(platform, "get")
+    assert hasattr(platform, "post")
+    assert hasattr(platform, "put")
+    assert hasattr(platform, "delete")
+    assert hasattr(platform, "patch")
+    assert hasattr(platform, "authenticate")
+
     # Verify credentials are set correctly
     assert platform.user == "admin"
     assert platform.password == "admin"
@@ -439,12 +453,8 @@ def test_platform_integration_with_connection():
 
 def test_platform_base_url_construction():
     """Test that Platform constructs the correct base URL."""
-    platform = platform_factory(
-        host="platform.example.com",
-        port=443,
-        use_tls=True
-    )
-    
+    platform = platform_factory(host="platform.example.com", port=443, use_tls=True)
+
     # Platform should have no base path (direct to host)
     expected_base_url = "https://platform.example.com"
     assert str(platform.client.base_url) == expected_base_url
@@ -453,7 +463,7 @@ def test_platform_base_url_construction():
 def test_platform_authentication_not_called_initially():
     """Test that Platform doesn't authenticate until first API call."""
     platform = platform_factory()
-    
+
     # Authentication should not have been called yet
     assert not platform.authenticated
     assert platform.token is None
@@ -461,15 +471,11 @@ def test_platform_authentication_not_called_initially():
 
 def test_platform_oauth_token_handling():
     """Test that Platform properly handles OAuth tokens."""
-    platform = platform_factory(
-        client_id="test_client",
-        client_secret="test_secret"
-    )
-    
+    platform = platform_factory(client_id="test_client", client_secret="test_secret")
+
     # Token should be None initially
     assert platform.token is None
-    
+
     # After setting a token, it should be available
     platform.token = "test_token_value"
     assert platform.token == "test_token_value"
-

@@ -5,7 +5,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: test coverage clean lint format ruff-fix
+.PHONY: test coverage clean lint format ruff-fix security
 
 # The help target displays a help message that includes the avialable targets
 # in this `Makefile`.  It is the default target if `make` is run without any
@@ -18,6 +18,7 @@ help:
 	@echo "  lint       - Run analysis on source files"
 	@echo "  premerge   - Run the permerge tests locallly"
 	@echo "  ruff-fix   - Run ruff with --fix to auto-fix issues"
+	@echo "  security   - Run security analysis using bandit"
 	@echo "  test       - Run test suite"
 	@echo ""
 
@@ -38,6 +39,11 @@ lint:
 	uv run ruff check src/ipsdk
 	uv run ruff check tests
 
+# The security target invokes bandit to run security analysis on the 
+# source code.  It scans for common security vulnerabilities.
+security:
+	uv run bandit -r src/ipsdk --configfile pyproject.toml
+
 # The clean target will remove build and dev artififacts that are not 
 # part of the application and get created by other targets.
 clean:
@@ -56,4 +62,4 @@ ruff-fix:
 
 # The premerge target will run the permerge tests locally.  This is
 # the same target that is invoked in the permerge pipeline.
-premerge: clean lint test
+premerge: clean lint security test

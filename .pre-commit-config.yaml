@@ -7,9 +7,9 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+      - id: check-toml
       - id: check-added-large-files
       - id: check-merge-conflict
-      - id: check-toml
       - id: debug-statements
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -17,7 +17,7 @@ repos:
     hooks:
       # Run the linter.
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       # Run the formatter.
       - id: ruff-format
 
@@ -27,3 +27,10 @@ repos:
       - id: mypy
         additional_dependencies: [httpx]
         args: [--ignore-missing-imports]
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: [-r, src/ipsdk]
+        exclude: ^tests/

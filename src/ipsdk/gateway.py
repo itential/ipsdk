@@ -78,18 +78,22 @@ class AuthMixin:
             logger.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
                 msg = "Gateway authentication failed - invalid username or password"
-                raise exceptions.CredentialsError(
+                raise exceptions.AuthenticationError(
                     msg,
-                    auth_type="basic",
-                    details={"status_code": exc.response.status_code},
+                    details={
+                    "auth_type": "basic",
+                    "status_code": exc.response.status_code,
+                },
                 )
             msg = (
                 f"Gateway authentication failed with status {exc.response.status_code}"
             )
             raise exceptions.AuthenticationError(
                 msg,
-                auth_type="basic",
-                details={"status_code": exc.response.status_code},
+                details={
+                    "auth_type": "basic",
+                    "status_code": exc.response.status_code,
+                },
             )
         except httpx.RequestError as exc:
             logger.error(traceback.format_exc())
@@ -103,8 +107,7 @@ class AuthMixin:
             msg = f"Unexpected error during gateway authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,
-                auth_type="basic",
-                details={"original_error": str(exc)},
+                details={"auth_type": "basic", "original_error": str(exc)},
             )
 
 
@@ -135,18 +138,22 @@ class AsyncAuthMixin:
             logger.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
                 msg = "Gateway authentication failed - invalid username or password"
-                raise exceptions.CredentialsError(
+                raise exceptions.AuthenticationError(
                     msg,
-                    auth_type="basic",
-                    details={"status_code": exc.response.status_code},
+                    details={
+                    "auth_type": "basic",
+                    "status_code": exc.response.status_code,
+                },
                 )
             msg = (
                 f"Gateway authentication failed with status {exc.response.status_code}"
             )
             raise exceptions.AuthenticationError(
                 msg,
-                auth_type="basic",
-                details={"status_code": exc.response.status_code},
+                details={
+                    "auth_type": "basic",
+                    "status_code": exc.response.status_code,
+                },
             )
         except httpx.RequestError as exc:
             logger.error(traceback.format_exc())
@@ -160,8 +167,7 @@ class AsyncAuthMixin:
             msg = f"Unexpected error during gateway authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,
-                auth_type="basic",
-                details={"original_error": str(exc)},
+                details={"auth_type": "basic", "original_error": str(exc)},
             )
 
 

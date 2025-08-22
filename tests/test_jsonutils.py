@@ -59,7 +59,7 @@ def test_loads_valid_special_values():
 def test_loads_invalid_json():
     """Test loading malformed JSON raises JSONError."""
     json_str = '{"key": "value", "missing_end": '
-    with pytest.raises(exceptions.JSONError) as exc_info:
+    with pytest.raises(exceptions.ValidationError) as exc_info:
         jsonutils.loads(json_str)
 
     # Check that the exception contains helpful information
@@ -86,13 +86,13 @@ def test_loads_invalid_json_various():
             # This is actually valid JSON, so skip
             continue
 
-        with pytest.raises(exceptions.JSONError):
+        with pytest.raises(exceptions.ValidationError):
             jsonutils.loads(invalid_json)
 
 
 def test_loads_type_error():
     """Test loads with non-string input raises JSONError."""
-    with pytest.raises(exceptions.JSONError) as exc_info:
+    with pytest.raises(exceptions.ValidationError) as exc_info:
         jsonutils.loads(123)  # type: ignore[arg-type]
 
     assert "Unexpected error parsing JSON" in str(exc_info.value)
@@ -101,7 +101,7 @@ def test_loads_type_error():
 
 def test_loads_none_input():
     """Test loads with None input raises JSONError."""
-    with pytest.raises(exceptions.JSONError):
+    with pytest.raises(exceptions.ValidationError):
         jsonutils.loads(None)  # type: ignore[arg-type]
 
 
@@ -169,7 +169,7 @@ def test_dumps_non_serializable():
             self.value = "test"
 
     non_serializable_obj = NonSerializable()
-    with pytest.raises(exceptions.JSONError) as exc_info:
+    with pytest.raises(exceptions.ValidationError) as exc_info:
         jsonutils.dumps(non_serializable_obj)
 
     assert "Failed to serialize object to JSON" in str(exc_info.value)
@@ -182,7 +182,7 @@ def test_dumps_circular_reference():
     data = {"key": "value"}
     data["self"] = data  # Create circular reference
 
-    with pytest.raises(exceptions.JSONError) as exc_info:
+    with pytest.raises(exceptions.ValidationError) as exc_info:
         jsonutils.dumps(data)
 
     assert "Failed to serialize object to JSON" in str(exc_info.value)
@@ -207,7 +207,7 @@ def test_dumps_complex_types():
             # Tuples are actually serialized as arrays
             continue
 
-        with pytest.raises(exceptions.JSONError):
+        with pytest.raises(exceptions.ValidationError):
             jsonutils.dumps(obj)
 
 
@@ -216,7 +216,7 @@ def test_error_details_truncation():
     # Create a long invalid JSON string
     long_invalid_json = '{"key": "' + "x" * 300 + '"'  # Missing closing quote and brace
 
-    with pytest.raises(exceptions.JSONError) as exc_info:
+    with pytest.raises(exceptions.ValidationError) as exc_info:
         jsonutils.loads(long_invalid_json)
 
     # Check that input_data is truncated to 200 characters
@@ -321,7 +321,7 @@ def test_loads_deeply_nested():
 
 def test_loads_empty_string_raises_error():
     """Test that loading an empty string raises JSONError."""
-    with pytest.raises(exceptions.JSONError) as exc_info:
+    with pytest.raises(exceptions.ValidationError) as exc_info:
         jsonutils.loads("")
 
     assert "Failed to parse JSON" in str(exc_info.value)
@@ -329,7 +329,7 @@ def test_loads_empty_string_raises_error():
 
 def test_loads_whitespace_only():
     """Test loading JSON with only whitespace."""
-    with pytest.raises(exceptions.JSONError):
+    with pytest.raises(exceptions.ValidationError):
         jsonutils.loads("   \n\t  ")
 
 
@@ -367,7 +367,7 @@ def test_dumps_unexpected_error():
     with unittest.mock.patch("json.dumps") as mock_dumps:
         mock_dumps.side_effect = RuntimeError("Unexpected error during serialization")
 
-        with pytest.raises(exceptions.JSONError) as exc_info:
+        with pytest.raises(exceptions.ValidationError) as exc_info:
             jsonutils.dumps({"test": "data"})
 
         # Should catch the general exception case (not TypeError/ValueError)

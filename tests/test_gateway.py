@@ -126,13 +126,13 @@ def test_auth_mixin_authenticate_401_unauthorized():
     )
     mixin.client.post.side_effect = exception
 
-    with pytest.raises(exceptions.CredentialsError) as exc_info:
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
         mixin.authenticate()
 
     assert "Gateway authentication failed - invalid username or password" in str(
         exc_info.value
     )
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
     assert exc_info.value.details["status_code"] == 401
 
 
@@ -154,13 +154,13 @@ def test_auth_mixin_authenticate_403_forbidden():
     )
     mixin.client.post.side_effect = exception
 
-    with pytest.raises(exceptions.CredentialsError) as exc_info:
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
         mixin.authenticate()
 
     assert "Gateway authentication failed - invalid username or password" in str(
         exc_info.value
     )
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
     assert exc_info.value.details["status_code"] == 403
 
 
@@ -186,7 +186,7 @@ def test_auth_mixin_authenticate_500_server_error():
         mixin.authenticate()
 
     assert "Gateway authentication failed with status 500" in str(exc_info.value)
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
     assert exc_info.value.details["status_code"] == 500
 
 
@@ -224,7 +224,7 @@ def test_auth_mixin_authenticate_generic_exception():
         mixin.authenticate()
 
     assert "Unexpected error during gateway authentication" in str(exc_info.value)
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
     assert "Unexpected error" in exc_info.value.details["original_error"]
 
 
@@ -274,13 +274,13 @@ async def test_async_auth_mixin_authenticate_401_unauthorized():
     )
     mixin.client.post.side_effect = exception
 
-    with pytest.raises(exceptions.CredentialsError) as exc_info:
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
         await mixin.authenticate()
 
     assert "Gateway authentication failed - invalid username or password" in str(
         exc_info.value
     )
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
 
 
 @pytest.mark.asyncio
@@ -318,7 +318,7 @@ async def test_async_auth_mixin_authenticate_generic_exception():
         await mixin.authenticate()
 
     assert "Unexpected error during gateway authentication" in str(exc_info.value)
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
 
 
 # --------- Integration Tests ---------

@@ -87,7 +87,7 @@ def test_platform_authentication_fallback():
     conn.user = None
     conn.password = None
     with pytest.raises(
-        exceptions.CredentialsError,
+        exceptions.AuthenticationError,
         match="No valid authentication credentials provided",
     ):
         conn.authenticate()
@@ -192,13 +192,13 @@ def test_authenticate_oauth_401_unauthorized():
     )
     mixin.client.post.side_effect = exception
 
-    with pytest.raises(exceptions.CredentialsError) as exc_info:
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
         mixin.authenticate_oauth()
 
     assert "OAuth authentication failed - invalid client credentials" in str(
         exc_info.value
     )
-    assert exc_info.value.auth_type == "oauth"
+    assert exc_info.value.details.get("auth_type") == "oauth"
 
 
 def test_authenticate_oauth_network_error():
@@ -257,13 +257,13 @@ def test_authenticate_user_401_unauthorized():
     )
     mixin.client.post.side_effect = exception
 
-    with pytest.raises(exceptions.CredentialsError) as exc_info:
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
         mixin.authenticate_user()
 
     assert "Basic authentication failed - invalid username or password" in str(
         exc_info.value
     )
-    assert exc_info.value.auth_type == "basic"
+    assert exc_info.value.details.get("auth_type") == "basic"
 
 
 def test_authenticate_prefers_oauth():
@@ -338,7 +338,7 @@ def test_authenticate_no_credentials_error():
     mixin.password = None
 
     with pytest.raises(
-        exceptions.CredentialsError,
+        exceptions.AuthenticationError,
         match="No valid authentication credentials provided",
     ):
         mixin.authenticate()
@@ -406,13 +406,13 @@ async def test_async_authenticate_oauth_401_unauthorized():
     )
     mixin.client.post.side_effect = exception
 
-    with pytest.raises(exceptions.CredentialsError) as exc_info:
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
         await mixin.authenticate_oauth()
 
     assert "OAuth authentication failed - invalid client credentials" in str(
         exc_info.value
     )
-    assert exc_info.value.auth_type == "oauth"
+    assert exc_info.value.details.get("auth_type") == "oauth"
 
 
 @pytest.mark.asyncio
@@ -425,7 +425,7 @@ async def test_async_authenticate_no_credentials_error():
     mixin.password = None
 
     with pytest.raises(
-        exceptions.CredentialsError,
+        exceptions.AuthenticationError,
         match="No valid authentication credentials provided",
     ):
         await mixin.authenticate()

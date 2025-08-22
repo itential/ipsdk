@@ -531,18 +531,18 @@ class Connection(ConnectionBase):
             if res.status_code >= HTTP_BAD_REQUEST:
                 logger.debug(f"HTTP {res.status_code} response from {request.url}")
                 raise exceptions.classify_http_error(
-                    res.status_code, res, str(request.url)
+                    res.status_code,
+                    request_url=str(request.url),
+                    response=res
                 )
 
         except httpx.RequestError as exc:
             logger.debug(traceback.format_exc())
-            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
-            raise sdk_exc
+            raise exceptions.classify_httpx_error(exc, str(request.url))
 
         except httpx.HTTPStatusError as exc:
             logger.debug(traceback.format_exc())
-            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
-            raise sdk_exc
+            raise exceptions.classify_httpx_error(exc, str(request.url))
 
         except exceptions.IpsdkError:
             # Re-raise our own exceptions
@@ -787,7 +787,9 @@ class AsyncConnection(ConnectionBase):
             if res.status_code >= HTTP_BAD_REQUEST:
                 logger.debug(f"HTTP {res.status_code} response from {request.url}")
                 raise exceptions.classify_http_error(
-                    res.status_code, res, str(request.url)
+                    res.status_code,
+                    request_url=str(request.url),
+                    response=res
                 )
 
         except httpx.RequestError as exc:

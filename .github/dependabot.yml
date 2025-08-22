@@ -1,7 +1,8 @@
 # GitHub Dependabot configuration for automated dependency updates
 # See: https://docs.github.com/en/code-security/supply-chain-security/keeping-your-dependencies-updated-automatically/configuration-options-for-dependency-updates
-
+---
 version: 2
+
 updates:
   # Python dependencies
   - package-ecosystem: "pip"
@@ -11,10 +12,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
-    reviewers:
-      - "itential/platform-team"
-    assignees:
-      - "itential/platform-team"
     commit-message:
       prefix: "deps"
       include: "scope"
@@ -37,10 +34,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 5
-    reviewers:
-      - "itential/platform-team"
-    assignees:
-      - "itential/platform-team"
     commit-message:
       prefix: "ci"
       include: "scope"

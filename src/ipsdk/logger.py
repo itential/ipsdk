@@ -14,9 +14,11 @@ logging_message_format = "%(asctime)s: %(levelname)s: %(message)s"
 logging.basicConfig(format=logging_message_format)
 logging.getLogger(metadata.name).setLevel(100)
 
-# Add the FATAL logging level
+# Add a custom FATAL logging level (90)
 logging.addLevelName(90, "FATAL")
-logging.FATAL = 90
+# Override the existing FATAL level with our custom level
+# Note: This will cause a mypy error but is needed for backward compatibility
+logging.FATAL = 90  # type: ignore[misc]
 
 # Logging level constants that wrap stdlib logging module constants
 NOTSET = logging.NOTSET

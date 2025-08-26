@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2025-08-26
+
+### Added
+- GitHub Dependabot configuration (#49)
+- Python version matrix testing support (#44)
+
+### Changed
+- Update Dependabot configuration (#53)
+- Enhance development environment and code quality tools (#47)
+- Enhance exceptions module test coverage to 97% (#46)
+- Expand jsonutils test coverage to 100% (#45)
+
+### Fixed
+- Fix unit tests and enhance exception handling (#52)
+
+### Dependencies
+- ci(deps): bump actions/checkout from 4 to 5 (#51)
+- ci(deps): bump astral-sh/setup-uv from 5 to 6 (#50)
+
 ## [0.3.0] - 2025-08-12
 
 ### Added

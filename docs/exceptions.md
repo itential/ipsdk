@@ -182,6 +182,7 @@ Classifies an httpx exception into the appropriate SDK exception.
 ### Specific Exception Handling
 
 ```python
+import ipsdk
 from ipsdk.exceptions import NetworkError, AuthenticationError, ClientError
 
 try:
@@ -189,21 +190,22 @@ try:
     response = client.get("/api/resource")
 except NetworkError as e:
     # Handle network issues - maybe retry
-    logger.error(f"Network error: {e}")
+    ipsdk.logging.error(f"Network error: {e}")
 except AuthenticationError as e:
     # Handle auth issues - maybe refresh token
-    logger.error(f"Authentication failed: {e}")
+    ipsdk.logging.error(f"Authentication failed: {e}")
 except ClientError as e:
     # Handle client errors - maybe fix request
     if e.status_code == 404:
-        logger.error("Resource not found")
+        ipsdk.logging.error("Resource not found")
     else:
-        logger.error(f"Client error: {e}")
+        ipsdk.logging.error(f"Client error: {e}")
 ```
 
 ### General Exception Handling
 
 ```python
+import ipsdk
 from ipsdk.exceptions import IpsdkError
 
 try:
@@ -211,9 +213,9 @@ try:
     response = client.get("/api/resource")
 except IpsdkError as e:
     # Catch all SDK errors
-    logger.error(f"SDK error: {e.message}")
+    ipsdk.logging.error(f"SDK error: {e.message}")
     if e.details:
-        logger.debug(f"Error details: {e.details}")
+        ipsdk.logging.debug(f"Error details: {e.details}")
 ```
 
 ### Exception Information Access

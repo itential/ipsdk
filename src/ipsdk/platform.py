@@ -10,7 +10,7 @@ import httpx
 from . import connection
 from . import exceptions
 from . import jsonutils
-from . import logger
+from . import logging
 
 
 def _make_oauth_headers() -> dict[str, str]:
@@ -71,13 +71,13 @@ class AuthMixin:
             raise exceptions.AuthenticationError(
                 msg
             )
-        logger.info("client connection successfully authenticated")
+        logging.info("client connection successfully authenticated")
 
     def authenticate_user(self) -> None:
         """
         Performs authentication for basic authorization
         """
-        logger.info("Attempting to perform basic authentication")
+        logging.info("Attempting to perform basic authentication")
 
         assert self.user is not None
         assert self.password is not None
@@ -88,7 +88,7 @@ class AuthMixin:
             res = self.client.post(path, json=data)
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
                 msg = "Basic authentication failed - invalid username or password"
                 raise exceptions.AuthenticationError(
@@ -107,14 +107,14 @@ class AuthMixin:
                 },
             )
         except httpx.RequestError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = "Network error during basic authentication"
             raise exceptions.NetworkError(
                 msg,
                 details={"original_error": str(exc)},
             )
         except Exception as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = f"Unexpected error during basic authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,
@@ -125,7 +125,7 @@ class AuthMixin:
         """
         Performs authentication for OAuth client credentials
         """
-        logger.info("Attempting to perform oauth authentication")
+        logging.info("Attempting to perform oauth authentication")
 
         assert self.client_id is not None
         assert self.client_secret is not None
@@ -166,7 +166,7 @@ class AuthMixin:
             self.token = access_token
 
         except httpx.HTTPStatusError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
                 msg = "OAuth authentication failed - invalid client credentials"
                 raise exceptions.AuthenticationError(
@@ -185,14 +185,14 @@ class AuthMixin:
                 },
             )
         except httpx.RequestError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = "Network error during OAuth authentication"
             raise exceptions.NetworkError(
                 msg,
                 details={"original_error": str(exc)},
             )
         except exceptions.ValidationError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = "Failed to parse OAuth response"
             raise exceptions.AuthenticationError(
                 msg,
@@ -202,7 +202,7 @@ class AuthMixin:
             # Re-raise our own exceptions
             raise
         except Exception as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = f"Unexpected error during OAuth authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,
@@ -239,13 +239,13 @@ class AsyncAuthMixin:
             raise exceptions.AuthenticationError(
                 msg
             )
-        logger.info("client connection successfully authenticated")
+        logging.info("client connection successfully authenticated")
 
     async def authenticate_basicauth(self) -> None:
         """
         Performs authentication for basic authorization
         """
-        logger.info("Attempting to perform basic authentication")
+        logging.info("Attempting to perform basic authentication")
 
         assert self.user is not None
         assert self.password is not None
@@ -256,7 +256,7 @@ class AsyncAuthMixin:
             res = await self.client.post(path, json=data)
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
                 msg = "Basic authentication failed - invalid username or password"
                 raise exceptions.AuthenticationError(
@@ -275,14 +275,14 @@ class AsyncAuthMixin:
                 },
             )
         except httpx.RequestError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = "Network error during basic authentication"
             raise exceptions.NetworkError(
                 msg,
                 details={"original_error": str(exc)},
             )
         except Exception as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = f"Unexpected error during basic authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,
@@ -293,7 +293,7 @@ class AsyncAuthMixin:
         """
         Performs authentication for OAuth client credentials
         """
-        logger.info("Attempting to perform oauth authentication")
+        logging.info("Attempting to perform oauth authentication")
 
         assert self.client_id is not None
         assert self.client_secret is not None
@@ -334,7 +334,7 @@ class AsyncAuthMixin:
             self.token = access_token
 
         except httpx.HTTPStatusError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             if exc.response.status_code in (401, 403):
                 msg = "OAuth authentication failed - invalid client credentials"
                 raise exceptions.AuthenticationError(
@@ -353,14 +353,14 @@ class AsyncAuthMixin:
                 },
             )
         except httpx.RequestError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = "Network error during OAuth authentication"
             raise exceptions.NetworkError(
                 msg,
                 details={"original_error": str(exc)},
             )
         except exceptions.ValidationError as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = "Failed to parse OAuth response"
             raise exceptions.AuthenticationError(
                 msg,
@@ -370,7 +370,7 @@ class AsyncAuthMixin:
             # Re-raise our own exceptions
             raise
         except Exception as exc:
-            logger.error(traceback.format_exc())
+            logging.error(traceback.format_exc())
             msg = f"Unexpected error during OAuth authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,

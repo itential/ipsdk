@@ -271,7 +271,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
     "S110",     # try-except-pass (intentional for error handling)
 ]
 
-"src/ipsdk/logger.py" = [
+"src/ipsdk/logging.py" = [
     "FBT001",   # Boolean-typed positional argument (part of public API)
     "FBT002",   # Boolean default positional argument (part of public API)
     "G004",     # Logging statement uses f-string (acceptable for informational logging)

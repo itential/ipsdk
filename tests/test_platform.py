@@ -1034,3 +1034,89 @@ def test_platform_factory_async_with_all_parameters():
     assert isinstance(conn, AsyncConnection)
     assert conn.user == "testuser"
     assert conn.password == "testpass"
+
+
+# --------- Missing Coverage Tests ---------
+
+
+def test_authenticate_basic_auth_path():
+    """Test authenticate() calls authenticate_user() with basic auth."""
+    mixin = AuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client_id = None  # No OAuth credentials
+    mixin.client_secret = None
+    mixin.client = Mock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    # Call authenticate - should choose basic auth path
+    mixin.authenticate()
+
+    # Verify basic auth was called
+    mixin.client.post.assert_called_once_with(
+        "/login", json={"user": {"username": "testuser", "password": "testpass"}}
+    )
+
+
+def test_authenticate_user_request_error():
+    """Test basic authentication with httpx.RequestError (network error)."""
+    mixin = AuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = Mock()
+
+    # Mock RequestError
+    request_error = httpx.RequestError("Connection error")
+    mixin.client.post.side_effect = request_error
+
+    with pytest.raises(exceptions.NetworkError) as exc_info:
+        mixin.authenticate_user()
+
+    assert "Network error during basic authentication" in str(exc_info.value)
+    assert exc_info.value.details["original_error"] == "Connection error"
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_basic_auth_path():
+    """Test async authenticate() calls authenticate_basicauth() with basic auth."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client_id = None  # No OAuth credentials
+    mixin.client_secret = None
+    mixin.client = AsyncMock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    # Call authenticate - should choose basic auth path
+    await mixin.authenticate()
+
+    # Verify basic auth was called
+    mixin.client.post.assert_awaited_once()
+
+
+def test_authenticate_oauth_request_error():
+    """Test OAuth authentication with httpx.RequestError (network error)."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_client"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock RequestError
+    request_error = httpx.RequestError("Connection timeout")
+    mixin.client.post.side_effect = request_error
+
+    with pytest.raises(exceptions.NetworkError) as exc_info:
+        mixin.authenticate_oauth()
+
+    assert "Network error during OAuth authentication" in str(exc_info.value)
+    assert exc_info.value.details["original_error"] == "Connection timeout"

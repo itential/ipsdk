@@ -1265,3 +1265,31 @@ def test_make_base_url_ipv6():
         # Test IPv6 with standard port (should not include port in URL)
         url = conn._make_base_url("2001:db8::1", 443, None, True)
         assert "2001:db8::1" in url
+
+
+# --------- Missing Coverage Tests ---------
+
+
+class TestAbstractMethodCoverage:
+    """Tests to ensure abstract methods are properly covered."""
+
+    @pytest.mark.asyncio
+    async def test_async_connection_abstract_authenticate_method(self):
+        """Test AsyncConnection abstract authenticate method."""
+        # Create test class inheriting from AsyncConnection
+        class TestAsyncConnection(AsyncConnection):
+            def __init__(self):
+                # Don't call super().__init__ to avoid complex setup
+                pass
+
+            # Let the abstract method from parent be available
+
+        # Create an instance and call the parent's abstract method directly
+        test_conn = TestAsyncConnection()
+
+        # Call the abstract method directly from the parent class
+        # This should execute the 'pass' statement on line 735
+        result = await AsyncConnection.authenticate(test_conn)
+
+        # The abstract method returns None (implicitly from 'pass')
+        assert result is None

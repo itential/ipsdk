@@ -25,7 +25,7 @@ help:
 # The test target will invoke the unit tests using pytest.   This target
 # requires uv to be installed and the environment created.
 test:
-	uv run pytest tests
+	uv run pytest tests -v -s
 
 # The coverage target will invoke pytest with coverage support.  It will
 # display a summary of the unit test coverage as well as output the coverage

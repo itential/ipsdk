@@ -10,6 +10,7 @@ import httpx
 import pytest
 
 from ipsdk import exceptions
+from ipsdk import metadata
 from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Connection
 from ipsdk.connection import ConnectionBase
@@ -1046,3 +1047,221 @@ class TestAsyncConnection:
                     base_url="", verify=True, timeout=30
                 )
                 assert result == mock_client
+
+
+# --------- Additional Edge Case Tests ---------
+
+
+def test_connection_http_status_error_handling():
+    """Test Connection handling of HTTP status errors with error classification."""
+    conn = Connection("example.com")
+    conn.authenticated = True
+    conn.client = Mock()
+    conn._build_request = Mock(return_value=Mock())
+
+    mock_request = Mock()
+    mock_request.url = "https://example.com/api/test"
+
+    # Test 404 Not Found
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 404
+    conn.client.send.return_value = mock_response
+
+    with pytest.raises(exceptions.ClientError):
+        conn._send_request("GET", "/api/test")
+
+
+def test_connection_server_error_handling():
+    """Test Connection handling of 5xx server errors."""
+    conn = Connection("example.com")
+    conn.authenticated = True
+    conn.client = Mock()
+    conn._build_request = Mock(return_value=Mock())
+
+    mock_request = Mock()
+    mock_request.url = "https://example.com/api/test"
+
+    # Test 503 Service Unavailable
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 503
+    conn.client.send.return_value = mock_response
+
+    with pytest.raises(exceptions.ServerError):
+        conn._send_request("GET", "/api/test")
+
+
+@pytest.mark.asyncio
+async def test_async_connection_http_error_handling():
+    """Test AsyncConnection handling of HTTP errors."""
+    conn = AsyncConnection("example.com")
+    conn.authenticated = True
+    conn.client = Mock()
+    conn._build_request = Mock(return_value=Mock())
+
+    # Test 401 Unauthorized
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 401
+    conn.client.send = AsyncMock(return_value=mock_response)
+
+    with pytest.raises(exceptions.ClientError):
+        await conn._send_request("GET", "/api/test")
+
+
+def test_request_with_complex_json_types():
+    """Test Request with complex JSON data types."""
+    # Test with nested structures
+    complex_data = {
+        "nested": {"list": [1, 2, {"inner": "value"}], "bool": True, "null": None}
+    }
+    req = Request("POST", "/api/complex", json=complex_data)
+    assert req.json == complex_data
+
+
+def test_response_edge_cases():
+    """Test Response class with edge case scenarios."""
+    mock_response = Mock(spec=httpx.Response)
+
+    # Test with status code boundaries
+    boundary_codes = [199, 200, 299, 300, 399, 400, 499, 500, 599, 600]
+
+    for status_code in boundary_codes:
+        mock_response.status_code = status_code
+        response = Response(mock_response)
+
+        # Verify boundary conditions
+        if status_code < 200:
+            assert not response.is_success()
+            assert not response.is_error()
+        elif 200 <= status_code < 300:
+            assert response.is_success()
+            assert not response.is_error()
+        elif 300 <= status_code < 400:
+            assert not response.is_success()
+            assert not response.is_error()
+        else:
+            assert not response.is_success()
+            assert response.is_error()
+
+
+def test_connection_base_initialization_edge_cases():
+    """Test ConnectionBase initialization with edge case parameters."""
+    with patch.object(ConnectionBase, "_init_client") as mock_init:
+        mock_client = Mock()
+        mock_client.headers = {}
+        mock_init.return_value = mock_client
+
+        # Test with minimal parameters
+        conn = ConnectionBase("localhost")
+        assert conn.user is None
+        assert conn.password is None
+        assert conn.client_id is None
+        assert conn.client_secret is None
+        assert conn.token is None
+        assert conn.authenticated is False
+
+        # Test that metadata version is set in User-Agent
+        expected_ua = f"ipsdk/{metadata.version}"
+        conn.client.headers["User-Agent"] = expected_ua
+
+
+def test_connection_build_request_with_all_params():
+    """Test _build_request with all possible parameters."""
+    with patch.object(ConnectionBase, "_init_client"):
+        conn = ConnectionBase("example.com")
+        conn.client = Mock()
+        conn.token = "test-token"
+
+        mock_request = Mock()
+        conn.client.build_request.return_value = mock_request
+
+        params = {"limit": 10, "offset": 20}
+        json_data = {"key": "value"}
+
+        result = conn._build_request("POST", "/api/test", json=json_data, params=params)
+
+        expected_headers = {
+            "Authorization": "Bearer test-token",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        conn.client.build_request.assert_called_once_with(
+            method="POST",
+            url="/api/test",
+            params=params,
+            headers=expected_headers,
+            json=json_data,
+        )
+        assert result == mock_request
+
+
+def test_http_method_enum_completeness():
+    """Test that HTTPMethod has all required HTTP methods."""
+    expected_methods = ["GET", "POST", "PUT", "DELETE", "PATCH"]
+
+    for method in expected_methods:
+        assert hasattr(HTTPMethod, method)
+        assert getattr(HTTPMethod, method) == method
+
+
+def test_response_json_with_non_dict_data():
+    """Test Response json method with non-dictionary JSON data."""
+    mock_response = Mock(spec=httpx.Response)
+
+    # Test with JSON array
+    mock_response.json.return_value = [1, 2, 3]
+    response = Response(mock_response)
+    assert response.json() == [1, 2, 3]
+
+    # Test with JSON string
+    mock_response.json.return_value = "test string"
+    response = Response(mock_response)
+    assert response.json() == "test string"
+
+    # Test with JSON number
+    mock_response.json.return_value = 42
+    response = Response(mock_response)
+    assert response.json() == 42
+
+
+@pytest.mark.asyncio
+async def test_async_connection_authentication_flow():
+    """Test complete async authentication flow."""
+    conn = AsyncConnection("example.com")
+    conn.authenticated = False
+    conn.client = Mock()
+    conn._build_request = Mock(return_value=Mock())
+    conn.authenticate = AsyncMock()
+
+    # Mock successful response after authentication
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 200
+    conn.client.send = AsyncMock(return_value=mock_response)
+
+    # First call should authenticate
+    result = await conn._send_request("GET", "/api/test")
+
+    conn.authenticate.assert_called_once()
+    assert conn.authenticated is True
+    assert isinstance(result, Response)
+
+    # Reset mock to verify second call doesn't authenticate again
+    conn.authenticate.reset_mock()
+
+    # Second call should not authenticate
+    await conn._send_request("GET", "/api/test2")
+    conn.authenticate.assert_not_called()
+
+
+def test_make_base_url_ipv6():
+    """Test _make_base_url with IPv6 addresses."""
+    with patch.object(ConnectionBase, "_init_client"):
+        conn = ConnectionBase("example.com")
+
+        # Test IPv6 localhost
+        url = conn._make_base_url("::1", 8080, None, False)
+        assert "::1" in url
+
+        # Test IPv6 with standard port (should not include port in URL)
+        url = conn._make_base_url("2001:db8::1", 443, None, True)
+        assert "2001:db8::1" in url

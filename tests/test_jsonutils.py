@@ -286,12 +286,12 @@ def test_loads_large_numbers():
     }"""
     result = jsonutils.loads(json_str)
     assert result["large_int"] == 9223372036854775807
-    assert result["large_float"] == 1.7976931348623157e+308
+    assert result["large_float"] == 1.7976931348623157e308
 
 
 def test_dumps_large_numbers():
     """Test dumping large numbers."""
-    data = {"large_int": 9223372036854775807, "large_float": 1.7976931348623157e+308}
+    data = {"large_int": 9223372036854775807, "large_float": 1.7976931348623157e308}
     result = jsonutils.dumps(data)
     assert isinstance(result, str)
     parsed = json.loads(result)
@@ -340,7 +340,7 @@ def test_dumps_edge_case_values():
         "negative": -123,
         "negative_float": -3.14,
         "scientific": 1e10,
-        "small_scientific": 1e-10
+        "small_scientific": 1e-10,
     }
     result = jsonutils.dumps(data)
     assert isinstance(result, str)

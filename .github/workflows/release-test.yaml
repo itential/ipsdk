@@ -1,20 +1,20 @@
-# .github/workflows/release.yml  
-# This workflow uses GoReleaser to create releases and publish to PyPI
-# It runs when a new tag is pushed to the repository
+# .github/workflows/release-test.yml
+# This workflow tests the GoReleaser configuration without creating an actual release
+# It runs on pull requests that modify release-related files
 ---
-name: Release package with GoReleaser
+name: Test GoReleaser configuration
 
 on:
-  push:
-    tags:
-      - 'v*'
-
-permissions:
-  contents: write
-  id-token: write  # For trusted publishing to PyPI
+  pull_request:
+    paths:
+      - '.goreleaser.yml'
+      - '.github/workflows/release.yaml'
+      - '.github/workflows/prerelease.yaml'
+      - 'pyproject.toml'
+      - 'Makefile'
 
 jobs:
-  release:
+  test-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -44,13 +44,18 @@ jobs:
         with:
           install-only: true
 
-      - name: Run GoReleaser
+      - name: Check GoReleaser configuration
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
           version: '~> v2'
-          args: release --clean
+          args: check
+
+      - name: Test GoReleaser build (dry run)
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: build --snapshot --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-          TEST_PYPI_API_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}

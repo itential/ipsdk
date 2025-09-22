@@ -12,7 +12,7 @@ from typing import Union
 import httpx
 
 from . import exceptions
-from . import logger
+from . import logging
 from . import metadata
 
 # HTTP Status Code Constants
@@ -388,7 +388,7 @@ class ConnectionBase:
         # and Accept headers to "application/json".  Technically, httpx will do
         # this for us but setting it here to make it very explicit.
         if json is not None:
-            logger.debug(
+            logging.debug(
                 "automatically setting Content-Type and Accept headers due to json data"
             )
             headers.update(
@@ -399,7 +399,7 @@ class ConnectionBase:
             )
 
         if self.token is not None:
-            logger.debug("adding Authorization header to request")
+            logging.debug("adding Authorization header to request")
             headers["Authorization"] = f"Bearer {self.token}"
 
         # The value for the keyword `json` is passed to the httpx build_request
@@ -463,7 +463,7 @@ class Connection(ConnectionBase):
             An instance of `httpx.Client`
         """
 
-        logger.info(f"Creating new client for {base_url}")
+        logging.info(f"Creating new client for {base_url}")
 
         return httpx.Client(
             base_url=base_url or "",
@@ -525,12 +525,12 @@ class Connection(ConnectionBase):
         )
 
         try:
-            logger.debug(f"{method} {path}")
+            logging.debug(f"{method} {path}")
             res = self.client.send(request)
 
             # Check for HTTP status errors
             if res.status_code >= HTTP_BAD_REQUEST:
-                logger.debug(f"HTTP {res.status_code} response from {request.url}")
+                logging.debug(f"HTTP {res.status_code} response from {request.url}")
                 raise exceptions.classify_http_error(
                     res.status_code,
                     request_url=str(request.url),
@@ -538,11 +538,11 @@ class Connection(ConnectionBase):
                 )
 
         except httpx.RequestError as exc:
-            logger.debug(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             raise exceptions.classify_httpx_error(exc, str(request.url))
 
         except httpx.HTTPStatusError as exc:
-            logger.debug(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             raise exceptions.classify_httpx_error(exc, str(request.url))
 
         except exceptions.IpsdkError:
@@ -550,7 +550,7 @@ class Connection(ConnectionBase):
             raise
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             msg = f"Unexpected error occurred: {exc!s}"
             raise exceptions.IpsdkError(
                 msg,
@@ -724,7 +724,7 @@ class AsyncConnection(ConnectionBase):
             An instance of `httpx.AsyncClient`
         """
 
-        logger.info(f"Creating new async client for {base_url}")
+        logging.info(f"Creating new async client for {base_url}")
 
         return httpx.AsyncClient(
             base_url=base_url or "", verify=verify, timeout=timeout
@@ -786,7 +786,7 @@ class AsyncConnection(ConnectionBase):
 
             # Check for HTTP status errors
             if res.status_code >= HTTP_BAD_REQUEST:
-                logger.debug(f"HTTP {res.status_code} response from {request.url}")
+                logging.debug(f"HTTP {res.status_code} response from {request.url}")
                 raise exceptions.classify_http_error(
                     res.status_code,
                     request_url=str(request.url),
@@ -794,12 +794,12 @@ class AsyncConnection(ConnectionBase):
                 )
 
         except httpx.RequestError as exc:
-            logger.debug(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
             raise sdk_exc
 
         except httpx.HTTPStatusError as exc:
-            logger.debug(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
             raise sdk_exc
 
@@ -808,7 +808,7 @@ class AsyncConnection(ConnectionBase):
             raise
 
         except Exception as exc:
-            logger.debug(traceback.format_exc())
+            logging.debug(traceback.format_exc())
             msg = f"Unexpected error occurred: {exc!s}"
             raise exceptions.IpsdkError(
                 msg,

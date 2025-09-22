@@ -1,6 +1,8 @@
-# Itential Python SDK
+# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Itential Python SDK
 
 ## Development Commands
 
@@ -34,7 +36,7 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 ### Project Details
 
 - **License**: GPL-3.0-or-later
-- **Python Support**: >=3.8 (tested on 3.10, 3.11, 3.12)
+- **Python Support**: >=3.8 (tested on 3.10, 3.11, 3.12, 3.13)
 - **Status**: Beta
 - **Primary Dependency**: httpx>=0.28.1
 - **Build System**: Hatchling with uv-dynamic-versioning
@@ -69,7 +71,7 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
   - `exceptions.py` - Centralized exception classes for error handling
   - `gateway.py` - Itential Automation Gateway client with basic auth
   - `jsonutils.py` - JSON serialization/deserialization utilities
-  - `logger.py` - Logging configuration and utilities with file logging support
+  - `logging.py` - Comprehensive logging system with file/console handlers, custom FATAL level (90), and httpx/httpcore control
   - `metadata.py` - Package metadata and dynamic version information from importlib
   - `platform.py` - Itential Platform client with OAuth and basic auth support
 
@@ -78,7 +80,13 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 - Automatic authentication on first API call
 - Support for both sync and async operations (controlled by `want_async` parameter)
 - Configurable TLS, certificate verification, timeouts
-- Centralized logging via `logger.set_level()` function with file logging support
+- **Comprehensive Logging System**:
+  - Multiple log levels including custom FATAL (90) level
+  - Convenience functions: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
+  - File logging with automatic directory creation and custom formatting
+  - Console output control (stdout/stderr switching)
+  - httpx/httpcore logging control via `propagate` parameter
+  - Centralized configuration via `set_level()` and `configure_file_logging()`
 - JSON request/response handling with automatic Content-Type headers
 
 
@@ -88,7 +96,7 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
   - Includes 30+ rule sets: pycodestyle (E,W), Pyflakes (F), pyupgrade (UP), flake8-bugbear (B), isort (I), pylint (PL), security checks (S), annotations (ANN), async (ASYNC), and many more
   - Line length set to 88 characters (Black-compatible)
   - Target Python 3.8+ compatibility
-  - Per-file ignores configured for different modules (tests/, connection.py, platform.py, gateway.py, logger.py, exceptions.py)
+  - Per-file ignores configured for different modules (tests/, connection.py, platform.py, gateway.py, logging.py, exceptions.py)
   - Auto-fixable rules enabled for most issues
   - Double quotes for strings, space indentation, magic trailing comma support
 - **Pre-commit Hooks**: Configured in `.pre-commit-config.yaml` for automatic code quality checks
@@ -110,11 +118,24 @@ Core dev dependencies in `dependency-groups.dev`:
 ### Testing
 
 - Uses pytest with async support (`pytest-asyncio`)
-- Test files in `tests/` directory cover all main components: connection, exceptions, gateway, jsonutils, logger, platform
+- Test files in `tests/` directory cover all main components: connection, exceptions, gateway, jsonutils, logging, platform
 - Coverage reporting available via pytest-cov with HTML and terminal output
 - **Coverage requirement**: Minimum 95% test coverage enforced in CI/CD pipeline
 - Tests include extensive per-file ignore rules in ruff config to allow test-specific patterns
 - The premerge pipeline automatically fails if coverage drops below 95%
+
+#### Logging Module Testing
+
+The `tests/test_logging.py` file provides comprehensive testing coverage for the logging system with **38 test cases**:
+
+- **Constants and Levels**: Verification of all logging constants and custom FATAL level (90) registration
+- **Core Functionality**: Testing of main `log()` function and all convenience functions (`debug`, `info`, `warning`, `error`, `critical`, `fatal`, `exception`)
+- **Configuration Functions**: Complete testing of `set_level()`, `configure_file_logging()`, and `get_logger()`
+- **File Handler Management**: Tests for `add_file_handler()`, `remove_file_handlers()` with parent directory creation
+- **Console Handler Control**: Testing of `set_console_output()`, `add_stdout_handler()`, `add_stderr_handler()`
+- **Integration Tests**: Real logging output verification and file logging functionality
+- **Error Handling**: Exception logging, fatal function with system exit, and validation error testing
+- **Edge Cases**: Handler cleanup, custom formatting, propagation control, and initialization testing
 
 #### Python Version Testing Matrix
 
@@ -152,7 +173,17 @@ The `.github/workflows/premerge.yaml` workflow runs tests against all supported 
 ### Key Implementation Details
 
 - **Request/Response Wrappers**: The SDK provides `Request` and `Response` wrapper classes that encapsulate HTTP request/response data with additional functionality beyond raw httpx objects
-- **Logging Integration**: File logging support via `add_file_handler()`, `remove_file_handlers()`, and `configure_file_logging()` functions with custom format strings and propagation control
+- **Advanced Logging System**: Full-featured logging implementation with comprehensive functionality:
+  - **Custom Levels**: FATAL level (90) in addition to standard levels (DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50)
+  - **Multiple Handlers**: File handlers, console handlers (stdout/stderr), with automatic cleanup
+  - **Configuration Functions**: 
+    - `set_level(lvl, *, propagate=False)` - Set logging level with optional httpx/httpcore control
+    - `configure_file_logging(file_path, level=INFO, *, propagate=False, format_string=None)` - One-call setup
+    - `add_file_handler()`, `remove_file_handlers()` - File logging management
+    - `set_console_output()`, `add_stdout_handler()`, `add_stderr_handler()` - Console control
+  - **Convenience Functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
+  - **Automatic Features**: Directory creation, custom formatting, propagation control, handler cleanup
+  - **Google-style Documentation**: All functions have comprehensive docstrings with Args/Returns/Raises sections
 - **Exception Handling**: Centralized exception classes in `exceptions.py` for consistent error handling across the SDK
 - **JSON Utilities**: Dedicated `jsonutils.py` module for JSON serialization/deserialization operations
 - **Metadata Management**: Version and package metadata handled via `metadata.py` with dynamic versioning from git using importlib.metadata

@@ -6,7 +6,7 @@ import traceback
 from typing import Union
 
 from . import exceptions
-from . import logger
+from . import logging
 
 
 def loads(s: str) -> Union[dict, list]:
@@ -21,7 +21,7 @@ def loads(s: str) -> Union[dict, list]:
     try:
         return json.loads(s)
     except json.JSONDecodeError as exc:
-        logger.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         input_data = str(s)[:200] if s is not None else "None"
         msg = f"Failed to parse JSON: {exc!s}"
         raise exceptions.ValidationError(
@@ -29,7 +29,7 @@ def loads(s: str) -> Union[dict, list]:
             details={"input_data": input_data, "json_error": str(exc)},
         )
     except Exception as exc:
-        logger.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         input_data = str(s)[:200] if s is not None else "None"
         msg = f"Unexpected error parsing JSON: {exc!s}"
         raise exceptions.ValidationError(
@@ -50,14 +50,14 @@ def dumps(o: Union[dict, list]) -> str:
     try:
         return json.dumps(o)
     except (TypeError, ValueError) as exc:
-        logger.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         msg = f"Failed to serialize object to JSON: {exc!s}"
         raise exceptions.ValidationError(
             msg,
             details={"object_type": str(type(o)), "json_error": str(exc)},
         )
     except Exception as exc:
-        logger.error(traceback.format_exc())
+        logging.error(traceback.format_exc())
         msg = f"Unexpected error serializing JSON: {exc!s}"
         raise exceptions.ValidationError(
             msg,

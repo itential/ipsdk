@@ -66,7 +66,7 @@ All tools are configured in `pyproject.toml` and can be run through `uv` or the 
 ## Logging
 
 By default all logging is turned off for `ipsdk`. To enable logging to
-`stdout`, use the `ipsdk.logger.set_level` function.
+`stdout`, use the `ipsdk.logging.set_level` function.
 
 The SDK provides logging level constants that you can use instead of importing the standard library logging module:
 
@@ -74,20 +74,20 @@ The SDK provides logging level constants that you can use instead of importing t
 >>> import ipsdk
 
 # Using ipsdk logging constants (recommended)
->>> ipsdk.logger.set_level(ipsdk.logger.DEBUG)
+>>> ipsdk.logging.set_level(ipsdk.logging.DEBUG)
 ```
 
 ### Available Logging Levels
 
 The SDK provides the following logging level constants:
 
-- `ipsdk.logger.NOTSET` - No logging threshold (0)
-- `ipsdk.logger.DEBUG` - Debug messages (10)
-- `ipsdk.logger.INFO` - Informational messages (20)
-- `ipsdk.logger.WARNING` - Warning messages (30)
-- `ipsdk.logger.ERROR` - Error messages (40)
-- `ipsdk.logger.CRITICAL` - Critical error messages (50)
-- `ipsdk.logger.FATAL` - Fatal error messages (90)
+- `ipsdk.logging.NOTSET` - No logging threshold (0)
+- `ipsdk.logging.DEBUG` - Debug messages (10)
+- `ipsdk.logging.INFO` - Informational messages (20)
+- `ipsdk.logging.WARNING` - Warning messages (30)
+- `ipsdk.logging.ERROR` - Error messages (40)
+- `ipsdk.logging.CRITICAL` - Critical error messages (50)
+- `ipsdk.logging.FATAL` - Fatal error messages (90)
 
 ### File Logging
 
@@ -101,11 +101,7 @@ The easiest way to enable both console and file logging:
 >>> import ipsdk
 
 # Enable both console and file logging
->>> ipsdk.logger.configure_file_logging("/path/to/app.log", level=ipsdk.logger.DEBUG)
-
-# With propagation to httpx/httpcore loggers
->>> ipsdk.logger.configure_file_logging("/path/to/app.log", level=ipsdk.logger.INFO, propagate=True)
-```
+>>> ipsdk.logging.configure_file_logging("/path/to/app.log", level=ipsdk.logging.DEBUG)
 
 #### Manual File Handler Management
 
@@ -115,17 +111,17 @@ For more control, you can add and remove file handlers manually:
 >>> import ipsdk
 
 # First set the console logging level
->>> ipsdk.logger.set_level(ipsdk.logger.INFO)
+>>> ipsdk.logging.set_level(ipsdk.logging.INFO)
 
 # Add a file handler
->>> ipsdk.logger.add_file_handler("/path/to/app.log")
+>>> ipsdk.logging.add_file_handler("/path/to/app.log")
 
 # Add multiple file handlers with different levels
->>> ipsdk.logger.add_file_handler("/path/to/debug.log", level=ipsdk.logger.DEBUG)
->>> ipsdk.logger.add_file_handler("/path/to/errors.log", level=ipsdk.logger.ERROR)
+>>> ipsdk.logging.add_file_handler("/path/to/debug.log", level=ipsdk.logging.DEBUG)
+>>> ipsdk.logging.add_file_handler("/path/to/errors.log", level=ipsdk.logging.ERROR)
 
 # Remove all file handlers when done
->>> ipsdk.logger.remove_file_handlers()
+>>> ipsdk.logging.remove_file_handlers()
 ```
 
 #### Custom Log Formatting
@@ -134,10 +130,10 @@ You can specify custom format strings for file handlers:
 
 ```python
 >>> custom_format = "%(asctime)s [%(levelname)s] %(message)s"
->>> ipsdk.logger.add_file_handler("/path/to/app.log", format_string=custom_format)
+>>> ipsdk.logging.add_file_handler("/path/to/app.log", format_string=custom_format)
 
 # Or with configure_file_logging
->>> ipsdk.logger.configure_file_logging("/path/to/app.log", format_string=custom_format)
+>>> ipsdk.logging.configure_file_logging("/path/to/app.log", format_string=custom_format)
 ```
 
 **Note:** File logging automatically creates parent directories if they don't exist.

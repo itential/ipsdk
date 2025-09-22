@@ -5,14 +5,14 @@
 
 import ipsdk
 from ipsdk import gateway_factory
-from ipsdk import logger
+from ipsdk import logging
 from ipsdk import platform_factory
 
 
 def test_module_exports():
     """Test that __init__.py exports the expected items."""
     # Test that __all__ exports are available at module level
-    expected_exports = ["gateway_factory", "logger", "platform_factory"]
+    expected_exports = ["gateway_factory", "logging", "platform_factory"]
 
     for export in expected_exports:
         assert hasattr(ipsdk, export), f"Missing export: {export}"
@@ -20,8 +20,8 @@ def test_module_exports():
     # Test that the actual functions are exported
     assert callable(ipsdk.gateway_factory)
     assert callable(ipsdk.platform_factory)
-    # logger is a module, not a callable
-    assert hasattr(ipsdk.logger, "info")
+    # logging is a module, not a callable
+    assert hasattr(ipsdk.logging, "info")
 
 
 def test_version_attribute():
@@ -53,15 +53,15 @@ def test_platform_factory_integration():
     assert platform.password == "admin"
 
 
-def test_logger_integration():
-    """Test that logger works when imported from ipsdk."""
-    # Test that logger has expected methods
-    assert hasattr(ipsdk.logger, "debug")
-    assert hasattr(ipsdk.logger, "info")
-    assert hasattr(ipsdk.logger, "warning")
-    assert hasattr(ipsdk.logger, "error")
-    assert hasattr(ipsdk.logger, "critical")
-    assert hasattr(ipsdk.logger, "set_level")
+def test_logging_integration():
+    """Test that logging works when imported from ipsdk."""
+    # Test that logging has expected methods
+    assert hasattr(ipsdk.logging, "debug")
+    assert hasattr(ipsdk.logging, "info")
+    assert hasattr(ipsdk.logging, "warning")
+    assert hasattr(ipsdk.logging, "error")
+    assert hasattr(ipsdk.logging, "critical")
+    assert hasattr(ipsdk.logging, "set_level")
 
 
 def test_factories_return_different_types():
@@ -99,7 +99,7 @@ def test_module_imports():
 
     # Test that they are the same as the module-level attributes
     assert gateway_factory is ipsdk.gateway_factory
-    assert logger is ipsdk.logger
+    assert logging is ipsdk.logging
     assert platform_factory is ipsdk.platform_factory
 
 
@@ -108,7 +108,7 @@ def test_all_attribute():
     assert hasattr(ipsdk, "__all__")
     assert isinstance(ipsdk.__all__, tuple)
 
-    expected_all = ("gateway_factory", "logger", "platform_factory")
+    expected_all = ("gateway_factory", "logging", "platform_factory")
     assert ipsdk.__all__ == expected_all
 
     # Test that all items in __all__ are actually available

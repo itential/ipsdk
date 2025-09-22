@@ -22,6 +22,10 @@ This project uses `uv` as the Python package manager and build tool. Key command
 - **Pre-commit hooks**: `uv run pre-commit install` (install git hooks), `uv run pre-commit run --all-files` (run on all files)
 - **Generate changelog**: `make changelog` (generates full CHANGELOG.md), `make changelog-unreleased` (shows unreleased changes)
 - **git-cliff**: Uses conventional commits to generate changelog automatically on version tags
+- **GoReleaser**: Automated release management and PyPI publishing
+  - **Test GoReleaser config**: `goreleaser check` (validate .goreleaser.yml)
+  - **Dry run build**: `goreleaser build --snapshot --clean` (test build without releasing)
+  - **Local release test**: `goreleaser release --snapshot --clean` (full release test without publishing)
 
 ## Project Architecture
 
@@ -153,6 +157,33 @@ The `.github/workflows/premerge.yaml` workflow runs tests against all supported 
 - **JSON Utilities**: Dedicated `jsonutils.py` module for JSON serialization/deserialization operations
 - **Metadata Management**: Version and package metadata handled via `metadata.py` with dynamic versioning from git using importlib.metadata
 - **Build System**: Uses Hatchling with uv-dynamic-versioning for PEP440-style git tag-based versioning with bump support and 0.0.0 fallback
+
+### Release Process and CI/CD
+
+The project uses **GoReleaser** for automated release management and PyPI publishing:
+
+#### GitHub Workflows:
+- **premerge.yaml** - Runs on pull requests to `devel` branch with Python 3.10-3.13 matrix testing
+- **release.yaml** - Triggered by version tags (e.g., `v1.0.0`) for production releases to PyPI
+- **prerelease.yaml** - Triggered by pre-release tags (e.g., `v1.0.0-alpha.1`) for TestPyPI publishing
+- **release-test.yaml** - Tests GoReleaser configuration on PRs modifying release files
+
+#### Release Types:
+- **Production Release**: Tag with `v*` (e.g., `v1.0.0`) → PyPI + GitHub release
+- **Pre-release**: Tag with `v*-alpha.*`, `v*-beta.*`, `v*-rc.*` → TestPyPI + GitHub pre-release
+- **Testing**: Use `goreleaser build --snapshot --clean` for local testing
+
+#### Required Secrets:
+- `PYPI_API_TOKEN` - PyPI publishing token for production releases
+- `TEST_PYPI_API_TOKEN` - TestPyPI publishing token for pre-releases
+- `GITHUB_TOKEN` - Automatically provided for GitHub releases
+
+#### GoReleaser Configuration (`.goreleaser.yml`):
+- Builds both wheel and source distributions using `uv`
+- Generates conventional commit-based changelogs
+- Creates GitHub releases with download links
+- Publishes to PyPI/TestPyPI based on release type
+- Includes source archives and checksums
 
 ### Documentation Standards
 

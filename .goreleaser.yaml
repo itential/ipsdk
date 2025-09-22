@@ -1,0 +1,124 @@
+# GoReleaser configuration for Itential Python SDK
+# This configuration automates the build and release process for the Python package
+---
+version: 2
+
+project_name: ipsdk
+
+before:
+  hooks:
+    # Clean any previous build artifacts
+    - make clean
+    # Run pre-merge checks to ensure quality
+    - make premerge
+
+builds:
+  # Build wheel distribution using uv
+  - id: wheel
+    builder: uv
+    buildmode: wheel
+
+  # Build source distribution using uv
+  - id: sdist
+    builder: uv
+    buildmode: sdist
+
+# Configure changelog generation using conventional commits
+changelog:
+  use: github
+  sort: asc
+  abbrev: 0
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Performance Improvements
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Refactors
+      regexp: '^.*?refactor(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: Documentation
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 4
+    - title: Build System
+      regexp: '^.*?(build|ci)(\([[:word:]]+\))??!?:.+$'
+      order: 5
+    - title: Other Changes
+      order: 999
+  filters:
+    exclude:
+      - "^test:"
+      - "^style:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+# GitHub release configuration
+release:
+  github:
+    owner: itential
+    name: ipsdk
+  name_template: "v{{ .Version }}"
+  draft: false
+  prerelease: auto
+  make_latest: true
+  footer: |
+    ## Installation
+
+    ```bash
+    pip install ipsdk=={{ .Version }}
+    ```
+
+    ## What's Changed
+    {{ range .Changes }}
+    * {{ .Message }} (@{{ .Author.Username }})
+    {{- end }}
+
+    **Full Changelog**: https://github.com/itential/ipsdk/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# PyPI publishing configuration
+publishers:
+  - name: pypi-production
+    # Only publish on official releases (not pre-releases)
+    disable: "{{ not (eq .PreRelease \"\") }}"
+    cmd: uv publish --token {{ .Env.PYPI_API_TOKEN }} dist/*
+    env:
+      - PYPI_API_TOKEN={{ .Env.PYPI_API_TOKEN }}
+
+  - name: pypi-test
+    # Only publish to TestPyPI for pre-releases and testing
+    disable: "{{ eq .PreRelease \"\" }}"
+    cmd: uv publish --token {{ .Env.TEST_PYPI_API_TOKEN }} --publish-url https://test.pypi.org/legacy/ dist/*
+    env:
+      - TEST_PYPI_API_TOKEN={{ .Env.TEST_PYPI_API_TOKEN }}
+
+# Archive settings for release artifacts
+archives:
+  - id: source
+    name_template: "{{ .ProjectName }}_{{ .Version }}_source"
+    formats: [ tar.gz ]
+    files:
+      - src/**
+      - tests/**
+      - pyproject.toml
+      - README.md
+      - CHANGELOG.md
+      - LICENSE*
+
+# Checksum file generation
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  algorithm: sha256
+
+# Metadata
+metadata:
+  mod_timestamp: "{{ .CommitTimestamp }}"
+
+# Announcement configuration (optional)
+announce:
+  # Configure if you want to announce releases to channels like Slack, Discord, etc.
+  skip: true

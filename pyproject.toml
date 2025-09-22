@@ -55,7 +55,7 @@ dev = [
     "mypy",
     "coverage",
     "build",
-    "bandit",
+    "bandit[toml]",
     "pre-commit",
 ]
 
@@ -194,13 +194,13 @@ ignore = [
     "B027",
     # Allow boolean positional values in function calls, like `dict.get(... True)`
     "FBT003",
-    # Ignore checks for possible passwords
+    # Ignore checks for possible passwords (S105, S106 - hardcoded strings, S107 - default params)
     "S105", "S106", "S107",
     # Ignore complexity
     "C901", "PLR0911", "PLR0912", "PLR0913", "PLR0915",
     # Allow print statements (useful for debugging)
     "T201",
-    # Allow assert statements (useful for testing)
+    # Allow assert statements (used for internal validation in SDK)
     "S101",
     # Allow subprocess without shell=False (we control the input)
     "S603",
@@ -306,4 +306,12 @@ line-ending = "auto"
 
 [tool.bandit]
 exclude_dirs = ["tests", "build", "dist"]
-skips = ["B101", "B107", "B110"]  # Skip assert_used, hardcoded_password_default, try_except_pass
+# Security exceptions for SDK development:
+# B101: assert_used - Asserts used for internal validation and type checking
+# B107: hardcoded_password_default - Default values are examples for documentation only
+# B110: try_except_pass - Intentional pass in exception handling for graceful degradation
+skips = ["B101", "B107", "B110"]
+
+# Additional bandit configuration
+[tool.bandit.assert_used]
+skips = ["*_test.py", "test_*.py"]

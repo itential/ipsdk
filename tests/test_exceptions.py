@@ -859,3 +859,64 @@ class TestSimplifiedAPICompatibility:
             "Invalid email", details={"field": "email", "value": "invalid"}
         )
         assert exc2.details["field"] == "email"
+
+
+class TestMissingCoverageScenarios:
+    """Test cases to cover missing code coverage scenarios."""
+
+    def test_classify_http_error_response_text_len_exception(self):
+        """Test when response_text length check raises an exception."""
+
+        # Create a class that raises an exception when hasattr or len() is called
+        class LengthError(Exception):
+            """Custom exception for length operations."""
+
+        class ProblematicResponseText:
+            def __init__(self):
+                self.value = "some response text"
+
+            def __len__(self):
+                msg = "Length error"
+                raise LengthError(msg)
+
+            def __str__(self):
+                return self.value
+
+            def __bool__(self):
+                # Make sure it's truthy for "if response_text:" check
+                return True
+
+        mock_response_text = ProblematicResponseText()
+
+        exc = exceptions.classify_http_error(400, response_text=mock_response_text)
+
+        # Should fall back to str() conversion of response_text
+        assert "response_body" in exc.details
+        assert exc.details["response_body"] == "some response text"
+
+    def test_classify_http_error_forbidden_with_response_text(self):
+        """Test HTTP 403 forbidden error with response text."""
+        response_text = "You do not have permission to access this resource"
+
+        exc = exceptions.classify_http_error(403, response_text=response_text)
+
+        assert isinstance(exc, exceptions.ClientError)
+        assert exc.status_code == 403
+        assert exc.message == f"Access forbidden: {response_text}"
+        assert exc.details["response_body"] == response_text
+
+    def test_classify_http_error_parsing_error_fallback(self):
+        """Test HTTP error when parsing_error flag is set without response_text."""
+        from unittest.mock import Mock
+
+        # Create a response that will trigger parsing error
+        response = Mock()
+        response.text = Mock(side_effect=Exception("Parse error"))
+
+        # This should trigger parsing_error=True and no response_text
+        exc = exceptions.classify_http_error(500, response=response)
+
+        # Should use simple format due to parsing error
+        assert exc.message == "HTTP 500 error"
+        assert exc.status_code == 500
+        assert isinstance(exc, exceptions.ServerError)

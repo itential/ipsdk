@@ -525,6 +525,7 @@ class Connection(ConnectionBase):
         )
 
         try:
+            logger.debug(f"{method} {path}")
             res = self.client.send(request)
 
             # Check for HTTP status errors

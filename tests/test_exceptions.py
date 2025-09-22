@@ -114,7 +114,7 @@ class TestHTTPError:
             "HTTP 400 error",
             status_code=400,
             response=response,
-            request_url="http://example.com"
+            request_url="http://example.com",
         )
         assert exc.status_code == 400
         assert exc.response == response
@@ -389,9 +389,7 @@ class TestClassifyHTTPErrorEdgeCases:
 
         # response_text should take precedence
         exc = exceptions.classify_http_error(
-            400,
-            response_text="Explicit response text",
-            response=response
+            400, response_text="Explicit response text", response=response
         )
         assert "Explicit response text" in exc.message
         assert "Response object text" not in exc.message
@@ -415,6 +413,7 @@ class TestClassifyHttpxErrorEdgeCases:
     def test_classify_with_httpx_pool_timeout(self):
         """Test classification of httpx pool timeout exceptions."""
         import httpx
+
         pool_timeout = httpx.PoolTimeout("Connection pool timeout")
 
         exc = exceptions.classify_httpx_error(pool_timeout, "https://example.com")
@@ -426,6 +425,7 @@ class TestClassifyHttpxErrorEdgeCases:
     def test_classify_with_httpx_read_timeout(self):
         """Test classification of httpx read timeout exceptions."""
         import httpx
+
         read_timeout = httpx.ReadTimeout("Read timeout")
 
         exc = exceptions.classify_httpx_error(read_timeout)
@@ -436,6 +436,7 @@ class TestClassifyHttpxErrorEdgeCases:
     def test_classify_with_httpx_write_timeout(self):
         """Test classification of httpx write timeout exceptions."""
         import httpx
+
         write_timeout = httpx.WriteTimeout("Write timeout")
 
         exc = exceptions.classify_httpx_error(write_timeout)
@@ -460,9 +461,7 @@ class TestClassifyHttpxErrorEdgeCases:
         request.url = "https://example.com"
 
         http_error = httpx.HTTPStatusError(
-            "Internal Server Error",
-            request=request,
-            response=response
+            "Internal Server Error", request=request, response=response
         )
 
         exc = exceptions.classify_httpx_error(http_error)
@@ -484,9 +483,7 @@ class TestClassifyHttpxErrorEdgeCases:
         type(request).url = PropertyMock(side_effect=RuntimeError("URL error"))
 
         http_error = httpx.HTTPStatusError(
-            "Not Found",
-            request=request,
-            response=response
+            "Not Found", request=request, response=response
         )
 
         exc = exceptions.classify_httpx_error(http_error, "https://fallback.com")
@@ -495,6 +492,7 @@ class TestClassifyHttpxErrorEdgeCases:
 
     def test_classify_custom_exception_class(self):
         """Test classification of custom exception classes."""
+
         class CustomNetworkError(Exception):
             pass
 
@@ -516,8 +514,9 @@ class TestExceptionUsagePatterns:
             raise ValueError(original_msg)
         except ValueError as e:
             validation_msg = "Validation failed"
-            sdk_exc = exceptions.ValidationError(validation_msg,
-                                                details={"original_error": str(e)})
+            sdk_exc = exceptions.ValidationError(
+                validation_msg, details={"original_error": str(e)}
+            )
             assert "Original error" in sdk_exc.details["original_error"]
 
     def test_exception_inheritance_checking(self):
@@ -585,6 +584,7 @@ class TestInternalFunctions:
         from unittest.mock import Mock
 
         import pytest
+
         mock_obj = Mock(side_effect=Exception("test"))
 
         with pytest.raises(exceptions._MockDetectionError) as exc_info:
@@ -595,6 +595,7 @@ class TestInternalFunctions:
     def test_detect_mock_side_effect_with_mock_no_side_effect(self):
         """Test _detect_mock_side_effect ignores Mock objects without side effects."""
         from unittest.mock import Mock
+
         mock_obj = Mock()
         # Explicitly set side_effect to None to ensure it's not set
         mock_obj.side_effect = None
@@ -644,14 +645,14 @@ class TestComprehensiveErrorHandling:
             "request_id": "req_12345",
             "retry_count": 3,
             "headers": {"Content-Type": "application/json"},
-            "nested": {"inner": "value"}
+            "nested": {"inner": "value"},
         }
 
         exc = exceptions.HTTPError(
             "Complex HTTP error",
             status_code=422,
             request_url="https://api.example.com",
-            details=complex_details
+            details=complex_details,
         )
 
         assert exc.details["request_id"] == "req_12345"
@@ -668,11 +669,7 @@ class TestComprehensiveErrorHandling:
         response = Mock()
         response.text = "Detailed server error message"
 
-        exc = exceptions.HTTPError(
-            "HTTP error",
-            status_code=500,
-            response=response
-        )
+        exc = exceptions.HTTPError("HTTP error", status_code=500, response=response)
 
         assert exc.details["response_body"] == "Detailed server error message"
 
@@ -682,21 +679,16 @@ class TestComprehensiveErrorHandling:
         from unittest.mock import PropertyMock
 
         response = Mock()
-        type(response).text = PropertyMock(side_effect=UnicodeDecodeError(
-            "utf-8", b"", 0, 1, "test error"
-        ))
+        type(response).text = PropertyMock(
+            side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "test error")
+        )
 
         # Should not raise an exception, should handle gracefully
-        exc = exceptions.HTTPError(
-            "HTTP error",
-            status_code=400,
-            response=response
-        )
+        exc = exceptions.HTTPError("HTTP error", status_code=400, response=response)
 
         assert exc.status_code == 400
         assert (
-            "response_body" not in exc.details
-            or exc.details["response_body"] is None
+            "response_body" not in exc.details or exc.details["response_body"] is None
         )
 
     def test_network_error_with_connection_details(self):
@@ -706,7 +698,7 @@ class TestComprehensiveErrorHandling:
             "port": 443,
             "protocol": "https",
             "timeout": 30.0,
-            "dns_resolution_time": 0.123
+            "dns_resolution_time": 0.123,
         }
 
         exc = exceptions.NetworkError("Connection timeout", details=details)
@@ -723,7 +715,7 @@ class TestComprehensiveErrorHandling:
             "client_id": "app_123",
             "scope": ["read", "write"],
             "token_expiry": "2025-12-31T23:59:59Z",
-            "refresh_available": True
+            "refresh_available": True,
         }
 
         exc = exceptions.AuthenticationError("Token expired", details=details)
@@ -739,7 +731,7 @@ class TestComprehensiveErrorHandling:
             "field_value": "invalid-email",
             "expected_format": "email",
             "validation_rules": ["required", "email_format"],
-            "error_code": "INVALID_EMAIL_FORMAT"
+            "error_code": "INVALID_EMAIL_FORMAT",
         }
 
         exc = exceptions.ValidationError("Email validation failed", details=details)
@@ -753,11 +745,7 @@ class TestComprehensiveErrorHandling:
         long_details = {
             "long_string": "A" * 1000,
             "long_list": list(range(100)),
-            "nested": {
-                "deep": {
-                    "very_deep": "value"
-                }
-            }
+            "nested": {"deep": {"very_deep": "value"}},
         }
 
         exc = exceptions.IpsdkError("Test with long details", details=long_details)
@@ -777,7 +765,7 @@ class TestComprehensiveErrorHandling:
             (exceptions.HTTPError, exceptions.IpsdkError),
             (exceptions.ClientError, exceptions.HTTPError),
             (exceptions.ServerError, exceptions.HTTPError),
-            (exceptions.ValidationError, exceptions.IpsdkError)
+            (exceptions.ValidationError, exceptions.IpsdkError),
         ]
 
         for child_class, parent_class in exc_hierarchy:
@@ -800,7 +788,7 @@ class TestComprehensiveErrorHandling:
             for i in range(10):
                 exc = exceptions.NetworkError(
                     f"Error {threading.current_thread().name}-{i}",
-                    details={"thread": threading.current_thread().name, "count": i}
+                    details={"thread": threading.current_thread().name, "count": i},
                 )
                 exceptions_created.append(exc)
                 time.sleep(0.001)  # Small delay
@@ -835,35 +823,39 @@ class TestSimplifiedAPICompatibility:
     def test_simplified_network_error_usage(self):
         """Test simplified NetworkError covers all network scenarios."""
         # Connection failure
-        exc1 = exceptions.NetworkError("Connection failed",
-                                     details={"host": "example.com"})
+        exc1 = exceptions.NetworkError(
+            "Connection failed", details={"host": "example.com"}
+        )
         assert exc1.details["host"] == "example.com"
 
         # Timeout
-        exc2 = exceptions.NetworkError("Request timeout",
-                                     details={"timeout": 30.0})
+        exc2 = exceptions.NetworkError("Request timeout", details={"timeout": 30.0})
         assert exc2.details["timeout"] == 30.0
 
     def test_simplified_auth_error_usage(self):
         """Test simplified AuthenticationError covers all auth scenarios."""
         # Invalid credentials
-        exc1 = exceptions.AuthenticationError("Invalid credentials",
-                                            details={"auth_type": "basic"})
+        exc1 = exceptions.AuthenticationError(
+            "Invalid credentials", details={"auth_type": "basic"}
+        )
         assert exc1.details["auth_type"] == "basic"
 
         # Expired token
-        exc2 = exceptions.AuthenticationError("Token expired",
-                                            details={"auth_type": "oauth"})
+        exc2 = exceptions.AuthenticationError(
+            "Token expired", details={"auth_type": "oauth"}
+        )
         assert exc2.details["auth_type"] == "oauth"
 
     def test_simplified_validation_error_usage(self):
         """Test simplified ValidationError covers all validation scenarios."""
         # JSON parsing error
-        exc1 = exceptions.ValidationError("Invalid JSON",
-                                        details={"error_type": "json_parse"})
+        exc1 = exceptions.ValidationError(
+            "Invalid JSON", details={"error_type": "json_parse"}
+        )
         assert exc1.details["error_type"] == "json_parse"
 
         # Field validation error
-        exc2 = exceptions.ValidationError("Invalid email",
-                                        details={"field": "email", "value": "invalid"})
+        exc2 = exceptions.ValidationError(
+            "Invalid email", details={"field": "email", "value": "invalid"}
+        )
         assert exc2.details["field"] == "email"

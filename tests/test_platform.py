@@ -479,3 +479,558 @@ def test_platform_oauth_token_handling():
     # After setting a token, it should be available
     platform.token = "test_token_value"
     assert platform.token == "test_token_value"
+
+
+# --------- Missing OAuth Error Cases ---------
+
+
+def test_authenticate_oauth_missing_access_token_dict():
+    """Test OAuth authentication when response dict is missing access_token."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock response without access_token
+    mock_response = Mock(spec=Response)
+    mock_response.text = '{"token_type": "Bearer", "expires_in": 3600}'
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    with patch(
+        "ipsdk.jsonutils.loads",
+        return_value={"token_type": "Bearer", "expires_in": 3600}
+    ):
+        with pytest.raises(exceptions.AuthenticationError) as exc_info:
+            mixin.authenticate_oauth()
+
+        assert "OAuth response missing access_token field" in str(exc_info.value)
+        assert exc_info.value.details.get("auth_type") == "oauth"
+        assert "response_keys" in exc_info.value.details
+
+
+def test_authenticate_oauth_non_dict_response():
+    """Test OAuth authentication when response is not a dict."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock response that's not a dict
+    mock_response = Mock(spec=Response)
+    mock_response.text = '"invalid_response"'
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    with patch("ipsdk.jsonutils.loads", return_value="invalid_response"):
+        with pytest.raises(exceptions.AuthenticationError) as exc_info:
+            mixin.authenticate_oauth()
+
+        assert "OAuth response is not a JSON object" in str(exc_info.value)
+        assert exc_info.value.details.get("auth_type") == "oauth"
+        assert "response_type" in exc_info.value.details
+
+
+def test_authenticate_oauth_403_forbidden():
+    """Test OAuth authentication with 403 forbidden."""
+    mixin = AuthMixin()
+    mixin.client_id = "forbidden_id"
+    mixin.client_secret = "forbidden_secret"
+    mixin.client = Mock()
+
+    # Mock 403 response
+    mock_response = Mock()
+    mock_response.status_code = 403
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/oauth/token"
+
+    exception = httpx.HTTPStatusError(
+        "Forbidden", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        mixin.authenticate_oauth()
+
+    assert "OAuth authentication failed - invalid client credentials" in str(
+        exc_info.value
+    )
+    assert exc_info.value.details.get("auth_type") == "oauth"
+    assert exc_info.value.details.get("status_code") == 403
+
+
+def test_authenticate_oauth_server_error():
+    """Test OAuth authentication with server error (500)."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock 500 response
+    mock_response = Mock()
+    mock_response.status_code = 500
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/oauth/token"
+
+    exception = httpx.HTTPStatusError(
+        "Server Error", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        mixin.authenticate_oauth()
+
+    assert "OAuth authentication failed with status 500" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "oauth"
+    assert exc_info.value.details.get("status_code") == 500
+
+
+def test_authenticate_oauth_validation_error():
+    """Test OAuth authentication with JSON validation error."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock successful HTTP response
+    mock_response = Mock(spec=Response)
+    mock_response.text = "invalid json}"
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    # Mock ValidationError from jsonutils
+    validation_error = exceptions.ValidationError("Invalid JSON")
+    with patch("ipsdk.jsonutils.loads", side_effect=validation_error):
+        with pytest.raises(exceptions.AuthenticationError) as exc_info:
+            mixin.authenticate_oauth()
+
+        assert "Failed to parse OAuth response" in str(exc_info.value)
+        assert exc_info.value.details.get("auth_type") == "oauth"
+        assert "json_error" in exc_info.value.details
+
+
+def test_authenticate_oauth_generic_exception():
+    """Test OAuth authentication with generic exception."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock generic exception
+    mixin.client.post.side_effect = RuntimeError("Unexpected error")
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        mixin.authenticate_oauth()
+
+    assert "Unexpected error during OAuth authentication" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "oauth"
+    assert "original_error" in exc_info.value.details
+
+
+def test_authenticate_oauth_ipsdk_error_reraise():
+    """Test that OAuth authentication re-raises IpsdkError instances."""
+    mixin = AuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = Mock()
+
+    # Mock IpsdkError
+    ipsdk_error = exceptions.NetworkError("Custom network error")
+    mixin.client.post.side_effect = ipsdk_error
+
+    with pytest.raises(exceptions.NetworkError) as exc_info:
+        mixin.authenticate_oauth()
+
+    assert "Custom network error" in str(exc_info.value)
+
+
+# --------- Missing Basic Auth Error Cases ---------
+
+
+def test_authenticate_user_403_forbidden():
+    """Test basic authentication with 403 forbidden."""
+    mixin = AuthMixin()
+    mixin.user = "forbidden_user"
+    mixin.password = "forbidden_pass"
+    mixin.client = Mock()
+
+    # Mock 403 response
+    mock_response = Mock()
+    mock_response.status_code = 403
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/login"
+
+    exception = httpx.HTTPStatusError(
+        "Forbidden", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        mixin.authenticate_user()
+
+    assert "Basic authentication failed - invalid username or password" in str(
+        exc_info.value
+    )
+    assert exc_info.value.details.get("auth_type") == "basic"
+    assert exc_info.value.details.get("status_code") == 403
+
+
+def test_authenticate_user_server_error():
+    """Test basic authentication with server error (500)."""
+    mixin = AuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = Mock()
+
+    # Mock 500 response
+    mock_response = Mock()
+    mock_response.status_code = 500
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/login"
+
+    exception = httpx.HTTPStatusError(
+        "Server Error", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        mixin.authenticate_user()
+
+    assert "Authentication failed with status 500" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "basic"
+    assert exc_info.value.details.get("status_code") == 500
+
+
+def test_authenticate_user_generic_exception():
+    """Test basic authentication with generic exception."""
+    mixin = AuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = Mock()
+
+    # Mock generic exception
+    mixin.client.post.side_effect = ValueError("Unexpected error")
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        mixin.authenticate_user()
+
+    assert "Unexpected error during basic authentication" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "basic"
+    assert "original_error" in exc_info.value.details
+
+
+# --------- Missing Async Auth Cases ---------
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_basicauth_403_forbidden():
+    """Test async basic authentication with 403 forbidden."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "forbidden_user"
+    mixin.password = "forbidden_pass"
+    mixin.client = AsyncMock()
+
+    # Mock 403 response
+    mock_response = Mock()
+    mock_response.status_code = 403
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/login"
+
+    exception = httpx.HTTPStatusError(
+        "Forbidden", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_basicauth()
+
+    assert "Basic authentication failed - invalid username or password" in str(
+        exc_info.value
+    )
+    assert exc_info.value.details.get("auth_type") == "basic"
+    assert exc_info.value.details.get("status_code") == 403
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_basicauth_server_error():
+    """Test async basic authentication with server error."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = AsyncMock()
+
+    # Mock 500 response
+    mock_response = Mock()
+    mock_response.status_code = 500
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/login"
+
+    exception = httpx.HTTPStatusError(
+        "Server Error", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_basicauth()
+
+    assert "Authentication failed with status 500" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "basic"
+    assert exc_info.value.details.get("status_code") == 500
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_basicauth_network_error():
+    """Test async basic authentication with network error."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = AsyncMock()
+
+    # Mock network error
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/login"
+    exception = httpx.ConnectError("Connection refused", request=mock_request)
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.NetworkError) as exc_info:
+        await mixin.authenticate_basicauth()
+
+    assert "Network error during basic authentication" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_basicauth_generic_exception():
+    """Test async basic authentication with generic exception."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = AsyncMock()
+
+    # Mock generic exception
+    mixin.client.post.side_effect = RuntimeError("Unexpected error")
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_basicauth()
+
+    assert "Unexpected error during basic authentication" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "basic"
+    assert "original_error" in exc_info.value.details
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_missing_access_token():
+    """Test async OAuth when response dict is missing access_token."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock response without access_token
+    mock_response = Mock(spec=Response)
+    mock_response.text = '{"token_type": "Bearer"}'
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    with patch("ipsdk.jsonutils.loads", return_value={"token_type": "Bearer"}):
+        with pytest.raises(exceptions.AuthenticationError) as exc_info:
+            await mixin.authenticate_oauth()
+
+        assert "OAuth response missing access_token field" in str(exc_info.value)
+        assert exc_info.value.details.get("auth_type") == "oauth"
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_non_dict_response():
+    """Test async OAuth when response is not a dict."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock response that's not a dict
+    mock_response = Mock(spec=Response)
+    mock_response.text = '["invalid", "response"]'
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    with patch("ipsdk.jsonutils.loads", return_value=["invalid", "response"]):
+        with pytest.raises(exceptions.AuthenticationError) as exc_info:
+            await mixin.authenticate_oauth()
+
+        assert "OAuth response is not a JSON object" in str(exc_info.value)
+        assert exc_info.value.details.get("auth_type") == "oauth"
+        assert "response_type" in exc_info.value.details
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_403_forbidden():
+    """Test async OAuth authentication with 403 forbidden."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "forbidden_id"
+    mixin.client_secret = "forbidden_secret"
+    mixin.client = AsyncMock()
+
+    # Mock 403 response
+    mock_response = Mock()
+    mock_response.status_code = 403
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/oauth/token"
+
+    exception = httpx.HTTPStatusError(
+        "Forbidden", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_oauth()
+
+    assert "OAuth authentication failed - invalid client credentials" in str(
+        exc_info.value
+    )
+    assert exc_info.value.details.get("auth_type") == "oauth"
+    assert exc_info.value.details.get("status_code") == 403
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_server_error():
+    """Test async OAuth authentication with server error."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock 500 response
+    mock_response = Mock()
+    mock_response.status_code = 500
+    mock_request = Mock()
+    mock_request.url = "https://platform.example.com/oauth/token"
+
+    exception = httpx.HTTPStatusError(
+        "Server Error", request=mock_request, response=mock_response
+    )
+    mixin.client.post.side_effect = exception
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_oauth()
+
+    assert "OAuth authentication failed with status 500" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "oauth"
+    assert exc_info.value.details.get("status_code") == 500
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_validation_error():
+    """Test async OAuth authentication with JSON validation error."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock successful HTTP response
+    mock_response = Mock(spec=Response)
+    mock_response.text = "invalid json}"
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    # Mock ValidationError from jsonutils
+    validation_error = exceptions.ValidationError("Invalid JSON")
+    with patch("ipsdk.jsonutils.loads", side_effect=validation_error):
+        with pytest.raises(exceptions.AuthenticationError) as exc_info:
+            await mixin.authenticate_oauth()
+
+        assert "Failed to parse OAuth response" in str(exc_info.value)
+        assert exc_info.value.details.get("auth_type") == "oauth"
+        assert "json_error" in exc_info.value.details
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_generic_exception():
+    """Test async OAuth authentication with generic exception."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock generic exception
+    mixin.client.post.side_effect = ValueError("Unexpected error")
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_oauth()
+
+    assert "Unexpected error during OAuth authentication" in str(exc_info.value)
+    assert exc_info.value.details.get("auth_type") == "oauth"
+    assert "original_error" in exc_info.value.details
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_ipsdk_error_reraise():
+    """Test that async OAuth authentication re-raises IpsdkError instances."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock IpsdkError
+    ipsdk_error = exceptions.AuthenticationError("Custom auth error")
+    mixin.client.post.side_effect = ipsdk_error
+
+    with pytest.raises(exceptions.AuthenticationError) as exc_info:
+        await mixin.authenticate_oauth()
+
+    assert "Custom auth error" in str(exc_info.value)
+
+
+# --------- Platform Type and Factory Tests ---------
+
+
+def test_platform_type_aliases():
+    """Test that platform type aliases are correctly defined."""
+    from ipsdk.platform import AsyncPlatformType
+    from ipsdk.platform import PlatformType
+
+    # Verify type aliases exist
+    assert PlatformType is not None
+    assert AsyncPlatformType is not None
+
+
+def test_platform_factory_with_all_parameters():
+    """Test platform_factory with all possible parameters."""
+    conn = platform_factory(
+        host="example.com",
+        port=8443,
+        use_tls=True,
+        verify=False,
+        user="admin",
+        password="secret",
+        client_id="oauth_client",
+        client_secret="oauth_secret",
+        timeout=120,
+        want_async=False,
+    )
+
+    assert conn.user == "admin"
+    assert conn.password == "secret"
+    assert conn.client_id == "oauth_client"
+    assert conn.client_secret == "oauth_secret"
+
+
+def test_platform_factory_async_with_all_parameters():
+    """Test platform_factory async version with all parameters."""
+    conn = platform_factory(
+        host="example.com",
+        port=8443,
+        use_tls=False,
+        verify=True,
+        user="testuser",
+        password="testpass",
+        client_id=None,
+        client_secret=None,
+        timeout=60,
+        want_async=True,
+    )
+
+    from ipsdk.connection import AsyncConnection
+
+    assert isinstance(conn, AsyncConnection)
+    assert conn.user == "testuser"
+    assert conn.password == "testpass"

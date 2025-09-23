@@ -1,6 +1,7 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import ipsdk.metadata
 from ipsdk import metadata
 
 
@@ -62,12 +63,12 @@ def test_all_required_metadata_exists():
 def test_metadata_module_importable():
     """Test that metadata module can be imported correctly."""
     # Test direct import
-    from ipsdk import metadata as meta
+    meta = metadata
 
     assert meta is metadata
 
     # Test that we can access attributes through different import styles
-    import ipsdk.metadata as meta2
+    meta2 = ipsdk.metadata
 
     assert meta2.version == metadata.version
     assert meta2.author == metadata.author

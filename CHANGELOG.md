@@ -5,7 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] - 2025-09-23
+
+### Added
+- Comprehensive security documentation (#63)
+- Community documentation (#62)
+- GoReleaser config and CI/CD workflows (#59)
+
+### Changed
+- Rename logger module to logging (#61)
+- Add more unit test cases (#60)
+- Enhance test coverage and improve CI/CD pipeline (#57)
+
+### Dependencies
+- ci(deps): bump actions/setup-python from 5 to 6 (#56)
 
 ## [0.4.0] - 2025-08-26
 

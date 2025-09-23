@@ -1,7 +1,10 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import datetime
+import decimal
 import json
+import unittest.mock
 
 import pytest
 
@@ -191,8 +194,6 @@ def test_dumps_circular_reference():
 
 def test_dumps_complex_types():
     """Test dumping complex Python types that aren't JSON serializable."""
-    import datetime
-    import decimal
 
     non_serializable_objects = [
         datetime.datetime.now(tz=datetime.timezone.utc),
@@ -361,7 +362,6 @@ def test_dumps_unexpected_error():
     Test dumps with an object that raises unexpected exceptions
     during serialization.
     """
-    import unittest.mock
 
     # Mock json.dumps to raise a RuntimeError instead of TypeError/ValueError
     with unittest.mock.patch("json.dumps") as mock_dumps:

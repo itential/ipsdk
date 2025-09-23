@@ -1,10 +1,13 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import threading
+import time
 from unittest.mock import Mock
 from unittest.mock import PropertyMock
 
 import httpx
+import pytest
 
 from ipsdk import exceptions
 
@@ -346,9 +349,6 @@ class TestClassifyHTTPErrorEdgeCases:
 
     def test_classify_with_real_httpx_response(self):
         """Test classification with actual httpx Response object."""
-        from unittest.mock import Mock
-
-        import httpx
 
         # Create a mock response that behaves like httpx.Response
         response = Mock(spec=httpx.Response)
@@ -382,7 +382,6 @@ class TestClassifyHTTPErrorEdgeCases:
 
     def test_classify_with_both_response_text_and_response_object(self):
         """Test that response_text parameter takes precedence over response.text."""
-        from unittest.mock import Mock
 
         response = Mock()
         response.text = "Response object text"
@@ -412,7 +411,6 @@ class TestClassifyHttpxErrorEdgeCases:
 
     def test_classify_with_httpx_pool_timeout(self):
         """Test classification of httpx pool timeout exceptions."""
-        import httpx
 
         pool_timeout = httpx.PoolTimeout("Connection pool timeout")
 
@@ -424,7 +422,6 @@ class TestClassifyHttpxErrorEdgeCases:
 
     def test_classify_with_httpx_read_timeout(self):
         """Test classification of httpx read timeout exceptions."""
-        import httpx
 
         read_timeout = httpx.ReadTimeout("Read timeout")
 
@@ -435,7 +432,6 @@ class TestClassifyHttpxErrorEdgeCases:
 
     def test_classify_with_httpx_write_timeout(self):
         """Test classification of httpx write timeout exceptions."""
-        import httpx
 
         write_timeout = httpx.WriteTimeout("Write timeout")
 
@@ -445,10 +441,6 @@ class TestClassifyHttpxErrorEdgeCases:
 
     def test_classify_httpx_status_error_with_no_response_text(self):
         """Test HTTPStatusError when response.text is not accessible."""
-        from unittest.mock import Mock
-        from unittest.mock import PropertyMock
-
-        import httpx
 
         # Mock response where .text raises an exception
         response = Mock(spec=httpx.Response)
@@ -470,10 +462,6 @@ class TestClassifyHttpxErrorEdgeCases:
 
     def test_classify_httpx_status_error_with_no_request_url(self):
         """Test HTTPStatusError when request URL cannot be accessed."""
-        from unittest.mock import Mock
-        from unittest.mock import PropertyMock
-
-        import httpx
 
         response = Mock(spec=httpx.Response)
         response.status_code = 404
@@ -581,9 +569,6 @@ class TestInternalFunctions:
 
     def test_detect_mock_side_effect_with_mock(self):
         """Test _detect_mock_side_effect detects Mock objects with side effects."""
-        from unittest.mock import Mock
-
-        import pytest
 
         mock_obj = Mock(side_effect=Exception("test"))
 
@@ -594,7 +579,6 @@ class TestInternalFunctions:
 
     def test_detect_mock_side_effect_with_mock_no_side_effect(self):
         """Test _detect_mock_side_effect ignores Mock objects without side effects."""
-        from unittest.mock import Mock
 
         mock_obj = Mock()
         # Explicitly set side_effect to None to ensure it's not set
@@ -663,7 +647,6 @@ class TestComprehensiveErrorHandling:
 
     def test_http_error_response_text_handling(self):
         """Test HTTPError response text extraction and truncation."""
-        from unittest.mock import Mock
 
         # Test with response that has accessible text
         response = Mock()
@@ -675,8 +658,6 @@ class TestComprehensiveErrorHandling:
 
     def test_http_error_response_text_exception_handling(self):
         """Test HTTPError when response.text raises an exception."""
-        from unittest.mock import Mock
-        from unittest.mock import PropertyMock
 
         response = Mock()
         type(response).text = PropertyMock(
@@ -778,8 +759,6 @@ class TestComprehensiveErrorHandling:
 
     def test_concurrent_exception_creation(self):
         """Test thread safety of exception creation."""
-        import threading
-        import time
 
         results = []
         exceptions_created = []
@@ -907,7 +886,6 @@ class TestMissingCoverageScenarios:
 
     def test_classify_http_error_parsing_error_fallback(self):
         """Test HTTP error when parsing_error flag is set without response_text."""
-        from unittest.mock import Mock
 
         # Create a response that will trigger parsing error
         response = Mock()

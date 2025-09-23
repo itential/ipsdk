@@ -13,8 +13,10 @@ from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Connection
 from ipsdk.connection import Response
 from ipsdk.platform import AsyncAuthMixin
+from ipsdk.platform import AsyncPlatformType
 from ipsdk.platform import AuthMixin
 from ipsdk.platform import Platform
+from ipsdk.platform import PlatformType
 from ipsdk.platform import _make_basicauth_body
 from ipsdk.platform import _make_basicauth_path
 from ipsdk.platform import _make_oauth_body
@@ -985,8 +987,6 @@ async def test_async_authenticate_oauth_ipsdk_error_reraise():
 
 def test_platform_type_aliases():
     """Test that platform type aliases are correctly defined."""
-    from ipsdk.platform import AsyncPlatformType
-    from ipsdk.platform import PlatformType
 
     # Verify type aliases exist
     assert PlatformType is not None
@@ -1028,8 +1028,6 @@ def test_platform_factory_async_with_all_parameters():
         timeout=60,
         want_async=True,
     )
-
-    from ipsdk.connection import AsyncConnection
 
     assert isinstance(conn, AsyncConnection)
     assert conn.user == "testuser"

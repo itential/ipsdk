@@ -6,6 +6,7 @@
 import ipsdk
 from ipsdk import gateway_factory
 from ipsdk import logging
+from ipsdk import metadata
 from ipsdk import platform_factory
 
 
@@ -118,7 +119,6 @@ def test_all_attribute():
 
 def test_metadata_version_consistency():
     """Test that __version__ matches metadata.version."""
-    from ipsdk import metadata
 
     assert ipsdk.__version__ == metadata.version
 

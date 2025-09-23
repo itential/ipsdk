@@ -8,10 +8,13 @@ import httpx
 import pytest
 
 from ipsdk import exceptions
+from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Response
 from ipsdk.gateway import AsyncAuthMixin
+from ipsdk.gateway import AsyncGatewayType
 from ipsdk.gateway import AuthMixin
 from ipsdk.gateway import Gateway
+from ipsdk.gateway import GatewayType
 from ipsdk.gateway import _make_body
 from ipsdk.gateway import _make_headers
 from ipsdk.gateway import _make_path
@@ -46,7 +49,6 @@ def test_gateway_factory_custom_params():
 
 def test_gateway_factory_async():
     """Test gateway_factory with async=True."""
-    from ipsdk.connection import AsyncConnection
 
     conn = gateway_factory(want_async=True)
     assert isinstance(conn, AsyncConnection)
@@ -439,7 +441,6 @@ def test_gateway_factory_with_all_parameters():
 
 def test_gateway_factory_async_with_all_parameters():
     """Test async gateway_factory with all parameters."""
-    from ipsdk.connection import AsyncConnection
 
     gateway = gateway_factory(
         host="async.example.com",
@@ -459,8 +460,6 @@ def test_gateway_factory_async_with_all_parameters():
 
 def test_gateway_type_aliases():
     """Test that gateway type aliases are correctly defined."""
-    from ipsdk.gateway import AsyncGatewayType
-    from ipsdk.gateway import GatewayType
 
     # Verify type aliases exist and are not None
     assert GatewayType is not None

@@ -1,5 +1,11 @@
 # ipsdk
 
+[![PyPI version](https://badge.fury.io/py/ipsdk.svg)](https://badge.fury.io/py/ipsdk)
+[![Python Versions](https://img.shields.io/pypi/pyversions/ipsdk.svg)](https://pypi.org/project/ipsdk/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Tests](https://github.com/itential/ipsdk/workflows/Run%20pre%20merge%20pipeline/badge.svg)](https://github.com/itential/ipsdk/actions)
+[![Coverage](https://img.shields.io/badge/coverage-95%25-green)](https://github.com/itential/ipsdk)
+
 The Itential Python SDK provides a client implementation in Python for writing
 scripts that can make API calls to Itential Platform or Itential Automation
 Gateway 4.x.

@@ -21,7 +21,7 @@ Gateway 4.x.
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - httpx >= 0.28.1
 
 ### Tested Python Versions

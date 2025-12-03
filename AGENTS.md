@@ -24,6 +24,14 @@ This project uses `uv` as the Python package manager and build tool. Key command
 - **Pre-commit hooks**: `uv run pre-commit install` (install git hooks), `uv run pre-commit run --all-files` (run on all files)
 - **Generate changelog**: `make changelog` (generates full CHANGELOG.md), `make changelog-unreleased` (shows unreleased changes)
 - **git-cliff**: Uses conventional commits to generate changelog automatically on version tags
+- **Tox multi-version testing**: `uv run tox` (runs premerge tests across Python 3.10, 3.11, 3.12, 3.13)
+  - `uv run tox -e py310` - Run tests on Python 3.10 only
+  - `uv run tox -e py311` - Run tests on Python 3.11 only
+  - `uv run tox -e py312` - Run tests on Python 3.12 only
+  - `uv run tox -e py313` - Run tests on Python 3.13 only
+  - `uv run tox -e coverage` - Run coverage report on Python 3.13
+  - `uv run tox -e quick` - Run only tests (no lint/security) on Python 3.13
+  - `uv run tox -p auto` - Run all environments in parallel
 
 ## Project Architecture
 
@@ -107,7 +115,7 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 ### Development Dependencies
 
 Core dev dependencies in `dependency-groups.dev`:
-- **Testing**: pytest, pytest-cov, pytest-asyncio
+- **Testing**: pytest, pytest-cov, pytest-asyncio, tox, tox-uv
 - **Linting/Formatting**: ruff, mypy
 - **Utilities**: q (debugging), coverage, build, pre-commit
 
@@ -151,9 +159,21 @@ The SDK officially supports Python 3.8+ but is tested on the following versions:
 - `uv run --python 3.12 pytest tests` - Test with Python 3.12
 - `uv run --python 3.13 pytest tests` - Test with Python 3.13
 
-**Matrix Testing:**
+**Matrix Testing with Tox:**
 ```bash
-# Test all supported versions locally
+# Test all supported versions using tox (recommended)
+uv run tox
+
+# Test all versions in parallel for faster execution
+uv run tox -p auto
+
+# Test specific Python version
+uv run tox -e py310  # or py311, py312, py313
+```
+
+**Matrix Testing with Shell Loop:**
+```bash
+# Test all supported versions locally with uv directly
 for version in 3.10 3.11 3.12 3.13; do
     echo "Testing Python $version"
     uv run --python $version pytest tests

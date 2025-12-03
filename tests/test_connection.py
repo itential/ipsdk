@@ -14,9 +14,9 @@ from ipsdk import metadata
 from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Connection
 from ipsdk.connection import ConnectionBase
-from ipsdk.connection import Request
-from ipsdk.connection import Response
-from ipsdk.enums import HTTPMethod
+from ipsdk.http import HTTPMethod
+from ipsdk.http import Request
+from ipsdk.http import Response
 
 # --------- Fixtures ---------
 

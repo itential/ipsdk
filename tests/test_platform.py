@@ -11,7 +11,7 @@ import pytest
 from ipsdk import exceptions
 from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Connection
-from ipsdk.connection import Response
+from ipsdk.http import Response
 from ipsdk.platform import AsyncAuthMixin
 from ipsdk.platform import AsyncPlatformType
 from ipsdk.platform import AuthMixin

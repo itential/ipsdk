@@ -9,7 +9,6 @@ import pytest
 
 from ipsdk import exceptions
 from ipsdk.connection import AsyncConnection
-from ipsdk.connection import Response
 from ipsdk.gateway import AsyncAuthMixin
 from ipsdk.gateway import AsyncGatewayType
 from ipsdk.gateway import AuthMixin
@@ -19,6 +18,7 @@ from ipsdk.gateway import _make_body
 from ipsdk.gateway import _make_headers
 from ipsdk.gateway import _make_path
 from ipsdk.gateway import gateway_factory
+from ipsdk.http import Response
 
 # --------- Factory Tests ---------
 

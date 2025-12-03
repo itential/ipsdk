@@ -14,9 +14,9 @@ from ipsdk import metadata
 from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Connection
 from ipsdk.connection import ConnectionBase
-from ipsdk.connection import HTTPMethod
 from ipsdk.connection import Request
 from ipsdk.connection import Response
+from ipsdk.enums import HTTPMethod
 
 # --------- Fixtures ---------
 
@@ -74,12 +74,12 @@ def async_connection_mock():
 
 
 def test_http_method_constants():
-    """Test that HTTPMethod class has correct constants."""
-    assert HTTPMethod.GET == "GET"
-    assert HTTPMethod.POST == "POST"
-    assert HTTPMethod.DELETE == "DELETE"
-    assert HTTPMethod.PUT == "PUT"
-    assert HTTPMethod.PATCH == "PATCH"
+    """Test that HTTPMethod enum has correct values."""
+    assert HTTPMethod.GET.value == "GET"
+    assert HTTPMethod.POST.value == "POST"
+    assert HTTPMethod.DELETE.value == "DELETE"
+    assert HTTPMethod.PUT.value == "PUT"
+    assert HTTPMethod.PATCH.value == "PATCH"
 
 
 # --------- Request Class Tests ---------
@@ -1201,7 +1201,7 @@ def test_http_method_enum_completeness():
 
     for method in expected_methods:
         assert hasattr(HTTPMethod, method)
-        assert getattr(HTTPMethod, method) == method
+        assert getattr(HTTPMethod, method).value == method
 
 
 def test_response_json_with_non_dict_data():

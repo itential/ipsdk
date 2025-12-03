@@ -14,24 +14,8 @@ import httpx
 from . import exceptions
 from . import logging
 from . import metadata
-
-# HTTP Status Code Constants
-HTTP_OK = 200
-HTTP_MULTIPLE_CHOICES = 300
-HTTP_BAD_REQUEST = 400
-
-
-class HTTPMethod:
-    """
-    The HTTPMethod class acts as an enum for specifying the HTTP method to use
-    when constructing requests
-    """
-
-    GET = "GET"
-    POST = "POST"
-    DELETE = "DELETE"
-    PUT = "PUT"
-    PATCH = "PATCH"
+from .enums import HTTPMethod
+from .enums import HTTPStatus
 
 
 class Request:
@@ -203,7 +187,11 @@ class Response:
         Returns:
             bool: True if the status code is in the 2xx range, False otherwise
         """
-        return HTTP_OK <= self.status_code < HTTP_MULTIPLE_CHOICES
+        return (
+            HTTPStatus.OK.value
+            <= self.status_code
+            < HTTPStatus.MULTIPLE_CHOICES.value
+        )
 
     def is_error(self) -> bool:
         """
@@ -212,7 +200,7 @@ class Response:
         Returns:
             bool: True if the status code indicates an error, False otherwise
         """
-        return self.status_code >= HTTP_BAD_REQUEST
+        return self.status_code >= HTTPStatus.BAD_REQUEST.value
 
     def __repr__(self) -> str:
         """
@@ -529,7 +517,7 @@ class Connection(ConnectionBase):
             res = self.client.send(request)
 
             # Check for HTTP status errors
-            if res.status_code >= HTTP_BAD_REQUEST:
+            if res.status_code >= HTTPStatus.BAD_REQUEST.value:
                 logging.debug(f"HTTP {res.status_code} response from {request.url}")
                 raise exceptions.classify_http_error(
                     res.status_code,
@@ -578,7 +566,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return self._send_request(HTTPMethod.GET, path=path, params=params)
+        return self._send_request(HTTPMethod.GET.value, path=path, params=params)
 
     def delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Response:
         """
@@ -599,7 +587,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return self._send_request(HTTPMethod.DELETE, path=path, params=params)
+        return self._send_request(HTTPMethod.DELETE.value, path=path, params=params)
 
     def post(
         self,
@@ -631,7 +619,9 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
+        return self._send_request(
+            HTTPMethod.POST.value, path=path, params=params, json=json
+        )
 
     def put(
         self,
@@ -663,7 +653,9 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
+        return self._send_request(
+            HTTPMethod.PUT.value, path=path, params=params, json=json
+        )
 
     def patch(
         self,
@@ -695,7 +687,9 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)
+        return self._send_request(
+            HTTPMethod.PATCH.value, path=path, params=params, json=json
+        )
 
 
 class AsyncConnection(ConnectionBase):
@@ -785,7 +779,7 @@ class AsyncConnection(ConnectionBase):
             res = await self.client.send(request)
 
             # Check for HTTP status errors
-            if res.status_code >= HTTP_BAD_REQUEST:
+            if res.status_code >= HTTPStatus.BAD_REQUEST.value:
                 logging.debug(f"HTTP {res.status_code} response from {request.url}")
                 raise exceptions.classify_http_error(
                     res.status_code,
@@ -836,7 +830,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return await self._send_request(HTTPMethod.GET, path=path, params=params)
+        return await self._send_request(HTTPMethod.GET.value, path=path, params=params)
 
     async def delete(
         self, path: str, params: Optional[Dict[str, Any]] = None
@@ -859,7 +853,9 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
+        return await self._send_request(
+            HTTPMethod.DELETE.value, path=path, params=params
+        )
 
     async def post(
         self,
@@ -892,7 +888,7 @@ class AsyncConnection(ConnectionBase):
             A `Response` object
         """
         return await self._send_request(
-            HTTPMethod.POST, path=path, params=params, json=json
+            HTTPMethod.POST.value, path=path, params=params, json=json
         )
 
     async def put(
@@ -926,7 +922,7 @@ class AsyncConnection(ConnectionBase):
             A `Response` object
         """
         return await self._send_request(
-            HTTPMethod.PUT, path=path, params=params, json=json
+            HTTPMethod.PUT.value, path=path, params=params, json=json
         )
 
     async def patch(
@@ -960,5 +956,5 @@ class AsyncConnection(ConnectionBase):
             A `Response` object
         """
         return await self._send_request(
-            HTTPMethod.PATCH, path=path, params=params, json=json
+            HTTPMethod.PATCH.value, path=path, params=params, json=json
         )

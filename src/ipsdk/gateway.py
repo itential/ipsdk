@@ -10,6 +10,7 @@ import httpx
 from . import connection
 from . import exceptions
 from . import logging
+from .enums import HTTPStatus
 
 
 def _make_path() -> str:
@@ -76,7 +77,10 @@ class AuthMixin:
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
             logging.error(traceback.format_exc())
-            if exc.response.status_code in (401, 403):
+            if exc.response.status_code in (
+                HTTPStatus.UNAUTHORIZED.value,
+                HTTPStatus.FORBIDDEN.value,
+            ):
                 msg = "Gateway authentication failed - invalid username or password"
                 raise exceptions.AuthenticationError(
                     msg,
@@ -136,7 +140,10 @@ class AsyncAuthMixin:
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
             logging.error(traceback.format_exc())
-            if exc.response.status_code in (401, 403):
+            if exc.response.status_code in (
+                HTTPStatus.UNAUTHORIZED.value,
+                HTTPStatus.FORBIDDEN.value,
+            ):
                 msg = "Gateway authentication failed - invalid username or password"
                 raise exceptions.AuthenticationError(
                     msg,

@@ -5,21 +5,27 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: test coverage clean lint format ruff-fix security
+.PHONY: test coverage clean lint format ruff-fix security tox \
+		tox-py310 tox-py311 tox-py312 tox-py313
 
 # The help target displays a help message that includes the avialable targets
 # in this `Makefile`.  It is the default target if `make` is run without any
 # parameters.
 help:
 	@echo "Available targets:"
-	@echo "  clean      - Cleans the development environment"
-	@echo "  coverage   - Run test coverage report"
-	@echo "  format     - Format source files with ruff"
-	@echo "  lint       - Run analysis on source files"
-	@echo "  premerge   - Run the permerge tests locallly"
-	@echo "  ruff-fix   - Run ruff with --fix to auto-fix issues"
-	@echo "  security   - Run security analysis using bandit"
-	@echo "  test       - Run test suite"
+	@echo "  clean        - Cleans the development environment"
+	@echo "  coverage     - Run test coverage report"
+	@echo "  format       - Format source files with ruff"
+	@echo "  lint         - Run analysis on source files"
+	@echo "  premerge     - Run the permerge tests locallly"
+	@echo "  ruff-fix     - Run ruff with --fix to auto-fix issues"
+	@echo "  security     - Run security analysis using bandit"
+	@echo "  test         - Run test suite"
+	@echo "  tox          - Run tests across all Python versions (3.10-3.13)"
+	@echo "  tox-py310    - Run tests with Python 3.10"
+	@echo "  tox-py311    - Run tests with Python 3.11"
+	@echo "  tox-py312    - Run tests with Python 3.12"
+	@echo "  tox-py313    - Run tests with Python 3.13"
 	@echo ""
 
 # The test target will invoke the unit tests using pytest.   This target
@@ -63,3 +69,24 @@ ruff-fix:
 # The premerge target will run the permerge tests locally.  This is
 # the same target that is invoked in the permerge pipeline.
 premerge: clean lint security test
+
+# The tox target will run tests across all supported Python versions
+# (3.10, 3.11, 3.12, 3.13) using tox with uv integration.
+tox:
+	uv run tox
+
+# The tox-py310 target will run tests specifically with Python 3.10
+tox-py310:
+	uv run tox -e py310
+
+# The tox-py311 target will run tests specifically with Python 3.11
+tox-py311:
+	uv run tox -e py311
+
+# The tox-py312 target will run tests specifically with Python 3.12
+tox-py312:
+	uv run tox -e py312
+
+# The tox-py313 target will run tests specifically with Python 3.13
+tox-py313:
+	uv run tox -e py313

@@ -3,7 +3,7 @@
 # whenever a new tag is merged into the repository.  It builds the application
 # and pushes it to PyPI.
 ---
-name: Deploy package to PyPI
+name: Release new version
 
 on:
   push:
@@ -43,3 +43,12 @@ jobs:
         run: |
             echo "Publishing to PyPI..."
             twine upload dist/*
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: dist/*
+          draft: false
+          prerelease: false

@@ -19,8 +19,8 @@ Exception (Python built-in)
 
 ### IpsdkError
 
-**Base class:** `Exception`  
-**Module:** `src/ipsdk/exceptions.py:30`
+**Base class:** `Exception`
+**Module:** `src/ipsdk/exceptions.py:26`
 
 The root exception class for all Itential SDK errors. All SDK-specific exceptions inherit from this base class, making it easy to catch any SDK-related error with a single except clause.
 
@@ -40,8 +40,8 @@ except IpsdkError as e:
 
 ### NetworkError
 
-**Base class:** `IpsdkError`  
-**Module:** `src/ipsdk/exceptions.py:66`
+**Base class:** `IpsdkError`
+**Module:** `src/ipsdk/exceptions.py:62`
 
 Exception raised for network and connection-related errors. This includes:
 - Connection failures
@@ -57,8 +57,8 @@ Exception raised for network and connection-related errors. This includes:
 
 ### AuthenticationError
 
-**Base class:** `IpsdkError`  
-**Module:** `src/ipsdk/exceptions.py:79`
+**Base class:** `IpsdkError`
+**Module:** `src/ipsdk/exceptions.py:75`
 
 Exception raised for all authentication-related errors. This includes:
 - Failed login attempts
@@ -75,8 +75,8 @@ Exception raised for all authentication-related errors. This includes:
 
 ### ValidationError
 
-**Base class:** `IpsdkError`  
-**Module:** `src/ipsdk/exceptions.py:165`
+**Base class:** `IpsdkError`
+**Module:** `src/ipsdk/exceptions.py:161`
 
 Exception raised for data validation and parsing errors. This includes:
 - Invalid input parameters
@@ -92,15 +92,19 @@ Exception raised for data validation and parsing errors. This includes:
 
 ### HTTPError
 
-**Base class:** `IpsdkError`  
-**Module:** `src/ipsdk/exceptions.py:92`
+**Base class:** `IpsdkError`
+**Module:** `src/ipsdk/exceptions.py:88`
 
 Exception raised for HTTP-related errors and protocol-level issues.
 
 **Additional attributes:**
 - `status_code` (int): HTTP status code if available
-- `response` (httpx.Response): HTTP response object if available  
+- `response` (httpx.Response): HTTP response object if available
 - `request_url` (str): URL that was requested
+
+**Special behavior:**
+- Automatically captures response body (truncated to 500 chars) in `details` dict when response is available
+- Response text parsing errors are silently ignored to ensure exception is always raised
 
 **Usage:**
 ```python
@@ -114,8 +118,8 @@ except HTTPError as e:
 
 ### ClientError
 
-**Base class:** `HTTPError`  
-**Module:** `src/ipsdk/exceptions.py:147`
+**Base class:** `HTTPError`
+**Module:** `src/ipsdk/exceptions.py:143`
 
 Exception raised for HTTP 4xx client errors. This includes:
 - Bad requests (400)
@@ -133,8 +137,8 @@ Exception raised for HTTP 4xx client errors. This includes:
 
 ### ServerError
 
-**Base class:** `HTTPError`  
-**Module:** `src/ipsdk/exceptions.py:156`
+**Base class:** `HTTPError`
+**Module:** `src/ipsdk/exceptions.py:152`
 
 Exception raised for HTTP 5xx server errors. This includes:
 - Internal server errors (500)
@@ -153,7 +157,7 @@ Exception raised for HTTP 5xx server errors. This includes:
 
 ### classify_http_error()
 
-**Module:** `src/ipsdk/exceptions.py:202`
+**Module:** `src/ipsdk/exceptions.py:198`
 
 Classifies an HTTP status code into the appropriate SDK exception.
 
@@ -165,9 +169,16 @@ Classifies an HTTP status code into the appropriate SDK exception.
 
 **Returns:** Appropriate `HTTPError` subclass instance
 
+**Classification logic:**
+- 401 (Unauthorized) → `ClientError` with authentication-specific message
+- 403 (Forbidden) → `ClientError` with permission-specific message
+- 400-499 → `ClientError` for all other 4xx codes
+- 500-599 → `ServerError` for all 5xx codes
+- Other codes → Generic `HTTPError`
+
 ### classify_httpx_error()
 
-**Module:** `src/ipsdk/exceptions.py:314`
+**Module:** `src/ipsdk/exceptions.py:312`
 
 Classifies an httpx exception into the appropriate SDK exception.
 
@@ -176,6 +187,13 @@ Classifies an httpx exception into the appropriate SDK exception.
 - `request_url` (str, optional): URL that was requested
 
 **Returns:** Appropriate `IpsdkError` subclass instance
+
+**Classification logic:**
+- `httpx.HTTPStatusError` → Delegates to `classify_http_error()` with status code and response
+- `httpx.TimeoutException` → `NetworkError`
+- `httpx.ConnectError` → `NetworkError`
+- `httpx.RequestError` → `NetworkError`
+- Other exceptions → Generic `IpsdkError`
 
 ## Error Handling Best Practices
 
@@ -232,15 +250,12 @@ HTTP-related exceptions also provide:
 
 ## Constants
 
-The following HTTP status constants are defined for reference:
-
-- `HTTP_BAD_REQUEST = 400`
-- `HTTP_UNAUTHORIZED = 401` 
-- `HTTP_FORBIDDEN = 403`
-- `HTTP_INTERNAL_SERVER_ERROR = 500`
-- `HTTP_CLIENT_ERROR_MAX = 500`
-- `HTTP_SERVER_ERROR_MAX = 600`
+The module uses HTTP status codes from Python's standard library:
+- `from http import HTTPStatus` - Standard HTTP status codes (e.g., `HTTPStatus.UNAUTHORIZED`, `HTTPStatus.FORBIDDEN`, etc.)
 
 Response body handling limits:
-- `MAX_RESPONSE_BODY_LENGTH = 500` (stored in details)
-- `MAX_RESPONSE_DISPLAY_LENGTH = 200` (shown in messages)
+- `MAX_RESPONSE_BODY_LENGTH = 500` - Maximum response body length stored in exception details
+- `MAX_RESPONSE_DISPLAY_LENGTH = 200` - Maximum response body length shown in error messages
+
+HTTP status code range:
+- `HTTP_SERVER_ERROR_MAX = 600` - Upper bound for server error range (5xx)

@@ -3,13 +3,10 @@
 
 import logging
 import sys
-import tempfile
-from pathlib import Path
 from unittest.mock import Mock
 from unittest.mock import patch
 
-import pytest
-
+from ipsdk import heuristics
 from ipsdk import logging as ipsdk_logging
 from ipsdk import metadata
 
@@ -20,26 +17,38 @@ class TestLoggingConstants:
     def test_logging_constants_exist(self):
         """Test that all logging constants are properly defined."""
         assert hasattr(ipsdk_logging, "NOTSET")
+        assert hasattr(ipsdk_logging, "TRACE")
         assert hasattr(ipsdk_logging, "DEBUG")
         assert hasattr(ipsdk_logging, "INFO")
         assert hasattr(ipsdk_logging, "WARNING")
         assert hasattr(ipsdk_logging, "ERROR")
         assert hasattr(ipsdk_logging, "CRITICAL")
         assert hasattr(ipsdk_logging, "FATAL")
+        assert hasattr(ipsdk_logging, "NONE")
 
     def test_logging_constants_values(self):
         """Test that logging constants have correct values."""
         assert ipsdk_logging.NOTSET == logging.NOTSET
+        assert ipsdk_logging.TRACE == logging.NOTSET  # TRACE is aliased to NOTSET
         assert ipsdk_logging.DEBUG == logging.DEBUG
         assert ipsdk_logging.INFO == logging.INFO
         assert ipsdk_logging.WARNING == logging.WARNING
         assert ipsdk_logging.ERROR == logging.ERROR
         assert ipsdk_logging.CRITICAL == logging.CRITICAL
         assert ipsdk_logging.FATAL == 90
+        assert ipsdk_logging.NONE == 100
 
     def test_fatal_level_registered(self):
         """Test that FATAL level is properly registered with logging module."""
         assert logging.getLevelName(90) == "FATAL"
+
+    def test_none_level_registered(self):
+        """Test that NONE level is properly registered with logging module."""
+        assert logging.getLevelName(100) == "NONE"
+
+    def test_trace_level_registered(self):
+        """Test that TRACE level is properly registered with logging module."""
+        assert logging.getLevelName(5) == "TRACE"
 
 
 class TestLogFunction:
@@ -69,6 +78,8 @@ class TestLogFunction:
                 (logging.ERROR, "error message"),
                 (logging.CRITICAL, "critical message"),
                 (ipsdk_logging.FATAL, "fatal message"),
+                (ipsdk_logging.NONE, "none message"),
+                (5, "trace message"),  # TRACE level
             ]
 
             for level, message in levels_and_messages:
@@ -125,6 +136,45 @@ class TestConvenienceFunctions:
             mock_logger.log.assert_called_once_with(
                 logging.CRITICAL, "critical message"
             )
+
+
+class TestTraceFunction:
+    """Test the trace logging function."""
+
+    def test_trace_function_with_callable(self):
+        """Test trace function logs function name."""
+        with patch("ipsdk.logging.log") as mock_log:
+            def test_func():
+                pass
+
+            ipsdk_logging.trace(test_func)
+            mock_log.assert_called_once_with(logging.TRACE, "invoking test_func")
+
+    def test_trace_function_with_different_functions(self):
+        """Test trace function with different function types."""
+        with patch("ipsdk.logging.log") as mock_log:
+
+            def regular_func():
+                pass
+
+            class TestClass:
+                def method(self):
+                    pass
+
+                @staticmethod
+                def static_method():
+                    pass
+
+            test_cases = [
+                (regular_func, "invoking regular_func"),
+                (TestClass.method, "invoking method"),
+                (TestClass.static_method, "invoking static_method"),
+            ]
+
+            for func, expected_msg in test_cases:
+                mock_log.reset_mock()
+                ipsdk_logging.trace(func)
+                mock_log.assert_called_once_with(logging.TRACE, expected_msg)
 
 
 class TestExceptionFunction:
@@ -207,6 +257,33 @@ class TestGetLogger:
         assert logger.name == metadata.name
 
 
+class TestGetLoggersFunction:
+    """Test the _get_loggers function."""
+
+    def test_get_loggers_returns_set(self):
+        """Test _get_loggers returns a set of loggers."""
+        loggers = ipsdk_logging._get_loggers()
+        assert isinstance(loggers, set)
+
+    def test_get_loggers_includes_ipsdk_logger(self):
+        """Test _get_loggers includes ipsdk logger."""
+        # Ensure logger exists
+        _ = logging.getLogger(metadata.name)
+        loggers = ipsdk_logging._get_loggers()
+        logger_names = {logger.name for logger in loggers}
+        assert metadata.name in logger_names
+
+    def test_get_loggers_includes_httpx_loggers(self):
+        """Test _get_loggers includes httpx loggers when they exist."""
+        # Create a test httpx logger
+        logging.getLogger("httpx.test")
+
+        loggers = ipsdk_logging._get_loggers()
+        logger_names = {logger.name for logger in loggers}
+
+        assert "httpx.test" in logger_names
+
+
 class TestSetLevel:
     """Test the set_level function."""
 
@@ -219,19 +296,24 @@ class TestSetLevel:
             ipsdk_logging.set_level(logging.INFO)
 
             mock_logger.setLevel.assert_called_once_with(logging.INFO)
-            mock_logger.propagate = False
+            assert mock_logger.propagate is False
             assert mock_logger.log.call_count == 2  # Two log calls made
 
     def test_set_level_with_propagate(self):
         """Test set_level with propagate parameter."""
-        with patch("ipsdk.logging.get_logger") as mock_get_logger:
+        with patch("ipsdk.logging.get_logger") as mock_get_logger, \
+             patch("ipsdk.logging._get_loggers") as mock_get_loggers:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
+            mock_other_logger = Mock()
+            mock_get_loggers.return_value = [mock_logger, mock_other_logger]
+
             ipsdk_logging.set_level(logging.DEBUG, propagate=True)
 
-            mock_logger.setLevel.assert_called_once_with(logging.DEBUG)
-            mock_logger.propagate = False
+            mock_logger.setLevel.assert_called_with(logging.DEBUG)
+            mock_other_logger.setLevel.assert_called_once_with(logging.DEBUG)
+            assert mock_logger.propagate is False
 
     def test_set_level_different_levels(self):
         """Test set_level with different logging levels."""
@@ -241,6 +323,8 @@ class TestSetLevel:
             logging.WARNING,
             logging.ERROR,
             logging.CRITICAL,
+            ipsdk_logging.FATAL,
+            ipsdk_logging.NONE,
         ]
 
         for level in levels:
@@ -252,318 +336,262 @@ class TestSetLevel:
 
                 mock_logger.setLevel.assert_called_once_with(level)
 
-
-class TestFileHandlers:
-    """Test file handler related functions."""
-
-    def test_add_file_handler_basic(self):
-        """Test add_file_handler with basic parameters."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
-
-            with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_logger.level = logging.INFO
-                mock_get_logger.return_value = mock_logger
-
-                with patch("ipsdk.logging.logging.FileHandler") as mock_file_handler:
-                    mock_handler = Mock()
-                    mock_file_handler.return_value = mock_handler
-
-                    ipsdk_logging.add_file_handler(str(log_file))
-
-                    mock_file_handler.assert_called_once_with(str(log_file))
-                    mock_handler.setLevel.assert_called_once_with(logging.INFO)
-                    mock_logger.addHandler.assert_called_once_with(mock_handler)
-
-    def test_add_file_handler_with_custom_level(self):
-        """Test add_file_handler with custom level."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
-
-            with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_get_logger.return_value = mock_logger
-
-                with patch("ipsdk.logging.logging.FileHandler") as mock_file_handler:
-                    mock_handler = Mock()
-                    mock_file_handler.return_value = mock_handler
-
-                    ipsdk_logging.add_file_handler(str(log_file), level=logging.DEBUG)
-
-                    mock_handler.setLevel.assert_called_once_with(logging.DEBUG)
-
-    def test_add_file_handler_with_custom_format(self):
-        """Test add_file_handler with custom format string."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
-            custom_format = "%(levelname)s - %(message)s"
-
-            with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_logger.level = logging.INFO
-                mock_get_logger.return_value = mock_logger
-
-                with patch("ipsdk.logging.logging.FileHandler") as mock_file_handler:
-                    mock_handler = Mock()
-                    mock_file_handler.return_value = mock_handler
-
-                    with patch(
-                        "ipsdk.logging.logging.Formatter"
-                    ) as mock_formatter_class:
-                        mock_formatter = Mock()
-                        mock_formatter_class.return_value = mock_formatter
-
-                        ipsdk_logging.add_file_handler(
-                            str(log_file), format_string=custom_format
-                        )
-
-                        mock_formatter_class.assert_called_once_with(custom_format)
-                        mock_handler.setFormatter.assert_called_once_with(mock_formatter)
-
-    def test_add_file_handler_creates_parent_directories(self):
-        """Test add_file_handler creates parent directories."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "subdir" / "nested" / "test.log"
-
-            with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-                mock_logger = Mock()
-                mock_logger.level = logging.INFO
-                mock_get_logger.return_value = mock_logger
-
-                with patch("ipsdk.logging.logging.FileHandler") as mock_file_handler:
-                    mock_handler = Mock()
-                    mock_file_handler.return_value = mock_handler
-
-                    ipsdk_logging.add_file_handler(str(log_file))
-
-                    # Check that parent directories were created
-                    assert log_file.parent.exists()
-
-    def test_remove_file_handlers_no_handlers(self):
-        """Test remove_file_handlers when no file handlers exist."""
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
+    def test_set_level_with_none_string(self):
+        """Test set_level with 'NONE' string converts to NONE constant."""
+        with patch("ipsdk.logging.get_logger") as mock_get_logger:
             mock_logger = Mock()
-            mock_logger.handlers = []
             mock_get_logger.return_value = mock_logger
 
-            ipsdk_logging.remove_file_handlers()
+            ipsdk_logging.set_level("NONE")
 
-            # Should not crash and should not call log since no handlers removed
-            mock_logger.log.assert_not_called()
+            mock_logger.setLevel.assert_called_once_with(ipsdk_logging.NONE)
 
-    def test_remove_file_handlers_with_handlers(self):
-        """Test remove_file_handlers with existing file handlers."""
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-            mock_logger = Mock()
-            mock_file_handler1 = Mock(spec=logging.FileHandler)
-            mock_file_handler2 = Mock(spec=logging.FileHandler)
-            mock_stream_handler = Mock(spec=logging.StreamHandler)
 
-            mock_logger.handlers = [
-                mock_file_handler1,
-                mock_stream_handler,
-                mock_file_handler2,
-            ]
-            mock_get_logger.return_value = mock_logger
+class TestSensitiveDataFiltering:
+    """Test sensitive data filtering functions."""
 
-            ipsdk_logging.remove_file_handlers()
+    def test_enable_sensitive_data_filtering(self):
+        """Test enable_sensitive_data_filtering sets flag."""
+        ipsdk_logging.enable_sensitive_data_filtering()
+        assert ipsdk_logging.is_sensitive_data_filtering_enabled() is True
 
-            # Should remove only file handlers
-            mock_logger.removeHandler.assert_any_call(mock_file_handler1)
-            mock_logger.removeHandler.assert_any_call(mock_file_handler2)
-            assert mock_logger.removeHandler.call_count == 2
+    def test_disable_sensitive_data_filtering(self):
+        """Test disable_sensitive_data_filtering unsets flag."""
+        ipsdk_logging.enable_sensitive_data_filtering()
+        ipsdk_logging.disable_sensitive_data_filtering()
+        assert ipsdk_logging.is_sensitive_data_filtering_enabled() is False
 
-            # Should close file handlers
-            mock_file_handler1.close.assert_called_once()
-            mock_file_handler2.close.assert_called_once()
+    def test_is_sensitive_data_filtering_enabled_initial_state(self):
+        """Test initial state of sensitive data filtering."""
+        # Reset to initial state
+        ipsdk_logging.disable_sensitive_data_filtering()
+        result = ipsdk_logging.is_sensitive_data_filtering_enabled()
+        assert isinstance(result, bool)
 
-            # Should log removal
-            mock_logger.log.assert_called_once_with(
-                logging.INFO, "Removed %d file handler(s)", 2
+    def test_configure_sensitive_data_patterns(self):
+        """Test configure_sensitive_data_patterns calls heuristics."""
+        with patch("ipsdk.heuristics.configure_scanner") as mock_configure:
+            custom_patterns = {"test": r"test_pattern"}
+            ipsdk_logging.configure_sensitive_data_patterns(custom_patterns)
+            mock_configure.assert_called_once_with(custom_patterns)
+
+    def test_configure_sensitive_data_patterns_with_none(self):
+        """Test configure_sensitive_data_patterns with None."""
+        with patch("ipsdk.heuristics.configure_scanner") as mock_configure:
+            ipsdk_logging.configure_sensitive_data_patterns(None)
+            mock_configure.assert_called_once_with(None)
+
+    def test_get_sensitive_data_patterns(self):
+        """Test get_sensitive_data_patterns returns list."""
+        with patch("ipsdk.heuristics.get_scanner") as mock_get_scanner:
+            mock_scanner = Mock()
+            mock_scanner.list_patterns.return_value = ["api_key", "password"]
+            mock_get_scanner.return_value = mock_scanner
+
+            result = ipsdk_logging.get_sensitive_data_patterns()
+
+            assert result == ["api_key", "password"]
+            mock_scanner.list_patterns.assert_called_once()
+
+    def test_add_sensitive_data_pattern(self):
+        """Test add_sensitive_data_pattern adds pattern to scanner."""
+        with patch("ipsdk.heuristics.get_scanner") as mock_get_scanner:
+            mock_scanner = Mock()
+            mock_get_scanner.return_value = mock_scanner
+
+            ipsdk_logging.add_sensitive_data_pattern("test_pattern", r"\d{4}-\d{4}")
+
+            mock_scanner.add_pattern.assert_called_once_with(
+                "test_pattern", r"\d{4}-\d{4}"
             )
 
-    def test_configure_file_logging(self):
-        """Test configure_file_logging function."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
+    def test_remove_sensitive_data_pattern(self):
+        """Test remove_sensitive_data_pattern removes pattern from scanner."""
+        with patch("ipsdk.heuristics.get_scanner") as mock_get_scanner:
+            mock_scanner = Mock()
+            mock_scanner.remove_pattern.return_value = True
+            mock_get_scanner.return_value = mock_scanner
 
-            with patch("ipsdk.logging.set_level") as mock_set_level, \
-                 patch("ipsdk.logging.add_file_handler") as mock_add_file_handler:
+            result = ipsdk_logging.remove_sensitive_data_pattern("test_pattern")
 
-                ipsdk_logging.configure_file_logging(
-                    str(log_file), level=logging.DEBUG, propagate=True
-                )
+            assert result is True
+            mock_scanner.remove_pattern.assert_called_once_with("test_pattern")
 
-                mock_set_level.assert_called_once_with(logging.DEBUG, propagate=True)
-                mock_add_file_handler.assert_called_once_with(
-                    str(log_file), logging.DEBUG, None
-                )
+    def test_remove_sensitive_data_pattern_not_found(self):
+        """Test remove_sensitive_data_pattern returns False when pattern not found."""
+        with patch("ipsdk.heuristics.get_scanner") as mock_get_scanner:
+            mock_scanner = Mock()
+            mock_scanner.remove_pattern.return_value = False
+            mock_get_scanner.return_value = mock_scanner
 
+            result = ipsdk_logging.remove_sensitive_data_pattern("nonexistent")
 
-class TestConsoleHandlers:
-    """Test console handler functions."""
+            assert result is False
 
-    def test_set_console_output_stderr(self):
-        """Test set_console_output with stderr."""
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-            mock_logger = Mock()
-            mock_logger.handlers = []
-            mock_get_logger.return_value = mock_logger
+    def test_log_function_with_filtering_enabled(self):
+        """Test log function filters sensitive data when filtering is enabled."""
+        # Reset and enable filtering
+        ipsdk_logging.disable_sensitive_data_filtering()
+        heuristics.Scanner.reset_singleton()
+        ipsdk_logging.enable_sensitive_data_filtering()
 
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_handler = Mock()
-                mock_stream_handler.return_value = mock_handler
-
-                ipsdk_logging.set_console_output("stderr")
-
-                mock_stream_handler.assert_called_once_with(sys.stderr)
-                mock_logger.addHandler.assert_called_once_with(mock_handler)
-
-    def test_set_console_output_stdout(self):
-        """Test set_console_output with stdout."""
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-            mock_logger = Mock()
-            mock_logger.handlers = []
-            mock_get_logger.return_value = mock_logger
-
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_handler = Mock()
-                mock_stream_handler.return_value = mock_handler
-
-                ipsdk_logging.set_console_output("stdout")
-
-                mock_stream_handler.assert_called_once_with(sys.stdout)
-
-    def test_set_console_output_invalid_stream(self):
-        """Test set_console_output with invalid stream raises ValueError."""
-        with pytest.raises(ValueError, match="stream must be 'stdout' or 'stderr'"):
-            ipsdk_logging.set_console_output("invalid")
-
-    def test_set_console_output_removes_existing_handlers(self):
-        """Test set_console_output removes existing console handlers."""
-        # This test needs to use real handlers to pass isinstance checks
-        real_logger = logging.getLogger("test_logger")
-        real_console_handler1 = logging.StreamHandler(sys.stderr)
-        real_console_handler2 = logging.StreamHandler(sys.stdout)
-        mock_file_handler = Mock(spec=logging.FileHandler)
-
-        # Add handlers to real logger
-        real_logger.addHandler(real_console_handler1)
-        real_logger.addHandler(mock_file_handler)
-        real_logger.addHandler(real_console_handler2)
-
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-            mock_get_logger.return_value = real_logger
-
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_new_handler = Mock()
-                mock_stream_handler.return_value = mock_new_handler
-
-                initial_handler_count = len(real_logger.handlers)
-                ipsdk_logging.set_console_output("stderr")
-
-                # Should have removed 2 console handlers and added 1 new handler
-                # So total handlers should be initial_count - 2 + 1
-                final_handler_count = len(real_logger.handlers)
-                assert final_handler_count == initial_handler_count - 2 + 1
-
-    def test_add_stdout_handler(self):
-        """Test add_stdout_handler function."""
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-            mock_logger = Mock()
-            mock_logger.level = logging.INFO
-            mock_get_logger.return_value = mock_logger
-
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_handler = Mock()
-                mock_stream_handler.return_value = mock_handler
-
-                ipsdk_logging.add_stdout_handler()
-
-                mock_stream_handler.assert_called_once_with(sys.stdout)
-                mock_handler.setLevel.assert_called_once_with(logging.INFO)
-                mock_logger.addHandler.assert_called_once_with(mock_handler)
-
-    def test_add_stdout_handler_with_custom_level(self):
-        """Test add_stdout_handler with custom level."""
         with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_handler = Mock()
-                mock_stream_handler.return_value = mock_handler
+            # Log message with sensitive data (api_key requires 16+ chars)
+            ipsdk_logging.log(logging.INFO, "api_key=secret1234567890abcd")
 
-                ipsdk_logging.add_stdout_handler(level=logging.DEBUG)
+            # Verify the logged message has been redacted
+            mock_logger.log.assert_called_once()
+            call_args = mock_logger.log.call_args[0]
+            assert call_args[0] == logging.INFO
+            # The message should be redacted
+            assert "secret1234567890abcd" not in call_args[1]
+            assert "[REDACTED_API_KEY]" in call_args[1]
 
-                mock_handler.setLevel.assert_called_once_with(logging.DEBUG)
+        # Cleanup
+        ipsdk_logging.disable_sensitive_data_filtering()
 
-    def test_add_stderr_handler(self):
-        """Test add_stderr_handler function."""
-        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
-            mock_logger = Mock()
-            mock_logger.level = logging.INFO
-            mock_get_logger.return_value = mock_logger
-
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_handler = Mock()
-                mock_stream_handler.return_value = mock_handler
-
-                ipsdk_logging.add_stderr_handler()
-
-                mock_stream_handler.assert_called_once_with(sys.stderr)
-                mock_handler.setLevel.assert_called_once_with(logging.INFO)
-                mock_logger.addHandler.assert_called_once_with(mock_handler)
-
-    def test_add_stderr_handler_with_custom_format(self):
-        """Test add_stderr_handler with custom format string."""
-        custom_format = "%(levelname)s: %(message)s"
+    def test_log_function_with_filtering_disabled(self):
+        """Test log function does not filter when filtering is disabled."""
+        # Ensure filtering is disabled
+        ipsdk_logging.disable_sensitive_data_filtering()
 
         with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
-            mock_logger.level = logging.INFO
             mock_get_logger.return_value = mock_logger
 
-            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
-                mock_handler = Mock()
-                mock_stream_handler.return_value = mock_handler
+            # Log message with sensitive data
+            ipsdk_logging.log(logging.INFO, "api_key=secret1234567890abcd")
 
-                with patch("ipsdk.logging.logging.Formatter") as mock_formatter_class:
-                    mock_formatter = Mock()
-                    mock_formatter_class.return_value = mock_formatter
+            # Verify the logged message has NOT been redacted
+            mock_logger.log.assert_called_once()
+            call_args = mock_logger.log.call_args[0]
+            assert call_args[0] == logging.INFO
+            # The message should NOT be redacted
+            assert "secret1234567890abcd" in call_args[1]
+            assert "[REDACTED_API_KEY]" not in call_args[1]
 
-                    ipsdk_logging.add_stderr_handler(format_string=custom_format)
+    def test_convenience_functions_with_filtering(self):
+        """Test convenience functions use filtering when enabled."""
+        # Reset and enable filtering
+        ipsdk_logging.disable_sensitive_data_filtering()
+        heuristics.Scanner.reset_singleton()
+        ipsdk_logging.enable_sensitive_data_filtering()
 
-                    mock_formatter_class.assert_called_once_with(custom_format)
-                    mock_handler.setFormatter.assert_called_once_with(mock_formatter)
+        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
+            mock_logger = Mock()
+            mock_get_logger.return_value = mock_logger
+
+            # Test multiple convenience functions with sensitive data
+            test_cases = [
+                (ipsdk_logging.debug, logging.DEBUG, "Debug: password=testpass"),
+                (ipsdk_logging.info, logging.INFO, "Info: api_key=key1234567890abcdef"),
+                (ipsdk_logging.warning, logging.WARNING, "Warning: secret=sec1234567890abcdef"),  # noqa: E501
+            ]
+
+            for func, level, message in test_cases:
+                mock_logger.reset_mock()
+                func(message)
+
+                mock_logger.log.assert_called_once()
+                call_args = mock_logger.log.call_args[0]
+                assert call_args[0] == level
+                # The message should be redacted
+                assert "testpass" not in call_args[1] or "[REDACTED_PASSWORD]" in call_args[1]  # noqa: E501
+
+        # Cleanup
+        ipsdk_logging.disable_sensitive_data_filtering()
+
+    def test_log_function_filters_multiple_patterns(self):
+        """Test log function filters multiple sensitive patterns in one message."""
+        # Reset and enable filtering
+        ipsdk_logging.disable_sensitive_data_filtering()
+        heuristics.Scanner.reset_singleton()
+        ipsdk_logging.enable_sensitive_data_filtering()
+
+        with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
+            mock_logger = Mock()
+            mock_get_logger.return_value = mock_logger
+
+            # Log message with multiple sensitive data types
+            message = "Credentials: api_key=key1234567890abcdef password=testpass"
+            ipsdk_logging.log(logging.INFO, message)
+
+            # Verify both patterns are redacted
+            mock_logger.log.assert_called_once()
+            call_args = mock_logger.log.call_args[0]
+            logged_message = call_args[1]
+
+            assert "key1234567890abcdef" not in logged_message
+            assert "testpass" not in logged_message
+            assert "[REDACTED_" in logged_message
+
+        # Cleanup
+        ipsdk_logging.disable_sensitive_data_filtering()
 
 
 class TestInitialize:
     """Test the initialize function."""
 
-    def test_initialize_function(self):
-        """Test initialize function sets up logging correctly."""
-        with patch("ipsdk.logging.get_logger") as mock_get_logger:
+    def test_initialize_resets_handlers(self):
+        """Test initialize removes existing handlers and adds stderr handler."""
+        with patch("ipsdk.logging._get_loggers") as mock_get_loggers:
+            # Create a mock logger with existing handlers
             mock_logger = Mock()
-            mock_get_logger.return_value = mock_logger
+            mock_handler1 = Mock()
+            mock_handler2 = Mock()
+            mock_logger.handlers = [mock_handler1, mock_handler2]
+            mock_get_loggers.return_value = [mock_logger]
+
+            with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
+                mock_new_handler = Mock()
+                mock_stream_handler.return_value = mock_new_handler
+
+                ipsdk_logging.initialize()
+
+                # Verify old handlers were removed and closed
+                mock_logger.removeHandler.assert_any_call(mock_handler1)
+                mock_logger.removeHandler.assert_any_call(mock_handler2)
+                mock_handler1.close.assert_called_once()
+                mock_handler2.close.assert_called_once()
+
+                # Verify new handler was added
+                mock_stream_handler.assert_called_once_with(sys.stderr)
+                mock_logger.addHandler.assert_called_once_with(mock_new_handler)
+                mock_logger.setLevel.assert_called_once_with(ipsdk_logging.NONE)
+                assert mock_logger.propagate is False
+
+    def test_initialize_sets_correct_level(self):
+        """Test initialize sets logger level to NONE."""
+        with patch("ipsdk.logging._get_loggers") as mock_get_loggers:
+            mock_logger = Mock()
+            mock_logger.handlers = []
+            mock_get_loggers.return_value = [mock_logger]
+
+            with patch("ipsdk.logging.logging.StreamHandler"):
+                ipsdk_logging.initialize()
+                mock_logger.setLevel.assert_called_once_with(ipsdk_logging.NONE)
+
+    def test_initialize_formats_handler(self):
+        """Test initialize applies correct formatter to handler."""
+        with patch("ipsdk.logging._get_loggers") as mock_get_loggers:
+            mock_logger = Mock()
+            mock_logger.handlers = []
+            mock_get_loggers.return_value = [mock_logger]
 
             with patch("ipsdk.logging.logging.StreamHandler") as mock_stream_handler:
                 mock_handler = Mock()
                 mock_stream_handler.return_value = mock_handler
 
-                with patch("ipsdk.logging.logging.Formatter") as mock_formatter_class:
-                    mock_formatter = Mock()
-                    mock_formatter_class.return_value = mock_formatter
+                ipsdk_logging.initialize()
 
-                    ipsdk_logging.initialize()
-
-                    mock_stream_handler.assert_called_once_with(sys.stderr)
-                    mock_formatter_class.assert_called_once_with(ipsdk_logging.logging_message_format)
-                    mock_handler.setFormatter.assert_called_once_with(mock_formatter)
-                    mock_logger.addHandler.assert_called_once_with(mock_handler)
-                    mock_logger.setLevel.assert_called_once_with(100)
-                    assert mock_logger.propagate is False
+                # Check that setFormatter was called
+                mock_handler.setFormatter.assert_called_once()
+                # Get the formatter that was set
+                formatter_call = mock_handler.setFormatter.call_args[0][0]
+                assert isinstance(formatter_call, logging.Formatter)
 
 
 class TestIntegration:
@@ -592,26 +620,20 @@ class TestIntegration:
         assert any("error message" in msg for msg in messages)
         assert any("critical message" in msg for msg in messages)
 
-    def test_actual_file_logging(self):
-        """Test actual file logging functionality."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            log_file = Path(temp_dir) / "test.log"
+    def test_trace_function_integration(self, caplog):
+        """Test trace function with actual logging."""
+        logger = ipsdk_logging.get_logger()
+        logger.setLevel(logging.TRACE)
+        logger.propagate = True
 
-            # Configure file logging
-            ipsdk_logging.configure_file_logging(str(log_file), level=logging.INFO)
+        def test_function():
+            """Test function for tracing."""
 
-            # Log some messages
-            ipsdk_logging.info("test info message")
-            ipsdk_logging.error("test error message")
+        with caplog.at_level(logging.TRACE, logger=metadata.name):
+            ipsdk_logging.trace(test_function)
 
-            # Clean up handlers to flush logs
-            ipsdk_logging.remove_file_handlers()
-
-            # Check that log file was created and contains messages
-            assert log_file.exists()
-            log_content = log_file.read_text()
-            assert "test info message" in log_content
-            assert "test error message" in log_content
+        messages = [record.getMessage() for record in caplog.records]
+        assert any("invoking test_function" in msg for msg in messages)
 
 
 class TestFormatString:
@@ -625,4 +647,3 @@ class TestFormatString:
         assert "%(name)s" in ipsdk_logging.logging_message_format
         assert "%(levelname)s" in ipsdk_logging.logging_message_format
         assert "%(message)s" in ipsdk_logging.logging_message_format
-

@@ -11,6 +11,7 @@ from . import connection
 from . import exceptions
 from . import jsonutils
 from . import logging
+from .enums import HTTPStatus
 
 
 def _make_oauth_headers() -> dict[str, str]:
@@ -89,7 +90,10 @@ class AuthMixin:
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
             logging.error(traceback.format_exc())
-            if exc.response.status_code in (401, 403):
+            if exc.response.status_code in (
+                HTTPStatus.UNAUTHORIZED.value,
+                HTTPStatus.FORBIDDEN.value,
+            ):
                 msg = "Basic authentication failed - invalid username or password"
                 raise exceptions.AuthenticationError(
                     msg,
@@ -167,7 +171,10 @@ class AuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.error(traceback.format_exc())
-            if exc.response.status_code in (401, 403):
+            if exc.response.status_code in (
+                HTTPStatus.UNAUTHORIZED.value,
+                HTTPStatus.FORBIDDEN.value,
+            ):
                 msg = "OAuth authentication failed - invalid client credentials"
                 raise exceptions.AuthenticationError(
                     msg,
@@ -257,7 +264,10 @@ class AsyncAuthMixin:
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
             logging.error(traceback.format_exc())
-            if exc.response.status_code in (401, 403):
+            if exc.response.status_code in (
+                HTTPStatus.UNAUTHORIZED.value,
+                HTTPStatus.FORBIDDEN.value,
+            ):
                 msg = "Basic authentication failed - invalid username or password"
                 raise exceptions.AuthenticationError(
                     msg,
@@ -335,7 +345,10 @@ class AsyncAuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.error(traceback.format_exc())
-            if exc.response.status_code in (401, 403):
+            if exc.response.status_code in (
+                HTTPStatus.UNAUTHORIZED.value,
+                HTTPStatus.FORBIDDEN.value,
+            ):
                 msg = "OAuth authentication failed - invalid client credentials"
                 raise exceptions.AuthenticationError(
                     msg,

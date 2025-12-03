@@ -181,28 +181,41 @@ class TestExceptionFunction:
     """Test the exception logging function."""
 
     def test_exception_function_with_exception(self):
-        """Test exception function logs exception as error."""
+        """Test exception function logs exception with full traceback."""
         with patch("ipsdk.logging.log") as mock_log:
             test_exception = ValueError("test error")
             ipsdk_logging.exception(test_exception)
-            mock_log.assert_called_once_with(logging.ERROR, "test error")
+            # Verify it was called once with ERROR level
+            assert mock_log.call_count == 1
+            call_args = mock_log.call_args
+            assert call_args[0][0] == logging.ERROR
+            # Verify the logged message contains the exception type and message
+            logged_message = call_args[0][1]
+            assert "ValueError: test error" in logged_message
 
     def test_exception_function_with_different_exceptions(self):
-        """Test exception function with different exception types."""
+        """Test exception function with different exception types and tracebacks."""
         with patch("ipsdk.logging.logging.getLogger") as mock_get_logger:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
             exceptions_to_test = [
-                ValueError("value error"),
-                TypeError("type error"),
-                RuntimeError("runtime error"),
-                KeyError("key error"),
+                (ValueError("value error"), "ValueError: value error"),
+                (TypeError("type error"), "TypeError: type error"),
+                (RuntimeError("runtime error"), "RuntimeError: runtime error"),
+                (KeyError("key error"), "KeyError: 'key error'"),
             ]
 
-            for exc in exceptions_to_test:
+            for exc, expected_message_part in exceptions_to_test:
+                mock_logger.log.reset_mock()
                 ipsdk_logging.exception(exc)
-                mock_logger.log.assert_called_with(logging.ERROR, str(exc))
+                # Verify it was called with ERROR level
+                assert mock_logger.log.call_count == 1
+                call_args = mock_logger.log.call_args
+                assert call_args[0][0] == logging.ERROR
+                # Verify the logged message contains the exception type and message
+                logged_message = call_args[0][1]
+                assert expected_message_part in logged_message
 
 
 class TestFatalFunction:

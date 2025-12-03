@@ -3,6 +3,7 @@
 
 import threading
 import time
+from http import HTTPStatus
 from unittest.mock import Mock
 from unittest.mock import PropertyMock
 
@@ -526,15 +527,6 @@ class TestExceptionUsagePatterns:
 class TestConstants:
     """Test cases for module constants."""
 
-    def test_http_status_constants(self):
-        """Test HTTP status code constants are correctly defined."""
-        assert exceptions.HTTP_BAD_REQUEST == 400
-        assert exceptions.HTTP_UNAUTHORIZED == 401
-        assert exceptions.HTTP_FORBIDDEN == 403
-        assert exceptions.HTTP_INTERNAL_SERVER_ERROR == 500
-        assert exceptions.HTTP_CLIENT_ERROR_MAX == 500
-        assert exceptions.HTTP_SERVER_ERROR_MAX == 600
-
     def test_response_body_limit_constants(self):
         """Test response body limit constants are correctly defined."""
         assert exceptions.MAX_RESPONSE_BODY_LENGTH == 500
@@ -545,23 +537,24 @@ class TestConstants:
             <= exceptions.MAX_RESPONSE_BODY_LENGTH
         )
 
-    def test_status_code_relationships(self):
-        """Test logical relationships between status code constants."""
-        # Client error max should be start of server errors
-        assert exceptions.HTTP_CLIENT_ERROR_MAX == exceptions.HTTP_INTERNAL_SERVER_ERROR
-        # Bad request should be less than client error max
-        assert exceptions.HTTP_BAD_REQUEST < exceptions.HTTP_CLIENT_ERROR_MAX
-        # Unauthorized and forbidden should be in client error range
-        assert (
-            exceptions.HTTP_BAD_REQUEST
-            <= exceptions.HTTP_UNAUTHORIZED
-            < exceptions.HTTP_CLIENT_ERROR_MAX
-        )
-        assert (
-            exceptions.HTTP_BAD_REQUEST
-            <= exceptions.HTTP_FORBIDDEN
-            < exceptions.HTTP_CLIENT_ERROR_MAX
-        )
+    def test_http_server_error_max_constant(self):
+        """Test HTTP_SERVER_ERROR_MAX constant is correctly defined."""
+        assert exceptions.HTTP_SERVER_ERROR_MAX == 600
+        # Verify it's greater than server error start
+        assert exceptions.HTTP_SERVER_ERROR_MAX > HTTPStatus.INTERNAL_SERVER_ERROR
+
+    def test_uses_http_status_enum(self):
+        """Test that module uses standard library HTTPStatus enum."""
+        # Verify HTTPStatus enum values are accessible
+        assert HTTPStatus.BAD_REQUEST == 400
+        assert HTTPStatus.UNAUTHORIZED == 401
+        assert HTTPStatus.FORBIDDEN == 403
+        assert HTTPStatus.INTERNAL_SERVER_ERROR == 500
+
+        # Verify status code relationships
+        assert HTTPStatus.BAD_REQUEST < HTTPStatus.INTERNAL_SERVER_ERROR
+        assert HTTPStatus.UNAUTHORIZED < HTTPStatus.INTERNAL_SERVER_ERROR
+        assert HTTPStatus.FORBIDDEN < HTTPStatus.INTERNAL_SERVER_ERROR
 
 
 class TestInternalFunctions:

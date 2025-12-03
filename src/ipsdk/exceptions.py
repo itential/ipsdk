@@ -8,23 +8,19 @@ This module provides a streamlined set of exceptions that cover all common
 error scenarios while maintaining simplicity and clarity.
 """
 
+from http import HTTPStatus
 from typing import Any
 from typing import Dict
 from typing import Optional
 
 import httpx
 
-# HTTP status code constants
-HTTP_BAD_REQUEST = 400
-HTTP_UNAUTHORIZED = 401
-HTTP_FORBIDDEN = 403
-HTTP_INTERNAL_SERVER_ERROR = 500
-HTTP_CLIENT_ERROR_MAX = 500
-HTTP_SERVER_ERROR_MAX = 600
-
 # Response body limits
 MAX_RESPONSE_BODY_LENGTH = 500
 MAX_RESPONSE_DISPLAY_LENGTH = 200
+
+# HTTP status code range limits
+HTTP_SERVER_ERROR_MAX = 600  # Upper bound for server error range (5xx)
 
 
 class IpsdkError(Exception):
@@ -257,9 +253,9 @@ def classify_http_error(
             # Truncate response text for display
             truncated_response = response_str[:MAX_RESPONSE_DISPLAY_LENGTH]
             # For response text, use simple format based on status code
-            if status_code == HTTP_UNAUTHORIZED:
+            if status_code == HTTPStatus.UNAUTHORIZED:
                 message = f"Authentication failed: {truncated_response}"
-            elif status_code == HTTP_FORBIDDEN:
+            elif status_code == HTTPStatus.FORBIDDEN:
                 message = f"Access forbidden: {truncated_response}"
             else:
                 message = f"HTTP {status_code}: {truncated_response}"
@@ -271,23 +267,25 @@ def classify_http_error(
     elif parsing_error:
         # If there was a parsing error, use simple format
         message = f"HTTP {status_code} error"
-    elif status_code == HTTP_UNAUTHORIZED:
+    elif status_code == HTTPStatus.UNAUTHORIZED:
         message = "Authentication failed: invalid credentials or expired token"
-    elif status_code == HTTP_FORBIDDEN:
+    elif status_code == HTTPStatus.FORBIDDEN:
         message = "Access forbidden: insufficient permissions"
-    elif HTTP_BAD_REQUEST <= status_code < HTTP_CLIENT_ERROR_MAX:
+    elif HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR:
         message = f"Client error: HTTP {status_code}"
-    elif HTTP_INTERNAL_SERVER_ERROR <= status_code < HTTP_SERVER_ERROR_MAX:
+    elif HTTPStatus.INTERNAL_SERVER_ERROR <= status_code < HTTP_SERVER_ERROR_MAX:
         message = f"Server error: HTTP {status_code}"
     else:
         message = f"HTTP {status_code} error"
 
     # Return appropriate exception type
     is_client_error = (
-        status_code in (HTTP_UNAUTHORIZED, HTTP_FORBIDDEN) or
-        HTTP_BAD_REQUEST <= status_code < HTTP_CLIENT_ERROR_MAX
+        status_code in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN)
+        or HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR
     )
-    is_server_error = HTTP_INTERNAL_SERVER_ERROR <= status_code < HTTP_SERVER_ERROR_MAX
+    is_server_error = (
+        HTTPStatus.INTERNAL_SERVER_ERROR <= status_code < HTTP_SERVER_ERROR_MAX
+    )
 
     if is_client_error:
         return ClientError(

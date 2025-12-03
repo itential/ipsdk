@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import traceback
+from http import HTTPStatus
 from typing import Any
 from typing import Optional
 
@@ -10,7 +11,6 @@ import httpx
 from . import connection
 from . import exceptions
 from . import logging
-from .enums import HTTPStatus
 
 
 def _make_path() -> str:

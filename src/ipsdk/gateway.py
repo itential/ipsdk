@@ -1,7 +1,6 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import traceback
 from http import HTTPStatus
 from typing import Any
 from typing import Optional
@@ -76,7 +75,7 @@ class AuthMixin:
             res = self.client.post(path, headers=headers, json=data)
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            logging.error(traceback.format_exc())
+            logging.exception(exc)
             if exc.response.status_code in (
                 HTTPStatus.UNAUTHORIZED.value,
                 HTTPStatus.FORBIDDEN.value,
@@ -100,14 +99,14 @@ class AuthMixin:
                 },
             )
         except httpx.RequestError as exc:
-            logging.error(traceback.format_exc())
+            logging.exception(exc)
             msg = "Network error during gateway authentication"
             raise exceptions.NetworkError(
                 msg,
                 details={"original_error": str(exc)},
             )
         except Exception as exc:
-            logging.error(traceback.format_exc())
+            logging.exception(exc)
             msg = f"Unexpected error during gateway authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,
@@ -139,7 +138,7 @@ class AsyncAuthMixin:
             res = await self.client.post(path, headers=headers, json=data)
             res.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            logging.error(traceback.format_exc())
+            logging.exception(exc)
             if exc.response.status_code in (
                 HTTPStatus.UNAUTHORIZED.value,
                 HTTPStatus.FORBIDDEN.value,
@@ -163,14 +162,14 @@ class AsyncAuthMixin:
                 },
             )
         except httpx.RequestError as exc:
-            logging.error(traceback.format_exc())
+            logging.exception(exc)
             msg = "Network error during gateway authentication"
             raise exceptions.NetworkError(
                 msg,
                 details={"original_error": str(exc)},
             )
         except Exception as exc:
-            logging.error(traceback.format_exc())
+            logging.exception(exc)
             msg = f"Unexpected error during gateway authentication: {exc!s}"
             raise exceptions.AuthenticationError(
                 msg,

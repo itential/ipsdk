@@ -2,7 +2,6 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import json
-import traceback
 from typing import Union
 
 from . import exceptions
@@ -21,7 +20,7 @@ def loads(s: str) -> Union[dict, list]:
     try:
         return json.loads(s)
     except json.JSONDecodeError as exc:
-        logging.error(traceback.format_exc())
+        logging.exception(exc)
         input_data = str(s)[:200] if s is not None else "None"
         msg = f"Failed to parse JSON: {exc!s}"
         raise exceptions.ValidationError(
@@ -29,7 +28,7 @@ def loads(s: str) -> Union[dict, list]:
             details={"input_data": input_data, "json_error": str(exc)},
         )
     except Exception as exc:
-        logging.error(traceback.format_exc())
+        logging.exception(exc)
         input_data = str(s)[:200] if s is not None else "None"
         msg = f"Unexpected error parsing JSON: {exc!s}"
         raise exceptions.ValidationError(
@@ -50,14 +49,14 @@ def dumps(o: Union[dict, list]) -> str:
     try:
         return json.dumps(o)
     except (TypeError, ValueError) as exc:
-        logging.error(traceback.format_exc())
+        logging.exception(exc)
         msg = f"Failed to serialize object to JSON: {exc!s}"
         raise exceptions.ValidationError(
             msg,
             details={"object_type": str(type(o)), "json_error": str(exc)},
         )
     except Exception as exc:
-        logging.error(traceback.format_exc())
+        logging.exception(exc)
         msg = f"Unexpected error serializing JSON: {exc!s}"
         raise exceptions.ValidationError(
             msg,

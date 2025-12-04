@@ -110,126 +110,6 @@ def test_auth_mixin_authenticate_success():
     mock_response.raise_for_status.assert_called_once()
 
 
-def test_auth_mixin_authenticate_401_unauthorized():
-    """Test AuthMixin.authenticate with 401 unauthorized."""
-    mixin = AuthMixin()
-    mixin.user = "admin"
-    mixin.password = "wrongpass"
-    mixin.client = Mock()
-
-    # Mock 401 response
-    mock_response = Mock()
-    mock_response.status_code = 401
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-
-    exception = httpx.HTTPStatusError(
-        "Unauthorized", request=mock_request, response=mock_response
-    )
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        mixin.authenticate()
-
-    assert "Gateway authentication failed - invalid username or password" in str(
-        exc_info.value
-    )
-    assert exc_info.value.details.get("auth_type") == "basic"
-    assert exc_info.value.details["status_code"] == 401
-
-
-def test_auth_mixin_authenticate_403_forbidden():
-    """Test AuthMixin.authenticate with 403 forbidden."""
-    mixin = AuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = Mock()
-
-    # Mock 403 response
-    mock_response = Mock()
-    mock_response.status_code = 403
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-
-    exception = httpx.HTTPStatusError(
-        "Forbidden", request=mock_request, response=mock_response
-    )
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        mixin.authenticate()
-
-    assert "Gateway authentication failed - invalid username or password" in str(
-        exc_info.value
-    )
-    assert exc_info.value.details.get("auth_type") == "basic"
-    assert exc_info.value.details["status_code"] == 403
-
-
-def test_auth_mixin_authenticate_500_server_error():
-    """Test AuthMixin.authenticate with 500 server error."""
-    mixin = AuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = Mock()
-
-    # Mock 500 response
-    mock_response = Mock()
-    mock_response.status_code = 500
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-
-    exception = httpx.HTTPStatusError(
-        "Internal Server Error", request=mock_request, response=mock_response
-    )
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        mixin.authenticate()
-
-    assert "Gateway authentication failed with status 500" in str(exc_info.value)
-    assert exc_info.value.details.get("auth_type") == "basic"
-    assert exc_info.value.details["status_code"] == 500
-
-
-def test_auth_mixin_authenticate_network_error():
-    """Test AuthMixin.authenticate with network error."""
-    mixin = AuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = Mock()
-
-    # Mock network error
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-    exception = httpx.ConnectError("Connection refused", request=mock_request)
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.NetworkError) as exc_info:
-        mixin.authenticate()
-
-    assert "Network error during gateway authentication" in str(exc_info.value)
-    assert "Connection refused" in exc_info.value.details["original_error"]
-
-
-def test_auth_mixin_authenticate_generic_exception():
-    """Test AuthMixin.authenticate with generic exception."""
-    mixin = AuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = Mock()
-
-    # Mock generic exception
-    mixin.client.post.side_effect = RuntimeError("Unexpected error")
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        mixin.authenticate()
-
-    assert "Unexpected error during gateway authentication" in str(exc_info.value)
-    assert exc_info.value.details.get("auth_type") == "basic"
-    assert "Unexpected error" in exc_info.value.details["original_error"]
-
-
 # --------- Async AuthMixin Tests ---------
 
 
@@ -255,72 +135,6 @@ async def test_async_auth_mixin_authenticate_success():
         json={"username": "admin", "password": "adminpass"},
     )
     mock_response.raise_for_status.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_async_auth_mixin_authenticate_401_unauthorized():
-    """Test AsyncAuthMixin.authenticate with 401 unauthorized."""
-    mixin = AsyncAuthMixin()
-    mixin.user = "admin"
-    mixin.password = "wrongpass"
-    mixin.client = AsyncMock()
-
-    # Mock 401 response
-    mock_response = Mock()
-    mock_response.status_code = 401
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-
-    exception = httpx.HTTPStatusError(
-        "Unauthorized", request=mock_request, response=mock_response
-    )
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        await mixin.authenticate()
-
-    assert "Gateway authentication failed - invalid username or password" in str(
-        exc_info.value
-    )
-    assert exc_info.value.details.get("auth_type") == "basic"
-
-
-@pytest.mark.asyncio
-async def test_async_auth_mixin_authenticate_network_error():
-    """Test AsyncAuthMixin.authenticate with network error."""
-    mixin = AsyncAuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = AsyncMock()
-
-    # Mock network error
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-    exception = httpx.ConnectError("Connection refused", request=mock_request)
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.NetworkError) as exc_info:
-        await mixin.authenticate()
-
-    assert "Network error during gateway authentication" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
-async def test_async_auth_mixin_authenticate_generic_exception():
-    """Test AsyncAuthMixin.authenticate with generic exception."""
-    mixin = AsyncAuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = AsyncMock()
-
-    # Mock generic exception
-    mixin.client.post.side_effect = RuntimeError("Unexpected error")
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        await mixin.authenticate()
-
-    assert "Unexpected error during gateway authentication" in str(exc_info.value)
-    assert exc_info.value.details.get("auth_type") == "basic"
 
 
 # --------- Integration Tests ---------
@@ -362,62 +176,6 @@ def test_gateway_authentication_not_called_initially():
 
 
 # --------- Additional Gateway Test Cases ---------
-
-
-@pytest.mark.asyncio
-async def test_async_auth_mixin_authenticate_403_forbidden():
-    """Test AsyncAuthMixin.authenticate with 403 forbidden."""
-    mixin = AsyncAuthMixin()
-    mixin.user = "forbidden_user"
-    mixin.password = "forbidden_pass"
-    mixin.client = AsyncMock()
-
-    # Mock 403 response
-    mock_response = Mock()
-    mock_response.status_code = 403
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-
-    exception = httpx.HTTPStatusError(
-        "Forbidden", request=mock_request, response=mock_response
-    )
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        await mixin.authenticate()
-
-    assert "Gateway authentication failed - invalid username or password" in str(
-        exc_info.value
-    )
-    assert exc_info.value.details.get("auth_type") == "basic"
-    assert exc_info.value.details["status_code"] == 403
-
-
-@pytest.mark.asyncio
-async def test_async_auth_mixin_authenticate_500_server_error():
-    """Test AsyncAuthMixin.authenticate with 500 server error."""
-    mixin = AsyncAuthMixin()
-    mixin.user = "admin"
-    mixin.password = "adminpass"
-    mixin.client = AsyncMock()
-
-    # Mock 500 response
-    mock_response = Mock()
-    mock_response.status_code = 500
-    mock_request = Mock()
-    mock_request.url = "https://gateway.example.com/login"
-
-    exception = httpx.HTTPStatusError(
-        "Internal Server Error", request=mock_request, response=mock_response
-    )
-    mixin.client.post.side_effect = exception
-
-    with pytest.raises(exceptions.AuthenticationError) as exc_info:
-        await mixin.authenticate()
-
-    assert "Gateway authentication failed with status 500" in str(exc_info.value)
-    assert exc_info.value.details.get("auth_type") == "basic"
-    assert exc_info.value.details["status_code"] == 500
 
 
 def test_gateway_factory_with_all_parameters():
@@ -629,3 +387,271 @@ def test_gateway_vs_async_gateway_types():
     # And both should be connection-like
     assert hasattr(sync_gateway, "get")
     assert hasattr(async_gateway, "get")
+
+
+# --------- Error Handling Tests ---------
+
+
+def test_auth_mixin_http_status_error():
+    """Test AuthMixin.authenticate raises HTTPStatusError on HTTP error."""
+    mixin = AuthMixin()
+    mixin.user = "admin"
+    mixin.password = "adminpass"
+    mixin.client = Mock()
+
+    # Mock HTTPStatusError
+    mock_request = Mock()
+    mock_response = Mock()
+    mock_response.status_code = 401
+    http_exc = httpx.HTTPStatusError(
+        "401 Unauthorized", request=mock_request, response=mock_response
+    )
+
+    mock_post_response = Mock()
+    mock_post_response.raise_for_status.side_effect = http_exc
+    mixin.client.post.return_value = mock_post_response
+
+    with pytest.raises(exceptions.HTTPStatusError):
+        mixin.authenticate()
+
+
+def test_auth_mixin_request_error():
+    """Test AuthMixin.authenticate raises RequestError on network error."""
+    mixin = AuthMixin()
+    mixin.user = "admin"
+    mixin.password = "adminpass"
+    mixin.client = Mock()
+
+    # Mock RequestError
+    mock_request = Mock()
+    request_exc = httpx.RequestError("Connection timeout", request=mock_request)
+
+    mixin.client.post.side_effect = request_exc
+
+    with pytest.raises(exceptions.RequestError):
+        mixin.authenticate()
+
+
+@pytest.mark.asyncio
+async def test_async_auth_mixin_http_status_error():
+    """Test AsyncAuthMixin.authenticate raises HTTPStatusError on HTTP error."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "admin"
+    mixin.password = "adminpass"
+    mixin.client = AsyncMock()
+
+    # Mock HTTPStatusError
+    mock_request = Mock()
+    mock_response = Mock()
+    mock_response.status_code = 403
+    http_exc = httpx.HTTPStatusError(
+        "403 Forbidden", request=mock_request, response=mock_response
+    )
+
+    mock_post_response = Mock()
+    mock_post_response.raise_for_status.side_effect = http_exc
+    mixin.client.post.return_value = mock_post_response
+
+    with pytest.raises(exceptions.HTTPStatusError):
+        await mixin.authenticate()
+
+
+@pytest.mark.asyncio
+async def test_async_auth_mixin_request_error():
+    """Test AsyncAuthMixin.authenticate raises RequestError on network error."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "admin"
+    mixin.password = "adminpass"
+    mixin.client = AsyncMock()
+
+    # Mock RequestError
+    mock_request = Mock()
+    request_exc = httpx.RequestError("Network failure", request=mock_request)
+
+    mixin.client.post.side_effect = request_exc
+
+    with pytest.raises(exceptions.RequestError):
+        await mixin.authenticate()
+
+
+# --------- Additional Coverage Tests ---------
+
+
+def test_gateway_client_headers():
+    """Test that Gateway client has correct User-Agent header."""
+    gateway = gateway_factory()
+
+    # Should have User-Agent header set
+    assert "User-Agent" in gateway.client.headers
+    assert "ipsdk/" in gateway.client.headers["User-Agent"]
+
+
+def test_gateway_uses_https_by_default():
+    """Test that Gateway uses HTTPS by default."""
+    gateway = gateway_factory(host="example.com")
+
+    assert str(gateway.client.base_url).startswith("https://")
+
+
+def test_gateway_uses_http_when_tls_disabled():
+    """Test that Gateway uses HTTP when use_tls=False."""
+    gateway = gateway_factory(host="example.com", use_tls=False)
+
+    assert str(gateway.client.base_url).startswith("http://")
+
+
+def test_gateway_has_api_base_path():
+    """Test that Gateway always includes /api/v2.0 in base URL."""
+    gateway = gateway_factory(host="example.com")
+
+    assert "/api/v2.0" in str(gateway.client.base_url)
+
+
+def test_gateway_default_timeout():
+    """Test that Gateway uses default timeout of 30 seconds."""
+    gateway = gateway_factory()
+
+    # The timeout should be set on the client
+    assert gateway.client.timeout.read == 30
+
+
+def test_gateway_custom_timeout():
+    """Test that Gateway respects custom timeout value."""
+    gateway = gateway_factory(timeout=60)
+
+    assert gateway.client.timeout.read == 60
+
+
+def test_gateway_verify_ssl_default():
+    """Test that Gateway is created with verify=True by default."""
+    gateway = gateway_factory(host="example.com")
+
+    # Gateway should be created successfully with SSL verification
+    assert gateway.client is not None
+
+
+def test_auth_mixin_calls_correct_endpoint():
+    """Test that AuthMixin authenticates to the correct endpoint."""
+    mixin = AuthMixin()
+    mixin.user = "admin"
+    mixin.password = "adminpass"
+    mixin.client = Mock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    mixin.authenticate()
+
+    # Verify endpoint is /login
+    call_args = mixin.client.post.call_args
+    assert call_args[0][0] == "/login" or call_args.args[0] == "/login"
+
+
+def test_auth_mixin_sends_json_body():
+    """Test that AuthMixin sends credentials as JSON body."""
+    mixin = AuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = Mock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    mixin.authenticate()
+
+    # Verify JSON body is sent
+    call_args = mixin.client.post.call_args
+    assert call_args.kwargs["json"] == {"username": "testuser", "password": "testpass"}
+
+
+def test_auth_mixin_sends_correct_headers():
+    """Test that AuthMixin sends correct Content-Type and Accept headers."""
+    mixin = AuthMixin()
+    mixin.user = "admin"
+    mixin.password = "pass"
+    mixin.client = Mock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status.return_value = None
+    mixin.client.post.return_value = mock_response
+
+    mixin.authenticate()
+
+    # Verify headers
+    call_args = mixin.client.post.call_args
+    headers = call_args.kwargs["headers"]
+    assert headers["Content-Type"] == "application/json"
+    assert headers["Accept"] == "application/json"
+
+
+@pytest.mark.asyncio
+async def test_async_auth_mixin_calls_correct_endpoint():
+    """Test that AsyncAuthMixin authenticates to the correct endpoint."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "admin"
+    mixin.password = "adminpass"
+    mixin.client = AsyncMock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    await mixin.authenticate()
+
+    # Verify endpoint is /login
+    call_args = mixin.client.post.call_args
+    assert call_args[0][0] == "/login" or call_args.args[0] == "/login"
+
+
+@pytest.mark.asyncio
+async def test_async_auth_mixin_sends_json_body():
+    """Test that AsyncAuthMixin sends credentials as JSON body."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "testuser"
+    mixin.password = "testpass"
+    mixin.client = AsyncMock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    await mixin.authenticate()
+
+    # Verify JSON body is sent
+    call_args = mixin.client.post.call_args
+    assert call_args.kwargs["json"] == {"username": "testuser", "password": "testpass"}
+
+
+@pytest.mark.asyncio
+async def test_async_auth_mixin_sends_correct_headers():
+    """Test that AsyncAuthMixin sends correct Content-Type and Accept headers."""
+    mixin = AsyncAuthMixin()
+    mixin.user = "admin"
+    mixin.password = "pass"
+    mixin.client = AsyncMock()
+
+    # Mock successful response
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    await mixin.authenticate()
+
+    # Verify headers
+    call_args = mixin.client.post.call_args
+    headers = call_args.kwargs["headers"]
+    assert headers["Content-Type"] == "application/json"
+    assert headers["Accept"] == "application/json"

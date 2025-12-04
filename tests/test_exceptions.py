@@ -1,11 +1,17 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-import threading
-import time
-from http import HTTPStatus
+"""
+Test suite for the refactored exception module.
+
+This test suite validates the simplified exception hierarchy:
+- IpsdkError: Base exception
+- RequestError: Wraps httpx.RequestError
+- HTTPStatusError: Wraps httpx.HTTPStatusError
+- SerializationError: Data serialization/deserialization errors
+"""
+
 from unittest.mock import Mock
-from unittest.mock import PropertyMock
 
 import httpx
 import pytest
@@ -20,874 +26,478 @@ class TestIpsdkError:
         """Test basic exception initialization with just a message."""
         exc = exceptions.IpsdkError("Test error message")
         assert str(exc) == "Test error message"
-        assert exc.message == "Test error message"
-        assert exc.details == {}
+        assert exc.args[0] == "Test error message"
 
-    def test_initialization_with_details(self):
-        """Test exception initialization with details dictionary."""
-        details = {"key1": "value1", "key2": 42}
-        exc = exceptions.IpsdkError("Test error", details=details)
-        assert str(exc) == "Test error. Details: {'key1': 'value1', 'key2': 42}"
-        assert exc.message == "Test error"
-        assert exc.details == details
+    def test_initialization_with_httpx_exception(self):
+        """Test exception initialization with an httpx exception."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+        mock_response = Mock()
+        mock_response.status_code = 500
 
-    def test_initialization_with_none_details(self):
-        """Test exception initialization with None details."""
-        exc = exceptions.IpsdkError("Test error", details=None)
-        assert str(exc) == "Test error"
-        assert exc.details == {}
+        httpx_exc = httpx.HTTPStatusError(
+            "Server error",
+            request=mock_request,
+            response=mock_response
+        )
 
-    def test_str_representation_with_details(self):
-        """Test string representation includes details when present."""
-        exc = exceptions.IpsdkError("Error", {"status": 500})
-        assert "Details: {'status': 500}" in str(exc)
+        exc = exceptions.IpsdkError("Wrapped error", httpx_exc)
+        assert str(exc) == "Wrapped error"
+        assert exc.request == mock_request
+        assert exc.response == mock_response
 
-    def test_str_representation_without_details(self):
-        """Test string representation without details."""
+    def test_str_representation(self):
+        """Test string representation of the exception."""
         exc = exceptions.IpsdkError("Simple error")
         assert str(exc) == "Simple error"
-        assert "Details:" not in str(exc)
 
-
-class TestNetworkError:
-    """Test cases for NetworkError and related network exceptions."""
-
-    def test_network_error_basic(self):
-        """Test basic NetworkError initialization."""
-        exc = exceptions.NetworkError("Network failed")
-        assert str(exc) == "Network failed"
-        assert exc.message == "Network failed"
-        assert exc.details == {}
-
-    def test_network_error_with_details(self):
-        """Test NetworkError with additional details."""
-        details = {"host": "example.com", "timeout": 30}
-        exc = exceptions.NetworkError("Connection timeout", details=details)
-        assert exc.details == details
+    def test_inheritance(self):
+        """Test that IpsdkError inherits from Exception."""
+        exc = exceptions.IpsdkError("Test")
+        assert isinstance(exc, Exception)
         assert isinstance(exc, exceptions.IpsdkError)
 
-    def test_network_error_inheritance(self):
-        """Test NetworkError inheritance."""
-        exc = exceptions.NetworkError("Network issue")
+    def test_request_property_without_exception(self):
+        """Test request property when no httpx exception was provided."""
+        exc = exceptions.IpsdkError("Test error")
+        # Accessing request without an httpx exception will raise AttributeError
+        with pytest.raises(AttributeError):
+            _ = exc.request
+
+    def test_response_property_without_exception(self):
+        """Test response property when no httpx exception was provided."""
+        exc = exceptions.IpsdkError("Test error")
+        # Accessing response without an httpx exception will raise AttributeError
+        with pytest.raises(AttributeError):
+            _ = exc.response
+
+
+class TestRequestError:
+    """Test cases for RequestError exception."""
+
+    def test_initialization_with_httpx_request_error(self):
+        """Test RequestError wraps httpx.RequestError correctly."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+
+        httpx_exc = httpx.RequestError("Connection failed", request=mock_request)
+        exc = exceptions.RequestError(httpx_exc)
+
         assert isinstance(exc, exceptions.IpsdkError)
-        assert isinstance(exc, exceptions.NetworkError)
+        assert isinstance(exc, exceptions.RequestError)
+        assert str(exc) == "Connection failed"
+        assert exc.request == mock_request
 
+    def test_initialization_with_connect_error(self):
+        """Test RequestError wraps httpx.ConnectError."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
 
-class TestAuthenticationError:
-    """Test cases for AuthenticationError and related authentication exceptions."""
+        httpx_exc = httpx.ConnectError("Connection refused", request=mock_request)
+        exc = exceptions.RequestError(httpx_exc)
 
-    def test_authentication_error_basic(self):
-        """Test basic AuthenticationError initialization."""
-        exc = exceptions.AuthenticationError("Auth failed")
-        assert str(exc) == "Auth failed"
-        assert exc.message == "Auth failed"
-        assert exc.details == {}
+        assert isinstance(exc, exceptions.RequestError)
+        assert "Connection refused" in str(exc)
 
-    def test_authentication_error_with_details(self):
-        """Test AuthenticationError with additional details."""
-        details = {"auth_type": "oauth", "username": "testuser"}
-        exc = exceptions.AuthenticationError("Login failed", details=details)
-        assert exc.details == details
+    def test_initialization_with_timeout(self):
+        """Test RequestError wraps httpx.TimeoutException."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+
+        httpx_exc = httpx.TimeoutException("Request timeout", request=mock_request)
+        exc = exceptions.RequestError(httpx_exc)
+
+        assert isinstance(exc, exceptions.RequestError)
+        assert "Request timeout" in str(exc)
+
+    def test_inheritance_chain(self):
+        """Test RequestError inheritance chain."""
+        mock_request = Mock()
+        httpx_exc = httpx.RequestError("Test", request=mock_request)
+        exc = exceptions.RequestError(httpx_exc)
+
+        assert isinstance(exc, Exception)
         assert isinstance(exc, exceptions.IpsdkError)
-
-    def test_authentication_error_inheritance(self):
-        """Test AuthenticationError inheritance."""
-        exc = exceptions.AuthenticationError("Auth issue")
-        assert isinstance(exc, exceptions.IpsdkError)
-        assert isinstance(exc, exceptions.AuthenticationError)
+        assert isinstance(exc, exceptions.RequestError)
 
 
-class TestHTTPError:
-    """Test cases for HTTPError and its subclasses."""
+class TestHTTPStatusError:
+    """Test cases for HTTPStatusError exception."""
 
-    def test_http_error_basic(self):
-        """Test basic HTTPError initialization."""
-        exc = exceptions.HTTPError("HTTP error")
-        assert str(exc) == "HTTP error"
-        assert exc.message == "HTTP error"
-        assert exc.details == {}
-        assert exc.status_code is None
-        assert exc.response is None
-        assert exc.request_url is None
+    def test_initialization_with_httpx_status_error(self):
+        """Test HTTPStatusError wraps httpx.HTTPStatusError correctly."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+        mock_response = Mock()
+        mock_response.status_code = 404
 
-    def test_http_error_with_all_params(self):
-        """Test HTTPError with all parameters."""
-        response = Mock()
-        response.text = "Error response body"
-        exc = exceptions.HTTPError(
-            "HTTP 400 error",
-            status_code=400,
-            response=response,
-            request_url="http://example.com",
-        )
-        assert exc.status_code == 400
-        assert exc.response == response
-        assert exc.request_url == "http://example.com"
-        assert exc.details["status_code"] == 400
-        assert exc.details["request_url"] == "http://example.com"
-        assert "Error response body" in exc.details["response_body"]
-
-    def test_http_error_truncates_long_response(self):
-        """Test HTTPError truncates long response bodies."""
-        response = Mock()
-        response.text = "A" * 1000  # Long response
-        exc = exceptions.HTTPError("Error", response=response)
-        assert len(exc.details["response_body"]) == 500
-
-    def test_http_error_handles_response_text_exception(self):
-        """Test HTTPError handles exceptions when accessing response text."""
-        response = Mock()
-        response.text = Mock(side_effect=Exception("Response text error"))
-        exc = exceptions.HTTPError("Error", response=response)
-        # Should not raise an exception and details should not include response_body
-        assert "response_body" not in exc.details
-
-    def test_http_error_non_string_response_text(self):
-        """Test HTTPError handles non-string response text."""
-        response = Mock()
-        response.text = 123  # Non-string
-        exc = exceptions.HTTPError("Error", response=response)
-        # Should handle gracefully
-        assert "response_body" not in exc.details
-
-    def test_client_error_inheritance(self):
-        """Test ClientError inheritance."""
-        exc = exceptions.ClientError("Client error", status_code=400)
-        assert isinstance(exc, exceptions.HTTPError)
-        assert isinstance(exc, exceptions.IpsdkError)
-        assert exc.status_code == 400
-
-    def test_server_error_inheritance(self):
-        """Test ServerError inheritance."""
-        exc = exceptions.ServerError("Server error", status_code=500)
-        assert isinstance(exc, exceptions.HTTPError)
-        assert isinstance(exc, exceptions.IpsdkError)
-        assert exc.status_code == 500
-
-
-class TestValidationError:
-    """Test cases for ValidationError and related validation exceptions."""
-
-    def test_validation_error_basic(self):
-        """Test basic ValidationError initialization."""
-        exc = exceptions.ValidationError("Validation failed")
-        assert str(exc) == "Validation failed"
-        assert exc.message == "Validation failed"
-        assert exc.details == {}
-
-    def test_validation_error_with_details(self):
-        """Test ValidationError with additional details."""
-        details = {"field": "email", "value": "invalid-email"}
-        exc = exceptions.ValidationError("Invalid email", details=details)
-        assert exc.details == details
-        assert isinstance(exc, exceptions.IpsdkError)
-
-    def test_validation_error_inheritance(self):
-        """Test ValidationError inheritance."""
-        exc = exceptions.ValidationError("Validation issue")
-        assert isinstance(exc, exceptions.IpsdkError)
-        assert isinstance(exc, exceptions.ValidationError)
-
-
-class TestClassifyHTTPError:
-    """Test cases for HTTP error classification."""
-
-    def test_classify_401_unauthorized(self):
-        """Test classification of 401 Unauthorized."""
-        exc = exceptions.classify_http_error(401)
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 401
-        assert "Authentication failed" in exc.message
-        assert "invalid credentials or expired token" in exc.message
-
-    def test_classify_403_forbidden(self):
-        """Test classification of 403 Forbidden."""
-        exc = exceptions.classify_http_error(403)
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 403
-        assert "Access forbidden" in exc.message
-        assert "insufficient permissions" in exc.message
-
-    def test_classify_400_client_error(self):
-        """Test classification of 400 Bad Request."""
-        exc = exceptions.classify_http_error(400)
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 400
-
-    def test_classify_404_client_error(self):
-        """Test classification of 404 Not Found."""
-        exc = exceptions.classify_http_error(404)
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 404
-
-    def test_classify_500_server_error(self):
-        """Test classification of 500 Internal Server Error."""
-        exc = exceptions.classify_http_error(500)
-        assert isinstance(exc, exceptions.ServerError)
-        assert exc.status_code == 500
-
-    def test_classify_503_server_error(self):
-        """Test classification of 503 Service Unavailable."""
-        exc = exceptions.classify_http_error(503)
-        assert isinstance(exc, exceptions.ServerError)
-        assert exc.status_code == 503
-
-    def test_classify_unknown_status_code(self):
-        """Test classification of unknown status codes."""
-        exc = exceptions.classify_http_error(999)
-        assert isinstance(exc, exceptions.HTTPError)
-        assert not isinstance(exc, (exceptions.ClientError, exceptions.ServerError))
-        assert exc.status_code == 999
-
-    def test_classify_with_response_text(self):
-        """Test classification with response text."""
-        response = Mock()
-        response.text = "Detailed error message"
-        exc = exceptions.classify_http_error(400, response=response)
-        assert "Detailed error message" in exc.message
-
-    def test_classify_with_long_response_text(self):
-        """Test classification with long response text."""
-        response = Mock()
-        response.text = "A" * 300  # Long response
-        exc = exceptions.classify_http_error(400, response=response)
-        # Message should be truncated to 200 characters
-        assert len(exc.message.split(": ", 1)[1]) == 200
-
-    def test_classify_with_response_parsing_error(self):
-        """Test classification when response text parsing fails."""
-        response = Mock()
-        response.text = Mock(side_effect=Exception("Parse error"))
-        exc = exceptions.classify_http_error(400, response=response)
-        # Should fall back to default message
-        assert exc.message == "HTTP 400 error"
-
-
-class TestClassifyHttpxError:
-    """Test cases for httpx error classification."""
-
-    def test_classify_timeout_exception(self):
-        """Test classification of httpx TimeoutException."""
-        httpx_exc = httpx.TimeoutException("Request timed out")
-        exc = exceptions.classify_httpx_error(httpx_exc, "http://example.com")
-        assert isinstance(exc, exceptions.NetworkError)
-        assert "Network error" in exc.message
-        assert exc.details["request_url"] == "http://example.com"
-        assert exc.details["original_error"] == str(httpx_exc)
-
-    def test_classify_connect_error(self):
-        """Test classification of httpx ConnectError."""
-        httpx_exc = httpx.ConnectError("Connection failed")
-        exc = exceptions.classify_httpx_error(httpx_exc)
-        assert isinstance(exc, exceptions.NetworkError)
-        assert "Network error" in exc.message
-
-    def test_classify_request_error(self):
-        """Test classification of httpx RequestError."""
-        httpx_exc = httpx.RequestError("Request failed")
-        exc = exceptions.classify_httpx_error(httpx_exc)
-        assert isinstance(exc, exceptions.NetworkError)
-        assert "Network error" in exc.message
-
-    def test_classify_http_status_error(self):
-        """Test classification of httpx HTTPStatusError."""
-        response = Mock()
-        response.status_code = 404
-        request = Mock()
-        request.url = "http://example.com"
         httpx_exc = httpx.HTTPStatusError(
-            "Not found", request=request, response=response
+            "Not found",
+            request=mock_request,
+            response=mock_response
         )
-        exc = exceptions.classify_httpx_error(httpx_exc)
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 404
+        exc = exceptions.HTTPStatusError(httpx_exc)
 
-    def test_classify_http_status_error_url_exception(self):
-        """Test HTTPStatusError when URL access raises exception."""
-        response = Mock()
-        response.status_code = 404
-        request = Mock()
-        # Configure the url property to raise an exception when accessed
-        type(request).url = PropertyMock(side_effect=RuntimeError("URL error"))
+        assert isinstance(exc, exceptions.IpsdkError)
+        assert isinstance(exc, exceptions.HTTPStatusError)
+        assert str(exc) == "Not found"
+        assert exc.request == mock_request
+        assert exc.response == mock_response
+
+    def test_initialization_with_4xx_error(self):
+        """Test HTTPStatusError with 4xx client error."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+        mock_response = Mock()
+        mock_response.status_code = 400
+
         httpx_exc = httpx.HTTPStatusError(
-            "Not found", request=request, response=response
+            "Bad request",
+            request=mock_request,
+            response=mock_response
         )
-        exc = exceptions.classify_httpx_error(httpx_exc, "http://fallback.com")
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.request_url == "http://fallback.com"
+        exc = exceptions.HTTPStatusError(httpx_exc)
 
-    def test_classify_unknown_exception(self):
-        """Test classification of unknown exceptions."""
-        unknown_exc = ValueError("Unknown error")
-        exc = exceptions.classify_httpx_error(unknown_exc)
+        assert isinstance(exc, exceptions.HTTPStatusError)
+        assert "Bad request" in str(exc)
+        assert exc.response.status_code == 400
+
+    def test_initialization_with_5xx_error(self):
+        """Test HTTPStatusError with 5xx server error."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+        mock_response = Mock()
+        mock_response.status_code = 500
+
+        httpx_exc = httpx.HTTPStatusError(
+            "Internal server error",
+            request=mock_request,
+            response=mock_response
+        )
+        exc = exceptions.HTTPStatusError(httpx_exc)
+
+        assert isinstance(exc, exceptions.HTTPStatusError)
+        assert "Internal server error" in str(exc)
+        assert exc.response.status_code == 500
+
+    def test_inheritance_chain(self):
+        """Test HTTPStatusError inheritance chain."""
+        mock_request = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 403
+
+        httpx_exc = httpx.HTTPStatusError(
+            "Forbidden",
+            request=mock_request,
+            response=mock_response
+        )
+        exc = exceptions.HTTPStatusError(httpx_exc)
+
+        assert isinstance(exc, Exception)
         assert isinstance(exc, exceptions.IpsdkError)
-        assert "Unexpected error" in exc.message
+        assert isinstance(exc, exceptions.HTTPStatusError)
 
 
-class TestClassifyHTTPErrorEdgeCases:
-    """Test edge cases for classify_http_error function."""
+class TestSerializationError:
+    """Test cases for SerializationError exception."""
 
-    def test_classify_with_empty_response_text(self):
-        """Test classification with empty response text."""
-        exc = exceptions.classify_http_error(400, response_text="")
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 400
+    def test_basic_initialization(self):
+        """Test basic SerializationError initialization."""
+        exc = exceptions.SerializationError("Serialization failed")
+        assert str(exc) == "Serialization failed"
+        assert exc.args[0] == "Serialization failed"
 
-    def test_classify_with_none_response_text(self):
-        """Test classification with None response text."""
-        exc = exceptions.classify_http_error(500, response_text=None)
-        assert isinstance(exc, exceptions.ServerError)
-        assert exc.status_code == 500
-        assert "Server error: HTTP 500" in exc.message
-
-    def test_classify_with_request_url_only(self):
-        """Test classification with request URL but no response."""
-        url = "https://api.example.com/test"
-        exc = exceptions.classify_http_error(404, request_url=url)
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.request_url == url
-        assert exc.details.get("request_url") == url
-
-    def test_classify_with_real_httpx_response(self):
-        """Test classification with actual httpx Response object."""
-
-        # Create a mock response that behaves like httpx.Response
-        response = Mock(spec=httpx.Response)
-        response.text = "Not Found"
-        response.status_code = 404
-
-        exc = exceptions.classify_http_error(404, response=response)
-        assert isinstance(exc, exceptions.ClientError)
-        assert "Not Found" in exc.message
-
-    def test_classify_boundary_status_codes(self):
-        """Test classification of boundary status codes."""
-        # Edge of client error range
-        exc1 = exceptions.classify_http_error(399)  # Just below 4xx range
-        assert isinstance(exc1, exceptions.HTTPError)
-        assert not isinstance(exc1, exceptions.ClientError)
-
-        exc2 = exceptions.classify_http_error(499)  # End of 4xx range
-        assert isinstance(exc2, exceptions.ClientError)
-
-        # Edge of server error range
-        exc3 = exceptions.classify_http_error(500)  # Start of 5xx range
-        assert isinstance(exc3, exceptions.ServerError)
-
-        exc4 = exceptions.classify_http_error(599)  # End of 5xx range
-        assert isinstance(exc4, exceptions.ServerError)
-
-        exc5 = exceptions.classify_http_error(600)  # Beyond 5xx range
-        assert isinstance(exc5, exceptions.HTTPError)
-        assert not isinstance(exc5, exceptions.ServerError)
-
-    def test_classify_with_both_response_text_and_response_object(self):
-        """Test that response_text parameter takes precedence over response.text."""
-
-        response = Mock()
-        response.text = "Response object text"
-
-        # response_text should take precedence
-        exc = exceptions.classify_http_error(
-            400, response_text="Explicit response text", response=response
-        )
-        assert "Explicit response text" in exc.message
-        assert "Response object text" not in exc.message
-
-    def test_classify_with_very_long_response_text(self):
-        """Test handling of extremely long response text."""
-        long_text = "A" * 1000  # Much longer than MAX_RESPONSE_DISPLAY_LENGTH
-        exc = exceptions.classify_http_error(400, response_text=long_text)
-
-        # Message should be truncated for display
-        message_text = exc.message.split(": ", 1)[1]
-        assert len(message_text) == exceptions.MAX_RESPONSE_DISPLAY_LENGTH
-
-        # Details should contain truncated version for storage
-        assert len(exc.details["response_body"]) == exceptions.MAX_RESPONSE_BODY_LENGTH
-
-
-class TestClassifyHttpxErrorEdgeCases:
-    """Test edge cases for classify_httpx_error function."""
-
-    def test_classify_with_httpx_pool_timeout(self):
-        """Test classification of httpx pool timeout exceptions."""
-
-        pool_timeout = httpx.PoolTimeout("Connection pool timeout")
-
-        exc = exceptions.classify_httpx_error(pool_timeout, "https://example.com")
-        assert isinstance(exc, exceptions.NetworkError)
-        assert "Network error" in exc.message
-        assert exc.details["request_url"] == "https://example.com"
-        assert "Connection pool timeout" in exc.details["original_error"]
-
-    def test_classify_with_httpx_read_timeout(self):
-        """Test classification of httpx read timeout exceptions."""
-
-        read_timeout = httpx.ReadTimeout("Read timeout")
-
-        exc = exceptions.classify_httpx_error(read_timeout)
-        assert isinstance(exc, exceptions.NetworkError)
-        assert "Network error" in exc.message
-        assert "Read timeout" in exc.details["original_error"]
-
-    def test_classify_with_httpx_write_timeout(self):
-        """Test classification of httpx write timeout exceptions."""
-
-        write_timeout = httpx.WriteTimeout("Write timeout")
-
-        exc = exceptions.classify_httpx_error(write_timeout)
-        assert isinstance(exc, exceptions.NetworkError)
-        assert "Write timeout" in exc.details["original_error"]
-
-    def test_classify_httpx_status_error_with_no_response_text(self):
-        """Test HTTPStatusError when response.text is not accessible."""
-
-        # Mock response where .text raises an exception
-        response = Mock(spec=httpx.Response)
-        response.status_code = 500
-        type(response).text = PropertyMock(
-            side_effect=Exception("Cannot read response")
-        )
-
-        request = Mock(spec=httpx.Request)
-        request.url = "https://example.com"
-
-        http_error = httpx.HTTPStatusError(
-            "Internal Server Error", request=request, response=response
-        )
-
-        exc = exceptions.classify_httpx_error(http_error)
-        assert isinstance(exc, exceptions.ServerError)
-        assert exc.status_code == 500
-
-    def test_classify_httpx_status_error_with_no_request_url(self):
-        """Test HTTPStatusError when request URL cannot be accessed."""
-
-        response = Mock(spec=httpx.Response)
-        response.status_code = 404
-        response.text = "Not Found"
-
-        request = Mock(spec=httpx.Request)
-        type(request).url = PropertyMock(side_effect=RuntimeError("URL error"))
-
-        http_error = httpx.HTTPStatusError(
-            "Not Found", request=request, response=response
-        )
-
-        exc = exceptions.classify_httpx_error(http_error, "https://fallback.com")
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.request_url == "https://fallback.com"
-
-    def test_classify_custom_exception_class(self):
-        """Test classification of custom exception classes."""
-
-        class CustomNetworkError(Exception):
-            pass
-
-        custom_error = CustomNetworkError("Custom error message")
-        exc = exceptions.classify_httpx_error(custom_error)
-
+    def test_json_parse_error_scenario(self):
+        """Test SerializationError for JSON parsing errors."""
+        exc = exceptions.SerializationError("Failed to parse JSON: invalid syntax")
         assert isinstance(exc, exceptions.IpsdkError)
-        assert "Unexpected error" in exc.message
-        assert "Custom error message" in exc.details["original_error"]
+        assert isinstance(exc, exceptions.SerializationError)
+        assert "Failed to parse JSON" in str(exc)
 
+    def test_json_dump_error_scenario(self):
+        """Test SerializationError for JSON serialization errors."""
+        exc = exceptions.SerializationError("Failed to serialize object to JSON")
+        assert isinstance(exc, exceptions.SerializationError)
+        assert "serialize" in str(exc)
 
-class TestExceptionUsagePatterns:
-    """Test common exception usage patterns."""
+    def test_inheritance_chain(self):
+        """Test SerializationError inheritance chain."""
+        exc = exceptions.SerializationError("Test error")
 
-    def test_exception_chaining(self):
-        """Test proper exception chaining."""
+        assert isinstance(exc, Exception)
+        assert isinstance(exc, exceptions.IpsdkError)
+        assert isinstance(exc, exceptions.SerializationError)
+
+    def test_can_be_caught_as_ipsdk_error(self):
+        """Test that SerializationError can be caught as IpsdkError."""
         try:
-            original_msg = "Original error"
-            raise ValueError(original_msg)
-        except ValueError as e:
-            validation_msg = "Validation failed"
-            sdk_exc = exceptions.ValidationError(
-                validation_msg, details={"original_error": str(e)}
-            )
-            assert "Original error" in sdk_exc.details["original_error"]
-
-    def test_exception_inheritance_checking(self):
-        """Test that all custom exceptions inherit from IpsdkError."""
-        exception_classes = [
-            exceptions.NetworkError,
-            exceptions.AuthenticationError,
-            exceptions.HTTPError,
-            exceptions.ClientError,
-            exceptions.ServerError,
-            exceptions.ValidationError,
-        ]
-
-        for exc_class in exception_classes:
-            exc = exc_class("Test message")
-            assert isinstance(exc, exceptions.IpsdkError)
-
-
-class TestConstants:
-    """Test cases for module constants."""
-
-    def test_response_body_limit_constants(self):
-        """Test response body limit constants are correctly defined."""
-        assert exceptions.MAX_RESPONSE_BODY_LENGTH == 500
-        assert exceptions.MAX_RESPONSE_DISPLAY_LENGTH == 200
-        # Ensure display length is not larger than body length
-        assert (
-            exceptions.MAX_RESPONSE_DISPLAY_LENGTH
-            <= exceptions.MAX_RESPONSE_BODY_LENGTH
-        )
-
-    def test_http_server_error_max_constant(self):
-        """Test HTTP_SERVER_ERROR_MAX constant is correctly defined."""
-        assert exceptions.HTTP_SERVER_ERROR_MAX == 600
-        # Verify it's greater than server error start
-        assert exceptions.HTTP_SERVER_ERROR_MAX > HTTPStatus.INTERNAL_SERVER_ERROR
-
-    def test_uses_http_status_enum(self):
-        """Test that module uses standard library HTTPStatus enum."""
-        # Verify HTTPStatus enum values are accessible
-        assert HTTPStatus.BAD_REQUEST == 400
-        assert HTTPStatus.UNAUTHORIZED == 401
-        assert HTTPStatus.FORBIDDEN == 403
-        assert HTTPStatus.INTERNAL_SERVER_ERROR == 500
-
-        # Verify status code relationships
-        assert HTTPStatus.BAD_REQUEST < HTTPStatus.INTERNAL_SERVER_ERROR
-        assert HTTPStatus.UNAUTHORIZED < HTTPStatus.INTERNAL_SERVER_ERROR
-        assert HTTPStatus.FORBIDDEN < HTTPStatus.INTERNAL_SERVER_ERROR
+            msg = "Test"
+            raise exceptions.SerializationError(msg)
+        except exceptions.IpsdkError as e:
+            assert str(e) == "Test"
 
 
 class TestInternalFunctions:
     """Test cases for internal helper functions."""
 
     def test_detect_mock_side_effect_with_mock(self):
-        """Test _detect_mock_side_effect detects Mock objects with side effects."""
+        """Test _detect_mock_side_effect detects mocks with side effects."""
+        mock_obj = Mock()
+        mock_obj.side_effect = Exception("test")
 
-        mock_obj = Mock(side_effect=Exception("test"))
-
-        with pytest.raises(exceptions._MockDetectionError) as exc_info:
+        with pytest.raises(exceptions._MockDetectionError):
             exceptions._detect_mock_side_effect(mock_obj)
 
-        assert "Mock side_effect detected" in str(exc_info.value)
-
     def test_detect_mock_side_effect_with_mock_no_side_effect(self):
-        """Test _detect_mock_side_effect ignores Mock objects without side effects."""
-
+        """Test _detect_mock_side_effect ignores mocks without side effects."""
         mock_obj = Mock()
-        # Explicitly set side_effect to None to ensure it's not set
         mock_obj.side_effect = None
 
         # Should not raise an exception
         exceptions._detect_mock_side_effect(mock_obj)
 
     def test_detect_mock_side_effect_with_regular_string(self):
-        """Test _detect_mock_side_effect ignores regular strings."""
+        """Test _detect_mock_side_effect with regular string."""
         regular_string = "This is just a regular string"
 
         # Should not raise an exception
         exceptions._detect_mock_side_effect(regular_string)
 
     def test_detect_mock_side_effect_with_mock_like_string(self):
-        """Test _detect_mock_side_effect handles strings containing 'Mock'."""
-        mock_like_string = "This string contains Mock but is not a Mock object"
+        """Test _detect_mock_side_effect with string containing 'Mock'."""
+        # String contains "Mock" but is not actually a Mock object
+        mock_like_string = "This Mock string should not trigger"
 
-        # Should not raise an exception because it doesn't have side_effect attribute
+        # Should not raise an exception
         exceptions._detect_mock_side_effect(mock_like_string)
 
 
-class TestComprehensiveErrorHandling:
-    """Test comprehensive error handling scenarios."""
+class TestExceptionHierarchy:
+    """Test cases for the overall exception hierarchy."""
 
-    def test_exception_with_none_details(self):
-        """Test exception initialization with explicitly None details."""
-        exc = exceptions.IpsdkError("Test error", details=None)
-        assert exc.details == {}
-        assert isinstance(exc.details, dict)
+    def test_all_exceptions_inherit_from_ipsdk_error(self):
+        """Test that all custom exceptions inherit from IpsdkError."""
+        mock_request = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 500
 
-    def test_exception_details_immutability(self):
-        """Test that modifying details after creation doesn't affect original."""
-        original_details = {"key": "value"}
-        exc = exceptions.IpsdkError("Test error", details=original_details)
-
-        # Modify the exception's details
-        exc.details["new_key"] = "new_value"
-
-        # Original dict should not be modified (details are copied in __init__)
-        assert "new_key" not in original_details
-        assert exc.details["new_key"] == "new_value"
-
-    def test_http_error_with_complex_details(self):
-        """Test HTTPError with complex details structure."""
-        complex_details = {
-            "request_id": "req_12345",
-            "retry_count": 3,
-            "headers": {"Content-Type": "application/json"},
-            "nested": {"inner": "value"},
-        }
-
-        exc = exceptions.HTTPError(
-            "Complex HTTP error",
-            status_code=422,
-            request_url="https://api.example.com",
-            details=complex_details,
+        httpx_request_exc = httpx.RequestError("Test", request=mock_request)
+        httpx_status_exc = httpx.HTTPStatusError(
+            "Test",
+            request=mock_request,
+            response=mock_response
         )
 
-        assert exc.details["request_id"] == "req_12345"
-        assert exc.details["retry_count"] == 3
-        assert exc.details["nested"]["inner"] == "value"
-        assert exc.details["status_code"] == 422
-        assert exc.details["request_url"] == "https://api.example.com"
-
-    def test_http_error_response_text_handling(self):
-        """Test HTTPError response text extraction and truncation."""
-
-        # Test with response that has accessible text
-        response = Mock()
-        response.text = "Detailed server error message"
-
-        exc = exceptions.HTTPError("HTTP error", status_code=500, response=response)
-
-        assert exc.details["response_body"] == "Detailed server error message"
-
-    def test_http_error_response_text_exception_handling(self):
-        """Test HTTPError when response.text raises an exception."""
-
-        response = Mock()
-        type(response).text = PropertyMock(
-            side_effect=UnicodeDecodeError("utf-8", b"", 0, 1, "test error")
-        )
-
-        # Should not raise an exception, should handle gracefully
-        exc = exceptions.HTTPError("HTTP error", status_code=400, response=response)
-
-        assert exc.status_code == 400
-        assert (
-            "response_body" not in exc.details or exc.details["response_body"] is None
-        )
-
-    def test_network_error_with_connection_details(self):
-        """Test NetworkError with network-specific details."""
-        details = {
-            "host": "api.example.com",
-            "port": 443,
-            "protocol": "https",
-            "timeout": 30.0,
-            "dns_resolution_time": 0.123,
-        }
-
-        exc = exceptions.NetworkError("Connection timeout", details=details)
-
-        assert exc.details["host"] == "api.example.com"
-        assert exc.details["port"] == 443
-        assert exc.details["timeout"] == 30.0
-        assert isinstance(exc.details["dns_resolution_time"], float)
-
-    def test_authentication_error_with_auth_context(self):
-        """Test AuthenticationError with authentication context."""
-        details = {
-            "auth_method": "oauth2",
-            "client_id": "app_123",
-            "scope": ["read", "write"],
-            "token_expiry": "2025-12-31T23:59:59Z",
-            "refresh_available": True,
-        }
-
-        exc = exceptions.AuthenticationError("Token expired", details=details)
-
-        assert exc.details["auth_method"] == "oauth2"
-        assert exc.details["scope"] == ["read", "write"]
-        assert exc.details["refresh_available"] is True
-
-    def test_validation_error_with_field_details(self):
-        """Test ValidationError with field validation context."""
-        details = {
-            "field_name": "email",
-            "field_value": "invalid-email",
-            "expected_format": "email",
-            "validation_rules": ["required", "email_format"],
-            "error_code": "INVALID_EMAIL_FORMAT",
-        }
-
-        exc = exceptions.ValidationError("Email validation failed", details=details)
-
-        assert exc.details["field_name"] == "email"
-        assert exc.details["field_value"] == "invalid-email"
-        assert "required" in exc.details["validation_rules"]
-
-    def test_exception_str_with_long_details(self):
-        """Test string representation with very long details."""
-        long_details = {
-            "long_string": "A" * 1000,
-            "long_list": list(range(100)),
-            "nested": {"deep": {"very_deep": "value"}},
-        }
-
-        exc = exceptions.IpsdkError("Test with long details", details=long_details)
-        str_repr = str(exc)
-
-        # Should include the message and details
-        assert "Test with long details" in str_repr
-        assert "Details:" in str_repr
-
-    def test_exception_inheritance_chain(self):
-        """Test proper inheritance chain for all exception types."""
-        # Test each exception type inherits properly
-        exc_hierarchy = [
-            (exceptions.IpsdkError, Exception),
-            (exceptions.NetworkError, exceptions.IpsdkError),
-            (exceptions.AuthenticationError, exceptions.IpsdkError),
-            (exceptions.HTTPError, exceptions.IpsdkError),
-            (exceptions.ClientError, exceptions.HTTPError),
-            (exceptions.ServerError, exceptions.HTTPError),
-            (exceptions.ValidationError, exceptions.IpsdkError),
+        exception_instances = [
+            exceptions.IpsdkError("Test"),
+            exceptions.RequestError(httpx_request_exc),
+            exceptions.HTTPStatusError(httpx_status_exc),
+            exceptions.SerializationError("Test"),
         ]
 
-        for child_class, parent_class in exc_hierarchy:
-            assert issubclass(child_class, parent_class)
+        for exc_instance in exception_instances:
+            assert isinstance(exc_instance, exceptions.IpsdkError)
+            assert isinstance(exc_instance, Exception)
 
-            # Test instance relationships
-            instance = child_class("test")
-            assert isinstance(instance, parent_class)
-            assert isinstance(instance, Exception)
+    def test_exception_hierarchy_allows_specific_catching(self):
+        """Test that specific exception types can be caught individually."""
+        mock_request = Mock()
+        httpx_exc = httpx.RequestError("Connection error", request=mock_request)
 
-    def test_concurrent_exception_creation(self):
-        """Test thread safety of exception creation."""
+        try:
+            raise exceptions.RequestError(httpx_exc)
+        except exceptions.RequestError as e:
+            assert isinstance(e, exceptions.RequestError)
+            assert isinstance(e, exceptions.IpsdkError)
 
-        results = []
-        exceptions_created = []
+    def test_exception_hierarchy_allows_general_catching(self):
+        """Test that all exceptions can be caught with IpsdkError."""
+        exceptions_to_test = []
 
-        def create_exceptions():
-            for i in range(10):
-                exc = exceptions.NetworkError(
-                    f"Error {threading.current_thread().name}-{i}",
-                    details={"thread": threading.current_thread().name, "count": i},
-                )
-                exceptions_created.append(exc)
-                time.sleep(0.001)  # Small delay
-            results.append("done")
+        mock_request = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 404
 
-        # Create multiple threads creating exceptions
-        threads = []
-        for i in range(3):
-            thread = threading.Thread(target=create_exceptions, name=f"Thread-{i}")
-            threads.append(thread)
-            thread.start()
-
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join()
-
-        # Verify all threads completed
-        assert len(results) == 3
-        assert len(exceptions_created) == 30  # 3 threads * 10 exceptions each
-
-        # Verify each exception has correct details
-        for exc in exceptions_created:
-            assert "thread" in exc.details
-            assert "count" in exc.details
-            assert exc.details["thread"] in ["Thread-0", "Thread-1", "Thread-2"]
-            assert 0 <= exc.details["count"] <= 9
-
-
-class TestSimplifiedAPICompatibility:
-    """Test that the simplified API maintains essential compatibility."""
-
-    def test_simplified_network_error_usage(self):
-        """Test simplified NetworkError covers all network scenarios."""
-        # Connection failure
-        exc1 = exceptions.NetworkError(
-            "Connection failed", details={"host": "example.com"}
+        httpx_request_exc = httpx.RequestError("Test", request=mock_request)
+        httpx_status_exc = httpx.HTTPStatusError(
+            "Test",
+            request=mock_request,
+            response=mock_response
         )
-        assert exc1.details["host"] == "example.com"
 
-        # Timeout
-        exc2 = exceptions.NetworkError("Request timeout", details={"timeout": 30.0})
-        assert exc2.details["timeout"] == 30.0
+        exceptions_to_test.append(exceptions.RequestError(httpx_request_exc))
+        exceptions_to_test.append(exceptions.HTTPStatusError(httpx_status_exc))
+        exceptions_to_test.append(exceptions.SerializationError("Test"))
 
-    def test_simplified_auth_error_usage(self):
-        """Test simplified AuthenticationError covers all auth scenarios."""
-        # Invalid credentials
-        exc1 = exceptions.AuthenticationError(
-            "Invalid credentials", details={"auth_type": "basic"}
+        for exc in exceptions_to_test:
+            try:
+                raise exc
+            except exceptions.IpsdkError:
+                pass  # Successfully caught as IpsdkError
+
+
+class TestExceptionUsagePatterns:
+    """Test common exception usage patterns."""
+
+    def test_wrapping_httpx_exceptions(self):
+        """Test that httpx exceptions are properly wrapped."""
+        mock_request = Mock()
+        mock_request.url = "https://api.example.com/test"
+
+        # Wrap a request error
+        httpx_exc = httpx.RequestError("Network failure", request=mock_request)
+        sdk_exc = exceptions.RequestError(httpx_exc)
+
+        assert "Network failure" in str(sdk_exc)
+        assert sdk_exc.request == mock_request
+
+    def test_raising_and_catching_serialization_errors(self):
+        """Test raising and catching SerializationError."""
+        try:
+            msg = "Invalid JSON format"
+            raise exceptions.SerializationError(msg)
+        except exceptions.SerializationError as e:
+            assert "Invalid JSON" in str(e)
+
+    def test_exception_can_be_re_raised(self):
+        """Test that exceptions can be caught and re-raised."""
+        mock_request = Mock()
+        httpx_exc = httpx.RequestError("Original error", request=mock_request)
+
+        with pytest.raises(exceptions.RequestError):
+            raise exceptions.RequestError(httpx_exc)
+
+
+class TestExceptionEdgeCases:
+    """Test edge cases and error conditions."""
+
+    def test_empty_error_message(self):
+        """Test exception with empty error message."""
+        exc = exceptions.IpsdkError("")
+        assert str(exc) == ""
+
+    def test_very_long_error_message(self):
+        """Test exception with very long error message."""
+        long_message = "x" * 1000
+        exc = exceptions.SerializationError(long_message)
+        assert str(exc) == long_message
+        assert len(str(exc)) == 1000
+
+    def test_unicode_in_error_message(self):
+        """Test exception with unicode characters in message."""
+        unicode_message = "Error: 世界 🌍 café"
+        exc = exceptions.IpsdkError(unicode_message)
+        assert str(exc) == unicode_message
+
+    def test_multiline_error_message(self):
+        """Test exception with multiline error message."""
+        multiline_message = "Error occurred:\nLine 1\nLine 2\nLine 3"
+        exc = exceptions.SerializationError(multiline_message)
+        assert str(exc) == multiline_message
+        assert "\n" in str(exc)
+
+
+class TestExceptionIntegration:
+    """Integration tests for exception handling scenarios."""
+
+    def test_httpx_request_error_to_sdk_request_error(self):
+        """Test converting httpx.RequestError to RequestError."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com/api"
+        mock_request.method = "GET"
+
+        # Simulate various httpx request errors
+        error_types = [
+            httpx.RequestError("Connection timeout", request=mock_request),
+            httpx.ConnectError("Connection refused", request=mock_request),
+            httpx.TimeoutException("Read timeout", request=mock_request),
+        ]
+
+        for httpx_err in error_types:
+            sdk_err = exceptions.RequestError(httpx_err)
+            assert isinstance(sdk_err, exceptions.RequestError)
+            assert sdk_err.request == mock_request
+
+    def test_httpx_status_error_to_sdk_status_error(self):
+        """Test converting httpx.HTTPStatusError to HTTPStatusError."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com/api"
+        mock_response = Mock()
+
+        # Test various HTTP status codes
+        status_codes = [400, 401, 403, 404, 500, 502, 503]
+
+        for status_code in status_codes:
+            mock_response.status_code = status_code
+            httpx_err = httpx.HTTPStatusError(
+                f"HTTP {status_code}",
+                request=mock_request,
+                response=mock_response
+            )
+
+            sdk_err = exceptions.HTTPStatusError(httpx_err)
+            assert isinstance(sdk_err, exceptions.HTTPStatusError)
+            assert sdk_err.response.status_code == status_code
+
+    def test_exception_message_preservation(self):
+        """Test that exception messages are preserved through wrapping."""
+        original_message = "Original error message with details"
+
+        mock_request = Mock()
+        httpx_exc = httpx.RequestError(original_message, request=mock_request)
+        sdk_exc = exceptions.RequestError(httpx_exc)
+
+        assert str(sdk_exc) == original_message
+
+
+class TestBackwardCompatibility:
+    """Tests to ensure the simplified structure maintains essential functionality."""
+
+    def test_can_catch_all_sdk_errors_generically(self):
+        """Test that all SDK errors can be caught with base exception."""
+        mock_request = Mock()
+        mock_response = Mock()
+        mock_response.status_code = 500
+
+        httpx_request_exc = httpx.RequestError("Test", request=mock_request)
+        httpx_status_exc = httpx.HTTPStatusError(
+            "Test",
+            request=mock_request,
+            response=mock_response
         )
-        assert exc1.details["auth_type"] == "basic"
 
-        # Expired token
-        exc2 = exceptions.AuthenticationError(
-            "Token expired", details={"auth_type": "oauth"}
+        test_exceptions = [
+            exceptions.IpsdkError("Generic error"),
+            exceptions.RequestError(httpx_request_exc),
+            exceptions.HTTPStatusError(httpx_status_exc),
+            exceptions.SerializationError("JSON error"),
+        ]
+
+        caught_count = 0
+        for exc in test_exceptions:
+            try:
+                raise exc
+            except exceptions.IpsdkError:
+                caught_count += 1
+
+        assert caught_count == len(test_exceptions)
+
+    def test_exception_properties_accessible(self):
+        """Test that wrapped exceptions expose request/response properties."""
+        mock_request = Mock()
+        mock_request.url = "https://example.com"
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Not found"
+
+        httpx_exc = httpx.HTTPStatusError(
+            "Not found",
+            request=mock_request,
+            response=mock_response
         )
-        assert exc2.details["auth_type"] == "oauth"
+        sdk_exc = exceptions.HTTPStatusError(httpx_exc)
 
-    def test_simplified_validation_error_usage(self):
-        """Test simplified ValidationError covers all validation scenarios."""
-        # JSON parsing error
-        exc1 = exceptions.ValidationError(
-            "Invalid JSON", details={"error_type": "json_parse"}
-        )
-        assert exc1.details["error_type"] == "json_parse"
-
-        # Field validation error
-        exc2 = exceptions.ValidationError(
-            "Invalid email", details={"field": "email", "value": "invalid"}
-        )
-        assert exc2.details["field"] == "email"
-
-
-class TestMissingCoverageScenarios:
-    """Test cases to cover missing code coverage scenarios."""
-
-    def test_classify_http_error_response_text_len_exception(self):
-        """Test when response_text length check raises an exception."""
-
-        # Create a class that raises an exception when hasattr or len() is called
-        class LengthError(Exception):
-            """Custom exception for length operations."""
-
-        class ProblematicResponseText:
-            def __init__(self):
-                self.value = "some response text"
-
-            def __len__(self):
-                msg = "Length error"
-                raise LengthError(msg)
-
-            def __str__(self):
-                return self.value
-
-            def __bool__(self):
-                # Make sure it's truthy for "if response_text:" check
-                return True
-
-        mock_response_text = ProblematicResponseText()
-
-        exc = exceptions.classify_http_error(400, response_text=mock_response_text)
-
-        # Should fall back to str() conversion of response_text
-        assert "response_body" in exc.details
-        assert exc.details["response_body"] == "some response text"
-
-    def test_classify_http_error_forbidden_with_response_text(self):
-        """Test HTTP 403 forbidden error with response text."""
-        response_text = "You do not have permission to access this resource"
-
-        exc = exceptions.classify_http_error(403, response_text=response_text)
-
-        assert isinstance(exc, exceptions.ClientError)
-        assert exc.status_code == 403
-        assert exc.message == f"Access forbidden: {response_text}"
-        assert exc.details["response_body"] == response_text
-
-    def test_classify_http_error_parsing_error_fallback(self):
-        """Test HTTP error when parsing_error flag is set without response_text."""
-
-        # Create a response that will trigger parsing error
-        response = Mock()
-        response.text = Mock(side_effect=Exception("Parse error"))
-
-        # This should trigger parsing_error=True and no response_text
-        exc = exceptions.classify_http_error(500, response=response)
-
-        # Should use simple format due to parsing error
-        assert exc.message == "HTTP 500 error"
-        assert exc.status_code == 500
-        assert isinstance(exc, exceptions.ServerError)
+        assert sdk_exc.request == mock_request
+        assert sdk_exc.response == mock_response
+        assert sdk_exc.response.status_code == 404
+        assert sdk_exc.response.text == "Not found"

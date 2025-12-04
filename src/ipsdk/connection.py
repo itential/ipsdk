@@ -2,7 +2,6 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import abc
-import traceback
 import urllib.parse
 from typing import Any
 from typing import Dict
@@ -15,7 +14,6 @@ from . import exceptions
 from . import logging
 from . import metadata
 from .http import HTTPMethod
-from .http import HTTPStatus
 from .http import Response
 
 
@@ -93,7 +91,7 @@ class ConnectionBase:
 
         self.authenticated = False
 
-        self.client = self._init_client(
+        self.client = self.__init_client__(
             base_url=self._make_base_url(host, port, base_path, use_tls),
             verify=verify,
             timeout=timeout,
@@ -134,6 +132,7 @@ class ConnectionBase:
         Returns:
             A string that represents the full URL
         """
+        logging.trace(self._make_base_url)
 
         if port == 0:
             port = 443 if use_tls is True else 80
@@ -148,7 +147,7 @@ class ConnectionBase:
 
     def _build_request(
         self,
-        method: str,
+        method: HTTPMethod,
         path: str,
         json: Optional[Union[str, bytes, dict, list]] = None,
         params: Optional[Dict[str, Any]] = None,
@@ -177,6 +176,9 @@ class ConnectionBase:
         Returns:
             A `httpx.Request` object that can be used to send to the server
         """
+        logging.trace(self._build_request)
+
+        self._validate_request_args(method, path, params, json)
 
         headers = {}
 
@@ -185,7 +187,7 @@ class ConnectionBase:
         # this for us but setting it here to make it very explicit.
         if json is not None:
             logging.debug(
-                "automatically setting Content-Type and Accept headers due to json data"
+                "Setting Content-Type and Accept headers due to json data"
             )
             headers.update(
                 {
@@ -195,7 +197,7 @@ class ConnectionBase:
             )
 
         if self.token is not None:
-            logging.debug("adding Authorization header to request")
+            logging.debug("Adding Authorization header to request")
             headers["Authorization"] = f"Bearer {self.token}"
 
         # The value for the keyword `json` is passed to the httpx build_request
@@ -203,16 +205,44 @@ class ConnectionBase:
         # automatically be dumped to a string value and inserted into the body
         # of the request.
         return self.client.build_request(
-            method=method,
+            method=method.value,
             url=path,
             params=params,
             headers=headers,
             json=json,
         )
 
+    def _validate_request_args(
+        self,
+        method: HTTPMethod,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        json: Optional[Union[str, bytes, dict, list]] = None,
+    ) -> None:
+        """
+        """
+        if not isinstance(method, HTTPMethod):
+            msg = "method must be of type `HTTPMethod`"
+            raise exceptions.IpsdkError(msg)
+
+        if all((params is not None, not isinstance(params, dict))):
+            msg = "params must be of type `dict`"
+            raise exceptions.IpsdkError(msg)
+
+        if all((json is not None, not isinstance(json, (list, dict)))):
+            msg = "json must be of type `dict` or `list`"
+            raise exceptions.IpsdkError(msg)
+
+        if not isinstance(path, str):
+            msg = "path must be of type `str`"
+            raise exceptions.IpsdkError(msg)
+
     @abc.abstractmethod
-    def _init_client(
-        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
+    def __init_client__(
+        self,
+        base_url: Optional[str] = None,
+        verify: bool = True,
+        timeout: int = 30
     ) -> Union[httpx.Client, httpx.AsyncClient]:
         """
         Abstract method that will initialize the client
@@ -233,10 +263,14 @@ class ConnectionBase:
 
 
 class Connection(ConnectionBase):
+
     client: httpx.Client  # Override the Union type from base class
 
-    def _init_client(
-        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
+    def __init_client__(
+        self,
+        base_url: Optional[str] = None,
+        verify: bool = True,
+        timeout: int = 30
     ) -> httpx.Client:
         """
         Initialize the httpx.Client instance
@@ -258,9 +292,8 @@ class Connection(ConnectionBase):
         Returns:
             An instance of `httpx.Client`
         """
-
+        logging.trace(self.__init_client__)
         logging.info(f"Creating new client for {base_url}")
-
         return httpx.Client(
             base_url=base_url or "",
             verify=verify,
@@ -275,7 +308,7 @@ class Connection(ConnectionBase):
 
     def _send_request(
         self,
-        method: str,
+        method: HTTPMethod,
         path: str,
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Union[str, bytes, dict, list]] = None,
@@ -309,6 +342,8 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self._send_request)
+
         if self.authenticated is not True:
             self.authenticate()
             self.authenticated = True
@@ -321,37 +356,21 @@ class Connection(ConnectionBase):
         )
 
         try:
-            logging.debug(f"{method} {path}")
+            logging.info(f"{method.value} {path}")
             res = self.client.send(request)
-
-            # Check for HTTP status errors
-            if res.status_code >= HTTPStatus.BAD_REQUEST.value:
-                logging.debug(f"HTTP {res.status_code} response from {request.url}")
-                raise exceptions.classify_http_error(
-                    res.status_code,
-                    request_url=str(request.url),
-                    response=res
-                )
+            res.raise_for_status()
 
         except httpx.RequestError as exc:
-            logging.debug(traceback.format_exc())
-            raise exceptions.classify_httpx_error(exc, str(request.url))
+            logging.exception(exc)
+            raise exceptions.RequestError(exc)
 
         except httpx.HTTPStatusError as exc:
-            logging.debug(traceback.format_exc())
-            raise exceptions.classify_httpx_error(exc, str(request.url))
-
-        except exceptions.IpsdkError:
-            # Re-raise our own exceptions
-            raise
+            logging.exception(exc)
+            raise exceptions.HTTPStatusError(exc)
 
         except Exception as exc:
-            logging.debug(traceback.format_exc())
-            msg = f"Unexpected error occurred: {exc!s}"
-            raise exceptions.IpsdkError(
-                msg,
-                details={"request_url": str(request.url), "original_error": str(exc)},
-            )
+            logging.exception(exc)
+            raise
 
         return Response(res)
 
@@ -374,7 +393,8 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return self._send_request(HTTPMethod.GET.value, path=path, params=params)
+        logging.trace(self.get)
+        return self._send_request(HTTPMethod.GET, path=path, params=params)
 
     def delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Response:
         """
@@ -395,6 +415,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.delete)
         return self._send_request(HTTPMethod.DELETE.value, path=path, params=params)
 
     def post(
@@ -427,8 +448,9 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.post)
         return self._send_request(
-            HTTPMethod.POST.value, path=path, params=params, json=json
+            HTTPMethod.POST, path=path, params=params, json=json
         )
 
     def put(
@@ -461,8 +483,9 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.put)
         return self._send_request(
-            HTTPMethod.PUT.value, path=path, params=params, json=json
+            HTTPMethod.PUT, path=path, params=params, json=json
         )
 
     def patch(
@@ -495,16 +518,21 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.patch)
         return self._send_request(
-            HTTPMethod.PATCH.value, path=path, params=params, json=json
+            HTTPMethod.PATCH, path=path, params=params, json=json
         )
 
 
 class AsyncConnection(ConnectionBase):
+
     client: httpx.AsyncClient  # Override the Union type from base class
 
-    def _init_client(
-        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
+    def __init_client__(
+        self,
+        base_url: Optional[str] = None,
+        verify: bool = True,
+        timeout: int = 30
     ) -> httpx.AsyncClient:
         """
         Initialize the httpx.AsyncClient instance
@@ -525,9 +553,8 @@ class AsyncConnection(ConnectionBase):
         Returns:
             An instance of `httpx.AsyncClient`
         """
-
+        logging.trace(self.__init_client__)
         logging.info(f"Creating new async client for {base_url}")
-
         return httpx.AsyncClient(
             base_url=base_url or "", verify=verify, timeout=timeout
         )
@@ -538,7 +565,7 @@ class AsyncConnection(ConnectionBase):
 
     async def _send_request(
         self,
-        method: str,
+        method: HTTPMethod,
         path: str,
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Union[str, bytes, dict, list]] = None,
@@ -572,6 +599,8 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self._send_request)
+
         if self.authenticated is False:
             await self.authenticate()
             self.authenticated = True
@@ -584,38 +613,21 @@ class AsyncConnection(ConnectionBase):
         )
 
         try:
+            logging.info(f"{method.value} {path}")
             res = await self.client.send(request)
-
-            # Check for HTTP status errors
-            if res.status_code >= HTTPStatus.BAD_REQUEST.value:
-                logging.debug(f"HTTP {res.status_code} response from {request.url}")
-                raise exceptions.classify_http_error(
-                    res.status_code,
-                    request_url=str(request.url),
-                    response=res
-                )
+            res.raise_for_status()
 
         except httpx.RequestError as exc:
-            logging.debug(traceback.format_exc())
-            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
-            raise sdk_exc
+            logging.exception(exc)
+            raise exceptions.RequestError(exc)
 
         except httpx.HTTPStatusError as exc:
-            logging.debug(traceback.format_exc())
-            sdk_exc = exceptions.classify_httpx_error(exc, str(request.url))
-            raise sdk_exc
-
-        except exceptions.IpsdkError:
-            # Re-raise our own exceptions
-            raise
+            logging.exception(exc)
+            raise exceptions.HTTPStatusError(exc)
 
         except Exception as exc:
-            logging.debug(traceback.format_exc())
-            msg = f"Unexpected error occurred: {exc!s}"
-            raise exceptions.IpsdkError(
-                msg,
-                details={"request_url": str(request.url), "original_error": str(exc)},
-            )
+            logging.exception(exc)
+            raise
 
         return Response(res)
 
@@ -638,7 +650,8 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        return await self._send_request(HTTPMethod.GET.value, path=path, params=params)
+        logging.trace(self.get)
+        return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
     async def delete(
         self, path: str, params: Optional[Dict[str, Any]] = None
@@ -661,8 +674,9 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.delete)
         return await self._send_request(
-            HTTPMethod.DELETE.value, path=path, params=params
+            HTTPMethod.DELETE, path=path, params=params
         )
 
     async def post(
@@ -695,8 +709,9 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.post)
         return await self._send_request(
-            HTTPMethod.POST.value, path=path, params=params, json=json
+            HTTPMethod.POST, path=path, params=params, json=json
         )
 
     async def put(
@@ -729,8 +744,9 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.put)
         return await self._send_request(
-            HTTPMethod.PUT.value, path=path, params=params, json=json
+            HTTPMethod.PUT, path=path, params=params, json=json
         )
 
     async def patch(
@@ -763,6 +779,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
+        logging.trace(self.patch)
         return await self._send_request(
-            HTTPMethod.PATCH.value, path=path, params=params, json=json
+            HTTPMethod.PATCH, path=path, params=params, json=json
         )

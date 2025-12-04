@@ -1,7 +1,6 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-from http import HTTPStatus
 from typing import Any
 from typing import Optional
 
@@ -68,9 +67,8 @@ class AuthMixin:
                 "No valid authentication credentials provided. "
                 "Required: (client_id + client_secret) or (user + password)"
             )
-            raise exceptions.AuthenticationError(
-                msg
-            )
+            raise exceptions.IpsdkError(msg)
+
         logging.info("client connection successfully authenticated")
 
     def authenticate_user(self) -> None:
@@ -87,42 +85,14 @@ class AuthMixin:
         try:
             res = self.client.post(path, json=data)
             res.raise_for_status()
+
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            if exc.response.status_code in (
-                HTTPStatus.UNAUTHORIZED.value,
-                HTTPStatus.FORBIDDEN.value,
-            ):
-                msg = "Basic authentication failed - invalid username or password"
-                raise exceptions.AuthenticationError(
-                    msg,
-                    details={
-                        "auth_type": "basic",
-                        "status_code": exc.response.status_code,
-                    },
-                )
-            msg = f"Authentication failed with status {exc.response.status_code}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={
-                    "auth_type": "basic",
-                    "status_code": exc.response.status_code,
-                },
-            )
+            raise exceptions.HTTPStatusError(exc.message, exc)
+
         except httpx.RequestError as exc:
-            logging.exception(exc)
-            msg = "Network error during basic authentication"
-            raise exceptions.NetworkError(
-                msg,
-                details={"original_error": str(exc)},
-            )
-        except Exception as exc:
-            logging.exception(exc)
-            msg = f"Unexpected error during basic authentication: {exc!s}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={"auth_type": "basic", "original_error": str(exc)},
-            )
+            logging.exception(exc.message, exc)
+            raise exceptions.RequestError(exc.message, exc)
 
     def authenticate_oauth(self) -> None:
         """
@@ -147,73 +117,15 @@ class AuthMixin:
             else:
                 access_token = None
 
-            if not access_token:
-                if isinstance(response_data, dict):
-                    msg = "OAuth response missing access_token field"
-                    raise exceptions.AuthenticationError(
-                        msg,
-                        details={
-                            "auth_type": "oauth",
-                            "response_keys": list(response_data.keys()),
-                        },
-                    )
-                msg = "OAuth response is not a JSON object"
-                raise exceptions.AuthenticationError(
-                    msg,
-                    details={
-                        "auth_type": "oauth",
-                        "response_type": str(type(response_data)),
-                    },
-                )
-
             self.token = access_token
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            if exc.response.status_code in (
-                HTTPStatus.UNAUTHORIZED.value,
-                HTTPStatus.FORBIDDEN.value,
-            ):
-                msg = "OAuth authentication failed - invalid client credentials"
-                raise exceptions.AuthenticationError(
-                    msg,
-                    details={
-                        "auth_type": "oauth",
-                        "status_code": exc.response.status_code,
-                    },
-                )
-            msg = f"OAuth authentication failed with status {exc.response.status_code}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={
-                    "auth_type": "oauth",
-                    "status_code": exc.response.status_code,
-                },
-            )
+            raise exceptions.HTTPStatusError(exc.message, exc)
+
         except httpx.RequestError as exc:
-            logging.exception(exc)
-            msg = "Network error during OAuth authentication"
-            raise exceptions.NetworkError(
-                msg,
-                details={"original_error": str(exc)},
-            )
-        except exceptions.ValidationError as exc:
-            logging.exception(exc)
-            msg = "Failed to parse OAuth response"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={"auth_type": "oauth", "json_error": str(exc)},
-            )
-        except exceptions.IpsdkError:
-            # Re-raise our own exceptions
-            raise
-        except Exception as exc:
-            logging.exception(exc)
-            msg = f"Unexpected error during OAuth authentication: {exc!s}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={"auth_type": "oauth", "original_error": str(exc)},
-            )
+            logging.exception(exc.message, exc)
+            raise exceptions.RequestError(exc.message, exc)
 
 
 class AsyncAuthMixin:
@@ -235,16 +147,17 @@ class AsyncAuthMixin:
         """
         if self.client_id is not None and self.client_secret is not None:
             await self.authenticate_oauth()
+
         elif self.user is not None and self.password is not None:
             await self.authenticate_basicauth()
+
         else:
             msg = (
                 "No valid authentication credentials provided. "
                 "Required: (client_id + client_secret) or (user + password)"
             )
-            raise exceptions.AuthenticationError(
-                msg
-            )
+            raise exceptions.IpsdkError(msg)
+
         logging.info("client connection successfully authenticated")
 
     async def authenticate_basicauth(self) -> None:
@@ -261,42 +174,14 @@ class AsyncAuthMixin:
         try:
             res = await self.client.post(path, json=data)
             res.raise_for_status()
+
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            if exc.response.status_code in (
-                HTTPStatus.UNAUTHORIZED.value,
-                HTTPStatus.FORBIDDEN.value,
-            ):
-                msg = "Basic authentication failed - invalid username or password"
-                raise exceptions.AuthenticationError(
-                    msg,
-                    details={
-                        "auth_type": "basic",
-                        "status_code": exc.response.status_code,
-                    },
-                )
-            msg = f"Authentication failed with status {exc.response.status_code}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={
-                    "auth_type": "basic",
-                    "status_code": exc.response.status_code,
-                },
-            )
+            raise exceptions.HTTPStatusError(exc.message, exc)
+
         except httpx.RequestError as exc:
-            logging.exception(exc)
-            msg = "Network error during basic authentication"
-            raise exceptions.NetworkError(
-                msg,
-                details={"original_error": str(exc)},
-            )
-        except Exception as exc:
-            logging.exception(exc)
-            msg = f"Unexpected error during basic authentication: {exc!s}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={"auth_type": "basic", "original_error": str(exc)},
-            )
+            logging.exception(exc.message, exc)
+            raise exceptions.RequestError(exc.message, exc)
 
     async def authenticate_oauth(self) -> None:
         """
@@ -314,80 +199,13 @@ class AsyncAuthMixin:
             res = await self.client.post(path, headers=headers, data=data)
             res.raise_for_status()
 
-            # Parse the response to extract the token
-            response_data = jsonutils.loads(res.text)
-            if isinstance(response_data, dict):
-                access_token = response_data.get("access_token")
-            else:
-                access_token = None
-
-            if not access_token:
-                if isinstance(response_data, dict):
-                    msg = "OAuth response missing access_token field"
-                    raise exceptions.AuthenticationError(
-                        msg,
-                        details={
-                            "auth_type": "oauth",
-                            "response_keys": list(response_data.keys()),
-                        },
-                    )
-                msg = "OAuth response is not a JSON object"
-                raise exceptions.AuthenticationError(
-                    msg,
-                    details={
-                        "auth_type": "oauth",
-                        "response_type": str(type(response_data)),
-                    },
-                )
-
-            self.token = access_token
-
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            if exc.response.status_code in (
-                HTTPStatus.UNAUTHORIZED.value,
-                HTTPStatus.FORBIDDEN.value,
-            ):
-                msg = "OAuth authentication failed - invalid client credentials"
-                raise exceptions.AuthenticationError(
-                    msg,
-                    details={
-                        "auth_type": "oauth",
-                        "status_code": exc.response.status_code,
-                    },
-                )
-            msg = f"OAuth authentication failed with status {exc.response.status_code}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={
-                    "auth_type": "oauth",
-                    "status_code": exc.response.status_code,
-                },
-            )
+            raise exceptions.HTTPStatusError(exc.message, exc)
+
         except httpx.RequestError as exc:
-            logging.exception(exc)
-            msg = "Network error during OAuth authentication"
-            raise exceptions.NetworkError(
-                msg,
-                details={"original_error": str(exc)},
-            )
-        except exceptions.ValidationError as exc:
-            logging.exception(exc)
-            msg = "Failed to parse OAuth response"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={"auth_type": "oauth", "json_error": str(exc)},
-            )
-        except exceptions.IpsdkError:
-            # Re-raise our own exceptions
-            raise
-        except Exception as exc:
-            logging.exception(exc)
-            msg = f"Unexpected error during OAuth authentication: {exc!s}"
-            raise exceptions.AuthenticationError(
-                msg,
-                details={"auth_type": "oauth", "original_error": str(exc)},
-            )
+            logging.exception(exc.message, exc)
+            raise exceptions.RequestError(exc.message, exc)
 
 
 # Define type aliases for the dynamically created classes

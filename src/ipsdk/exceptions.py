@@ -2,25 +2,81 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 """
-Simplified exception hierarchy for the Itential Python SDK.
+Exception hierarchy for the Itential Python SDK.
 
-This module provides a streamlined set of exceptions that cover all common
-error scenarios while maintaining simplicity and clarity.
+This module provides a comprehensive set of exception classes that handle all
+error scenarios encountered when interacting with Itential Platform and Itential
+Automation Gateway. The exception hierarchy is designed to provide clear, specific
+error handling while maintaining simplicity and consistency.
+
+Exception Hierarchy
+-------------------
+All SDK exceptions inherit from IpsdkError, which itself inherits from the
+standard Python Exception class. This allows users to catch all SDK-related
+errors with a single exception handler or handle specific errors individually.
+
+    Exception (Python built-in)
+        └── IpsdkError (Base SDK exception)
+            ├── RequestError (Network/connection errors)
+            ├── HTTPStatusError (HTTP 4xx/5xx errors)
+            └── SerializationError (JSON serialization/deserialization errors)
+
+Exception Classes
+-----------------
+IpsdkError:
+    Base exception class for all SDK errors. Provides access to the underlying
+    httpx request and response objects when available.
+
+RequestError:
+    Raised when network or connection errors occur, such as timeouts, DNS
+    resolution failures, or connection refused errors. Wraps httpx.RequestError.
+
+HTTPStatusError:
+    Raised when the server returns an HTTP error status code (4xx or 5xx).
+    Wraps httpx.HTTPStatusError and provides access to the full request and
+    response objects for detailed error analysis.
+
+SerializationError:
+    Raised when JSON serialization or deserialization fails. This includes
+    malformed JSON, invalid data types, and encoding/decoding errors.
+
+Usage Examples
+--------------
+Catching all SDK errors::
+
+    try:
+        platform = platform_factory()
+        response = platform.get("/api/v2.0/workflows")
+    except exceptions.IpsdkError as e:
+        print(f"SDK error: {e}")
+
+Catching specific errors::
+
+    try:
+        platform = platform_factory()
+        response = platform.get("/api/v2.0/workflows")
+    except exceptions.HTTPStatusError as e:
+        print(f"HTTP error {e.response.status_code}: {e}")
+    except exceptions.RequestError as e:
+        print(f"Network error: {e}")
+    except exceptions.SerializationError as e:
+        print(f"JSON error: {e}")
+
+Accessing request and response details::
+
+    try:
+        platform = platform_factory()
+        response = platform.get("/api/v2.0/workflows")
+    except exceptions.HTTPStatusError as e:
+        print(f"Request: {e.request.method} {e.request.url}")
+        print(f"Response status: {e.response.status_code}")
+        print(f"Response body: {e.response.text}")
 """
 
-from http import HTTPStatus
 from typing import Any
-from typing import Dict
 from typing import Optional
 
 import httpx
-
-# Response body limits
-MAX_RESPONSE_BODY_LENGTH = 500
-MAX_RESPONSE_DISPLAY_LENGTH = 200
-
-# HTTP status code range limits
-HTTP_SERVER_ERROR_MAX = 600  # Upper bound for server error range (5xx)
 
 
 class IpsdkError(Exception):
@@ -35,17 +91,19 @@ class IpsdkError(Exception):
         details (dict): Additional error details and context
     """
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        exc: Optional[httpx.HTTPError] = None
+    ) -> None:
         """
         Initialize the base SDK exception.
 
         Args:
             message (str): Human-readable error message
-            details (dict): Optional dictionary containing additional error context
         """
         super().__init__(message)
-        self.message = message
-        self.details = dict(details) if details else {}
+        self._exc = exc
 
     def __str__(self) -> str:
         """
@@ -54,120 +112,154 @@ class IpsdkError(Exception):
         Returns:
             A formatted error message including details if available
         """
-        if self.details:
-            return f"{self.message}. Details: {self.details}"
-        return self.message
+        return self.args[0]
 
-
-class NetworkError(IpsdkError):
-    """
-    Exception raised for network and connection-related errors.
-
-    This includes connection failures, DNS resolution errors, timeouts,
-    and other low-level network issues.
-
-    Args:
-        message (str): Human-readable error message
-        details (dict): Additional error details
-    """
-
-
-class AuthenticationError(IpsdkError):
-    """
-    Exception raised for all authentication-related errors.
-
-    This includes failed login attempts, invalid credentials, expired tokens,
-    insufficient permissions, and all other authentication issues.
-
-    Args:
-        message (str): Human-readable error message
-        details (dict): Additional error details
-    """
-
-
-class HTTPError(IpsdkError):
-    """
-    Exception raised for HTTP-related errors.
-
-    This includes HTTP status errors and protocol-level issues.
-
-    Args:
-        message (str): Human-readable error message
-        status_code (int): HTTP status code if available
-        response (httpx.Response): The HTTP response object if available
-        request_url (str): The URL that was requested
-        details (dict): Additional error details
-    """
-
-    def __init__(
-        self,
-        message: str,
-        status_code: Optional[int] = None,
-        response: Optional[httpx.Response] = None,
-        request_url: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
-    ) -> None:
+    @property
+    def request(self) -> Any:
         """
-        Initialize the HTTP error.
+        Get the HTTP request that caused this error.
 
-        Args:
-            message (str): Human-readable error message
-            status_code (int): Optional HTTP status code
-            response (httpx.Response): Optional HTTP response object
-            request_url (str): Optional URL that was requested
-            details (dict): Optional additional error context
+        Returns:
+            The httpx.Request object associated with this error, or None if
+            no httpx exception was provided during initialization.
         """
-        super().__init__(message, details)
-        self.status_code = status_code
-        self.response = response
-        self.request_url = request_url
+        return self._exc.request
 
-        if status_code:
-            self.details.update({"status_code": status_code})
-        if request_url:
-            self.details.update({"request_url": request_url})
-        if response:
-            try:
-                # Check if response has text attribute and try to access it
-                if hasattr(response, "text"):
-                    response_text = response.text
-                    if isinstance(response_text, str):
-                        self.details.update(
-                            {"response_body": response_text[:500]}
-                        )  # Limit response body size
-            except Exception:
-                # Ignore errors when accessing response text
-                pass
+    @property
+    def response(self) -> Any:
+        """
+        Get the HTTP response that caused this error.
+
+        Returns:
+            The httpx.Response object associated with this error, or None if
+            no httpx exception was provided or if the error occurred before
+            receiving a response.
+        """
+        return self._exc.response
 
 
-class ClientError(HTTPError):
+class RequestError(IpsdkError):
     """
-    Exception raised for HTTP 4xx client errors.
+    Exception raised for network-level errors during HTTP requests.
 
-    This includes bad requests, unauthorized access, forbidden resources,
-    not found errors, and other client-side HTTP errors.
-    """
+    This exception is raised when a request fails due to network-level issues
+    before receiving an HTTP response. Common scenarios include:
 
+    - Connection timeouts
+    - DNS resolution failures
+    - Connection refused errors
+    - SSL/TLS certificate verification failures
+    - Network unreachable errors
+    - Connection reset by peer
 
-class ServerError(HTTPError):
-    """
-    Exception raised for HTTP 5xx server errors.
-
-    This includes internal server errors, bad gateways, service unavailable
-    errors, and other server-side HTTP errors.
-    """
-
-
-class ValidationError(IpsdkError):
-    """
-    Exception raised for data validation and parsing errors.
-
-    This includes invalid input parameters, malformed JSON, JSON parsing
-    errors, and data validation failures.
+    The exception wraps the underlying httpx.RequestError and provides access
+    to the original request that failed.
 
     Args:
-        message (str): Human-readable error message
-        details (dict): Additional error details
+        exc (httpx.HTTPError): The underlying httpx RequestError that occurred
+
+    Attributes:
+        request: The httpx.Request object that failed
+
+    Example:
+        >>> try:
+        ...     platform = platform_factory(host="nonexistent.example.com")
+        ...     response = platform.get("/api/v2.0/workflows")
+        ... except RequestError as e:
+        ...     print(f"Network error: {e}")
+        ...     print(f"Failed request: {e.request.url}")
+    """
+    def __init__(self, exc: httpx.HTTPError) -> None:
+        super().__init__(exc.args[0], exc)
+
+
+class HTTPStatusError(IpsdkError):
+    """
+    Exception raised when the server returns an HTTP error status code.
+
+    This exception is raised when a request completes successfully at the
+    network level but the server responds with an HTTP error status code
+    (4xx or 5xx). Common scenarios include:
+
+    Client Errors (4xx):
+        - 400 Bad Request: Invalid request syntax or parameters
+        - 401 Unauthorized: Authentication required or failed
+        - 403 Forbidden: Insufficient permissions
+        - 404 Not Found: Resource does not exist
+        - 409 Conflict: Request conflicts with current state
+        - 422 Unprocessable Entity: Invalid request data
+
+    Server Errors (5xx):
+        - 500 Internal Server Error: Server encountered an error
+        - 502 Bad Gateway: Invalid response from upstream server
+        - 503 Service Unavailable: Server temporarily unavailable
+        - 504 Gateway Timeout: Upstream server timeout
+
+    The exception wraps the underlying httpx.HTTPStatusError and provides
+    access to both the request and response objects for detailed error
+    analysis and debugging.
+
+    Args:
+        exc (httpx.HTTPError): The underlying httpx HTTPStatusError that occurred
+
+    Attributes:
+        request: The httpx.Request object that was sent
+        response: The httpx.Response object that was received
+
+    Example:
+        >>> try:
+        ...     platform = platform_factory()
+        ...     response = platform.get("/api/v2.0/nonexistent")
+        ... except HTTPStatusError as e:
+        ...     print(f"HTTP {e.response.status_code}: {e}")
+        ...     print(f"Response body: {e.response.text}")
+        ...     if e.response.status_code == 404:
+        ...         print("Resource not found")
+        ...     elif e.response.status_code == 401:
+        ...         print("Authentication failed")
+    """
+    def __init__(self, exc: httpx.HTTPError) -> None:
+        super().__init__(exc.args[0], exc)
+
+
+class SerializationError(IpsdkError):
+    """
+    Exception raised for JSON serialization and deserialization errors.
+
+    This exception is raised when JSON encoding or decoding operations fail.
+    Common scenarios include:
+
+    Deserialization Errors (JSON to Python):
+        - Malformed JSON syntax (missing brackets, quotes, etc.)
+        - Invalid JSON structure
+        - Unexpected end of JSON input
+        - Invalid escape sequences
+        - Invalid Unicode characters
+
+    Serialization Errors (Python to JSON):
+        - Non-serializable Python objects (e.g., datetime, custom classes)
+        - Circular references in data structures
+        - Invalid data types for JSON encoding
+        - Encoding errors
+
+    The exception provides a clear error message indicating what went wrong
+    during the serialization or deserialization process.
+
+    Args:
+        message (str): Human-readable error message describing the failure
+
+    Example:
+        >>> from ipsdk import jsonutils
+        >>> try:
+        ...     data = jsonutils.loads('{"invalid": json}')
+        ... except SerializationError as e:
+        ...     print(f"JSON parsing failed: {e}")
+        ...
+        >>> try:
+        ...     import datetime
+        ...     result = jsonutils.dumps({"date": datetime.datetime.now()})
+        ... except SerializationError as e:
+        ...     print(f"JSON serialization failed: {e}")
     """
 
 
@@ -193,178 +285,3 @@ def _detect_mock_side_effect(response_text: Any) -> None:
     ):
         mock_detected_msg = "Mock side_effect detected"
         raise _MockDetectionError(mock_detected_msg)
-
-
-def classify_http_error(
-    status_code: int,
-    response_text: Optional[str] = None,
-    request_url: Optional[str] = None,
-    response: Optional[httpx.Response] = None,
-) -> HTTPError:
-    """
-    Classify an HTTP status code into the appropriate SDK exception.
-
-    Args:
-        status_code (int): The HTTP status code
-        response_text (str): Optional response body text
-        request_url (str): Optional URL that was requested
-        response (httpx.Response): Optional response object
-
-    Returns:
-        HTTPError: The appropriate SDK exception instance
-
-    Raises:
-        HTTPError: Always returns an HTTPError or its subclass
-    """
-    details: Dict[str, Any] = {}
-    parsing_error = False
-
-    # Extract response text from response object if provided
-    if response and not response_text:
-        try:
-            response_text = response.text
-        except Exception:
-            response_text = None
-            parsing_error = True
-
-    if response_text:
-        # Handle the response text safely
-        try:
-            response_too_long = (
-                hasattr(response_text, "__len__") and
-                len(response_text) > MAX_RESPONSE_BODY_LENGTH
-            )
-            if response_too_long:
-                details["response_body"] = response_text[:MAX_RESPONSE_BODY_LENGTH]
-            else:
-                details["response_body"] = str(response_text)
-        except Exception:
-            # If response_text is not a proper string, convert it
-            details["response_body"] = str(response_text)
-
-    # If we have response text, include it in the message (truncated for display)
-    if response_text:
-        try:
-            # This is where the Mock side_effect exception should occur
-            response_str = str(response_text)
-            # Check if this is a Mock with side_effect
-            _detect_mock_side_effect(response_text)
-
-            # Truncate response text for display
-            truncated_response = response_str[:MAX_RESPONSE_DISPLAY_LENGTH]
-            # For response text, use simple format based on status code
-            if status_code == HTTPStatus.UNAUTHORIZED:
-                message = f"Authentication failed: {truncated_response}"
-            elif status_code == HTTPStatus.FORBIDDEN:
-                message = f"Access forbidden: {truncated_response}"
-            else:
-                message = f"HTTP {status_code}: {truncated_response}"
-        except Exception:
-            # If response text parsing fails, use simple error format
-            message = f"HTTP {status_code} error"
-            parsing_error = True
-    # No response text - create base messages based on status code
-    elif parsing_error:
-        # If there was a parsing error, use simple format
-        message = f"HTTP {status_code} error"
-    elif status_code == HTTPStatus.UNAUTHORIZED:
-        message = "Authentication failed: invalid credentials or expired token"
-    elif status_code == HTTPStatus.FORBIDDEN:
-        message = "Access forbidden: insufficient permissions"
-    elif HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR:
-        message = f"Client error: HTTP {status_code}"
-    elif HTTPStatus.INTERNAL_SERVER_ERROR <= status_code < HTTP_SERVER_ERROR_MAX:
-        message = f"Server error: HTTP {status_code}"
-    else:
-        message = f"HTTP {status_code} error"
-
-    # Return appropriate exception type
-    is_client_error = (
-        status_code in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN)
-        or HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR
-    )
-    is_server_error = (
-        HTTPStatus.INTERNAL_SERVER_ERROR <= status_code < HTTP_SERVER_ERROR_MAX
-    )
-
-    if is_client_error:
-        return ClientError(
-            message,
-            status_code=status_code,
-            request_url=request_url,
-            details=details,
-        )
-    if is_server_error:
-        return ServerError(
-            message,
-            status_code=status_code,
-            request_url=request_url,
-            details=details,
-        )
-    return HTTPError(
-        message,
-        status_code=status_code,
-        request_url=request_url,
-        details=details,
-    )
-
-
-def classify_httpx_error(
-    error: Exception,
-    request_url: Optional[str] = None,
-) -> IpsdkError:
-    """
-    Classify an httpx exception into the appropriate SDK exception.
-
-    Args:
-        error (Exception): The httpx exception to classify
-        request_url (str): Optional URL that was requested
-
-    Returns:
-        IpsdkError: The appropriate SDK exception instance
-
-    Raises:
-        IpsdkError: Always returns an IpsdkError or its subclass
-    """
-    details: Dict[str, Any] = {"original_error": str(error)}
-    if request_url:
-        details["request_url"] = request_url
-
-    if isinstance(error, httpx.HTTPStatusError):
-        # For HTTPStatusError, extract status code and response
-        try:
-            response_text = (
-                error.response.text
-                if hasattr(error.response, "text")
-                else None
-            )
-        except Exception:
-            response_text = None
-
-        # Get request URL if available
-        extracted_url = None
-        try:
-            if hasattr(error, "request") and hasattr(error.request, "url"):
-                extracted_url = str(error.request.url)
-        except Exception:
-            # If URL access fails, extracted_url remains None
-            extracted_url = None
-
-        return classify_http_error(
-            error.response.status_code,
-            response_text=response_text,
-            request_url=request_url or extracted_url,
-        )
-
-    if isinstance(error, (
-        httpx.TimeoutException,
-        httpx.ConnectError,
-        httpx.RequestError
-    )):
-        # Network-related errors
-        message = f"Network error: {error!s}"
-        return NetworkError(message, details=details)
-
-    # Unknown error, treat as generic SDK error
-    message = f"Unexpected error: {error!s}"
-    return IpsdkError(message, details=details)

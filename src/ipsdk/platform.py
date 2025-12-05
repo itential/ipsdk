@@ -1,6 +1,223 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+"""Itential Platform client implementation for the SDK.
+
+This module provides client implementations for connecting to and interacting
+with Itential Platform. It includes both synchronous and asynchronous clients
+with support for OAuth (client credentials) and basic username/password
+authentication.
+
+Components
+----------
+The module exports the following components:
+
+platform_factory:
+    Factory function that creates and configures Platform or AsyncPlatform
+    instances based on the want_async parameter. This is the primary
+    entry point for creating Platform connections.
+
+Platform:
+    Synchronous client for Itential Platform. Dynamically created by
+    combining AuthMixin with Connection base class. Supports all standard
+    HTTP methods (GET, POST, PUT, PATCH, DELETE) with automatic authentication
+    using either OAuth or basic auth.
+
+AsyncPlatform:
+    Asynchronous client for Itential Platform. Dynamically created by
+    combining AsyncAuthMixin with AsyncConnection base class. Provides
+    async/await support for non-blocking API requests with OAuth or basic auth.
+
+AuthMixin:
+    Synchronous authentication mixin that implements both OAuth client
+    credentials and basic username/password authentication for Platform.
+    Automatically selects the appropriate authentication method based on
+    provided credentials.
+
+AsyncAuthMixin:
+    Asynchronous authentication mixin that implements both OAuth and basic
+    authentication for Platform with async/await support.
+
+Authentication
+--------------
+Itential Platform supports two authentication methods:
+
+OAuth Client Credentials (Recommended):
+    Uses client_id and client_secret to obtain an access token via the
+    OAuth 2.0 client credentials flow. The token is included in subsequent
+    requests as a Bearer token in the Authorization header.
+
+    Flow:
+    1. Client is created with client_id and client_secret
+    2. On first API request, POST to /oauth/token with credentials
+    3. Extract access_token from response
+    4. Include token in Authorization header for all subsequent requests
+
+Basic Authentication:
+    Uses username and password credentials for authentication. Credentials
+    are sent to the /login endpoint and a session is maintained for
+    subsequent requests.
+
+    Flow:
+    1. Client is created with user and password
+    2. On first API request, POST to /login with credentials
+    3. Session is maintained via cookies for subsequent requests
+
+The authentication method is automatically selected based on which credentials
+are provided:
+- If client_id and client_secret are provided, OAuth is used
+- If user and password are provided, basic auth is used
+- If neither pair is complete, IpsdkError is raised
+
+Base URL
+--------
+The Platform client uses the host as the base URL without any additional
+path prefix. All API paths should include the full resource path including
+the API version.
+
+For example::
+
+    platform.get("/api/v2.0/workflows")  # Full path required
+
+Supported HTTP Methods
+----------------------
+All Platform clients support the following HTTP methods:
+
+- GET: Retrieve resources
+- POST: Create resources or submit data
+- PUT: Update/replace resources
+- PATCH: Partially update resources
+- DELETE: Delete resources
+
+Error Handling
+--------------
+All Platform operations may raise the following exceptions:
+
+- RequestError: Network/connection errors (timeouts, connection refused,
+  DNS failures)
+- HTTPStatusError: HTTP error responses (401 Unauthorized, 404 Not Found,
+  500 Internal Server Error, etc.)
+- IpsdkError: General SDK errors (invalid parameters, missing/incomplete
+  credentials)
+
+Examples
+--------
+OAuth authentication (recommended)::
+
+    from ipsdk import platform_factory
+
+    # Create Platform client with OAuth
+    platform = platform_factory(
+        host="platform.example.com",
+        client_id="your-client-id",
+        client_secret="your-client-secret"
+    )
+
+    # Get all workflows
+    response = platform.get("/api/v2.0/workflows")
+    workflows = response.json()
+
+    # Create a new workflow
+    response = platform.post(
+        "/api/v2.0/workflows",
+        json={"name": "my-workflow", "description": "Test workflow"}
+    )
+    workflow = response.json()
+
+Basic authentication::
+
+    from ipsdk import platform_factory
+
+    # Create Platform client with basic auth
+    platform = platform_factory(
+        host="platform.example.com",
+        user="admin",
+        password="password"
+    )
+
+    # Make API requests
+    response = platform.get("/api/v2.0/workflows")
+    workflows = response.json()
+
+Asynchronous usage::
+
+    from ipsdk import platform_factory
+
+    # Create async Platform client
+    platform = platform_factory(
+        host="platform.example.com",
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+        want_async=True
+    )
+
+    # Use async/await for requests
+    async def get_workflows():
+        response = await platform.get("/api/v2.0/workflows")
+        return response.json()
+
+    async def create_workflow(name):
+        response = await platform.post(
+            "/api/v2.0/workflows",
+            json={"name": name}
+        )
+        return response.json()
+
+Custom configuration::
+
+    from ipsdk import platform_factory
+
+    # Create Platform with custom settings
+    platform = platform_factory(
+        host="platform.example.com",
+        port=8443,
+        use_tls=True,
+        verify=True,
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+        timeout=60
+    )
+
+Error handling::
+
+    from ipsdk import platform_factory
+    from ipsdk.exceptions import HTTPStatusError, RequestError, IpsdkError
+
+    try:
+        platform = platform_factory(
+            host="platform.example.com",
+            client_id="your-client-id",
+            client_secret="your-client-secret"
+        )
+        response = platform.get("/api/v2.0/workflows")
+        workflows = response.json()
+    except HTTPStatusError as e:
+        print(f"HTTP error {e.response.status_code}: {e}")
+    except RequestError as e:
+        print(f"Network error: {e}")
+    except IpsdkError as e:
+        print(f"SDK error: {e}")
+
+Working with responses::
+
+    from ipsdk import platform_factory
+
+    platform = platform_factory(host="platform.example.com")
+
+    # Get workflows with query parameters
+    response = platform.get(
+        "/api/v2.0/workflows",
+        params={"limit": 10, "offset": 0}
+    )
+
+    # Check response status
+    if response.is_success():
+        workflows = response.json()
+        print(f"Found {len(workflows)} workflows")
+    else:
+        print(f"Request failed with status {response.status_code}")
+"""
+
 from typing import Any
 from typing import Optional
 
@@ -13,14 +230,62 @@ from . import logging
 
 
 def _make_oauth_headers() -> dict[str, str]:
+    """
+    Create HTTP headers for OAuth token request.
+
+    Returns the headers dict required for OAuth client credentials
+    token requests. The Content-Type is set to application/x-www-form-urlencoded
+    as required by the OAuth 2.0 specification.
+
+    Args:
+        None
+
+    Returns:
+        dict[str, str]: Headers dict with Content-Type for OAuth requests
+
+    Raises:
+        None
+    """
     return {"Content-Type": "application/x-www-form-urlencoded"}
 
 
 def _make_oauth_path() -> str:
+    """
+    Get the URL path for OAuth token endpoint.
+
+    Returns the API path used to request OAuth access tokens using
+    client credentials grant type.
+
+    Args:
+        None
+
+    Returns:
+        str: The OAuth token endpoint path
+
+    Raises:
+        None
+    """
     return "/oauth/token"
 
 
 def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
+    """
+    Create request body for OAuth client credentials authentication.
+
+    Constructs the form data required for OAuth 2.0 client credentials
+    grant type. The body includes grant_type, client_id, and client_secret
+    which are sent as form-encoded data to the token endpoint.
+
+    Args:
+        client_id (str): OAuth client identifier
+        client_secret (str): OAuth client secret
+
+    Returns:
+        dict[str, str]: Form data dict for OAuth token request
+
+    Raises:
+        None
+    """
     return {
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -29,6 +294,23 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
 
 
 def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
+    """
+    Create request body for basic username/password authentication.
+
+    Constructs the JSON request body required for basic authentication
+    to Platform. The body contains a nested user object with username
+    and password fields.
+
+    Args:
+        user (str): Username for authentication
+        password (str): Password for authentication
+
+    Returns:
+        dict[str, dict[str, str]]: JSON body dict for basic auth request
+
+    Raises:
+        None
+    """
     return {
         "user": {
             "username": user,
@@ -38,6 +320,21 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
 
 
 def _make_basicauth_path() -> str:
+    """
+    Get the URL path for basic authentication endpoint.
+
+    Returns the API path used for username/password authentication
+    to Platform.
+
+    Args:
+        None
+
+    Returns:
+        str: The basic authentication endpoint path
+
+    Raises:
+        None
+    """
     return "/login"
 
 

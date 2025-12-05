@@ -246,6 +246,7 @@ def _make_oauth_headers() -> dict[str, str]:
     Raises:
         None
     """
+    logging.trace(_make_oauth_headers, modname=__name__)
     return {"Content-Type": "application/x-www-form-urlencoded"}
 
 
@@ -265,6 +266,7 @@ def _make_oauth_path() -> str:
     Raises:
         None
     """
+    logging.trace(_make_oauth_path, modname=__name__)
     return "/oauth/token"
 
 
@@ -286,6 +288,7 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
     Raises:
         None
     """
+    logging.trace(_make_oauth_body, modname=__name__)
     return {
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -311,6 +314,7 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
     Raises:
         None
     """
+    logging.trace(_make_basicauth_body, modname=__name__)
     return {
         "user": {
             "username": user,
@@ -335,6 +339,7 @@ def _make_basicauth_path() -> str:
     Raises:
         None
     """
+    logging.trace(_make_basicauth_path, modname=__name__)
     return "/login"
 
 
@@ -355,6 +360,7 @@ class AuthMixin:
         """
         Provides the authentication function for authenticating to the server
         """
+        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         if self.client_id is not None and self.client_secret is not None:
             self.authenticate_oauth()
         elif self.user is not None and self.password is not None:
@@ -372,6 +378,7 @@ class AuthMixin:
         """
         Performs authentication for basic authorization
         """
+        logging.trace(self.authenticate_user, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform basic authentication")
 
         assert self.user is not None
@@ -395,6 +402,7 @@ class AuthMixin:
         """
         Performs authentication for OAuth client credentials
         """
+        logging.trace(self.authenticate_oauth, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform oauth authentication")
 
         assert self.client_id is not None
@@ -442,6 +450,7 @@ class AsyncAuthMixin:
         """
         Provides the authentication function for authenticating to the server
         """
+        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         if self.client_id is not None and self.client_secret is not None:
             await self.authenticate_oauth()
 
@@ -461,6 +470,9 @@ class AsyncAuthMixin:
         """
         Performs authentication for basic authorization
         """
+        logging.trace(
+            self.authenticate_basicauth, modname=__name__, clsname=self.__class__
+        )
         logging.info("Attempting to perform basic authentication")
 
         assert self.user is not None
@@ -484,6 +496,7 @@ class AsyncAuthMixin:
         """
         Performs authentication for OAuth client credentials
         """
+        logging.trace(self.authenticate_oauth, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform oauth authentication")
 
         assert self.client_id is not None
@@ -573,6 +586,7 @@ def platform_factory(
     Returns:
         Platform: An initialized Platform connection instance.
     """
+    logging.trace(platform_factory, modname=__name__)
 
     factory = AsyncPlatform if want_async is True else Platform
     return factory(

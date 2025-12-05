@@ -150,7 +150,7 @@ class TestTraceFunction:
                 pass
 
             ipsdk_logging.trace(test_func)
-            mock_log.assert_called_once_with(logging.TRACE, "invoking test_func")
+            mock_log.assert_called_once_with(logging.TRACE, "test_func")
 
     def test_trace_function_with_different_functions(self):
         """Test trace function with different function types."""
@@ -168,9 +168,9 @@ class TestTraceFunction:
                     pass
 
             test_cases = [
-                (regular_func, "invoking regular_func"),
-                (TestClass.method, "invoking method"),
-                (TestClass.static_method, "invoking static_method"),
+                (regular_func, "regular_func"),
+                (TestClass.method, "method"),
+                (TestClass.static_method, "static_method"),
             ]
 
             for func, expected_msg in test_cases:
@@ -654,7 +654,7 @@ class TestIntegration:
             ipsdk_logging.trace(test_function)
 
         messages = [record.getMessage() for record in caplog.records]
-        assert any("invoking test_function" in msg for msg in messages)
+        assert any("test_function" in msg for msg in messages)
 
 
 class TestFormatString:

@@ -78,6 +78,8 @@ from typing import Optional
 
 import httpx
 
+from . import logging
+
 
 class IpsdkError(Exception):
     """
@@ -98,6 +100,7 @@ class IpsdkError(Exception):
         Args:
             message (str): Human-readable error message
         """
+        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         super().__init__(message)
         self._exc = exc
 
@@ -108,6 +111,7 @@ class IpsdkError(Exception):
         Returns:
             A formatted error message including details if available
         """
+        logging.trace(self.__str__, modname=__name__, clsname=self.__class__)
         return self.args[0]
 
     @property
@@ -167,6 +171,7 @@ class RequestError(IpsdkError):
     """
 
     def __init__(self, exc: httpx.HTTPError) -> None:
+        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         super().__init__(exc.args[0], exc)
 
 
@@ -217,6 +222,7 @@ class HTTPStatusError(IpsdkError):
     """
 
     def __init__(self, exc: httpx.HTTPError) -> None:
+        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         super().__init__(exc.args[0], exc)
 
 
@@ -275,6 +281,7 @@ def _detect_mock_side_effect(response_text: Any) -> None:
     Raises:
         _MockDetectionError: If a Mock with side_effect is detected
     """
+    logging.trace(_detect_mock_side_effect, modname=__name__)
     response_str = str(response_text)
     if (
         "Mock" in response_str

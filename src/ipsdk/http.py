@@ -16,6 +16,8 @@ from typing import Union
 
 import httpx
 
+from . import logging
+
 # Import HTTPMethod from standard library (Python 3.11+) or define fallback
 try:
     from http import HTTPMethod
@@ -80,6 +82,7 @@ class Request:
         headers: Optional[Dict[str, str]] = None,
         json: Optional[Union[str, bytes, dict, list]] = None,
     ) -> None:
+        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         self.method = method
         self.path = path
         self.params = params or {}
@@ -103,6 +106,7 @@ class Request:
         Returns:
             str: A string representation of the request
         """
+        logging.trace(self.__repr__, modname=__name__, clsname=self.__class__)
         return f"Request(method='{self.method}', path='{self.path}')"
 
 
@@ -124,6 +128,7 @@ class Response:
     """
 
     def __init__(self, httpx_response: httpx.Response) -> None:
+        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         if httpx_response is None:
             msg = "httpx_response cannot be None"
             raise ValueError(msg)
@@ -200,6 +205,7 @@ class Response:
         Raises:
             ValueError: If the response content is not valid JSON
         """
+        logging.trace(self.json, modname=__name__, clsname=self.__class__)
         try:
             return self._response.json()
         except Exception as exc:
@@ -213,6 +219,7 @@ class Response:
         Raises:
             httpx.HTTPStatusError: If the response status code indicates an error
         """
+        logging.trace(self.raise_for_status, modname=__name__, clsname=self.__class__)
         self._response.raise_for_status()
 
     def is_success(self) -> bool:
@@ -222,6 +229,7 @@ class Response:
         Returns:
             bool: True if the status code is in the 2xx range, False otherwise
         """
+        logging.trace(self.is_success, modname=__name__, clsname=self.__class__)
         return (
             HTTPStatus.OK.value <= self.status_code < HTTPStatus.MULTIPLE_CHOICES.value
         )
@@ -233,6 +241,7 @@ class Response:
         Returns:
             bool: True if the status code indicates an error, False otherwise
         """
+        logging.trace(self.is_error, modname=__name__, clsname=self.__class__)
         return self.status_code >= HTTPStatus.BAD_REQUEST.value
 
     def __repr__(self) -> str:
@@ -242,4 +251,5 @@ class Response:
         Returns:
             str: A string representation of the response
         """
+        logging.trace(self.__repr__, modname=__name__, clsname=self.__class__)
         return f"Response(status_code={self.status_code}, url='{self.url}')"

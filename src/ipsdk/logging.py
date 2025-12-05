@@ -99,6 +99,7 @@ Example:
 import logging
 import sys
 import traceback
+
 from functools import partial
 from typing import Callable
 from typing import Dict
@@ -249,7 +250,6 @@ def _get_loggers() -> set[logging.Logger]:
         if name.startswith((metadata.name, "httpx")):
             loggers.add(logging.getLogger(name))
     return loggers
-
 
 
 def get_logger() -> logging.Logger:

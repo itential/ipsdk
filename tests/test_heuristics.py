@@ -103,7 +103,9 @@ class TestScannerInitialization:
         ]
 
         for pattern_name in expected_patterns:
-            assert pattern_name in patterns, f"Expected pattern '{pattern_name}' not found"  # noqa: E501
+            assert pattern_name in patterns, (
+                f"Expected pattern '{pattern_name}' not found"
+            )
 
 
 class TestPatternManagement:
@@ -292,7 +294,10 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj
 -----END PRIVATE KEY-----"""
         result = scanner.scan_and_redact(text)
 
-        assert "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj" not in result  # noqa: E501
+        assert (
+            "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7VJTUt9Us8cKj"
+            not in result
+        )
         assert "[REDACTED_PRIVATE_KEY]" in result
 
 
@@ -613,7 +618,9 @@ class TestRealWorldScenarios:
         scanner = heuristics.Scanner()
 
         # Config-style format (not quoted JSON keys) that patterns can match
-        config_str = "username: admin, password: secret123, api_key: key_abcdef1234567890"  # noqa: E501
+        config_str = (
+            "username: admin, password: secret123, api_key: key_abcdef1234567890"
+        )
         result = scanner.scan_and_redact(config_str)
 
         assert "secret123" not in result

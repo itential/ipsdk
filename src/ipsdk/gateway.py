@@ -117,6 +117,7 @@ class AsyncAuthMixin:
             logging.exception(exc)
             raise exceptions.RequestError(exc)
 
+
 Gateway = type("Gateway", (AuthMixin, connection.Connection), {})
 AsyncGateway = type("AsyncGateway", (AsyncAuthMixin, connection.AsyncConnection), {})
 

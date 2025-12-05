@@ -3,6 +3,7 @@
 
 import logging
 import sys
+
 from unittest.mock import Mock
 from unittest.mock import patch
 
@@ -144,6 +145,7 @@ class TestTraceFunction:
     def test_trace_function_with_callable(self):
         """Test trace function logs function name."""
         with patch("ipsdk.logging.log") as mock_log:
+
             def test_func():
                 pass
 
@@ -223,10 +225,9 @@ class TestFatalFunction:
 
     def test_fatal_function_logs_and_exits(self):
         """Test that fatal function logs message and exits."""
-        with patch("ipsdk.logging.log") as mock_log, \
-             patch("builtins.print") as mock_print, \
-             patch("sys.exit") as mock_exit:
-
+        with patch("ipsdk.logging.log") as mock_log, patch(
+            "builtins.print"
+        ) as mock_print, patch("sys.exit") as mock_exit:
             ipsdk_logging.fatal("fatal error")
 
             mock_log.assert_called_once_with(ipsdk_logging.FATAL, "fatal error")
@@ -238,10 +239,9 @@ class TestFatalFunction:
         messages = ["critical failure", "system error", "cannot continue"]
 
         for message in messages:
-            with patch("ipsdk.logging.log") as mock_log, \
-                 patch("builtins.print") as mock_print, \
-                 patch("sys.exit") as mock_exit:
-
+            with patch("ipsdk.logging.log") as mock_log, patch(
+                "builtins.print"
+            ) as mock_print, patch("sys.exit") as mock_exit:
                 ipsdk_logging.fatal(message)
 
                 mock_log.assert_called_once_with(ipsdk_logging.FATAL, message)
@@ -314,8 +314,9 @@ class TestSetLevel:
 
     def test_set_level_with_propagate(self):
         """Test set_level with propagate parameter."""
-        with patch("ipsdk.logging.get_logger") as mock_get_logger, \
-             patch("ipsdk.logging._get_loggers") as mock_get_loggers:
+        with patch("ipsdk.logging.get_logger") as mock_get_logger, patch(
+            "ipsdk.logging._get_loggers"
+        ) as mock_get_loggers:
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 
@@ -501,7 +502,11 @@ class TestSensitiveDataFiltering:
             test_cases = [
                 (ipsdk_logging.debug, logging.DEBUG, "Debug: password=testpass"),
                 (ipsdk_logging.info, logging.INFO, "Info: api_key=key1234567890abcdef"),
-                (ipsdk_logging.warning, logging.WARNING, "Warning: secret=sec1234567890abcdef"),  # noqa: E501
+                (
+                    ipsdk_logging.warning,
+                    logging.WARNING,
+                    "Warning: secret=sec1234567890abcdef",
+                ),
             ]
 
             for func, level, message in test_cases:
@@ -512,7 +517,10 @@ class TestSensitiveDataFiltering:
                 call_args = mock_logger.log.call_args[0]
                 assert call_args[0] == level
                 # The message should be redacted
-                assert "testpass" not in call_args[1] or "[REDACTED_PASSWORD]" in call_args[1]  # noqa: E501
+                assert (
+                    "testpass" not in call_args[1]
+                    or "[REDACTED_PASSWORD]" in call_args[1]
+                )
 
         # Cleanup
         ipsdk_logging.disable_sensitive_data_filtering()

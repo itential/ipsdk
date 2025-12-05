@@ -247,8 +247,6 @@ def test_authenticate_oauth_preferred_over_basic():
 
 
 @pytest.mark.asyncio
-
-
 @pytest.mark.asyncio
 async def test_async_authenticate_basicauth_success():
     """Test AsyncAuthMixin.authenticate_basicauth successful authentication."""

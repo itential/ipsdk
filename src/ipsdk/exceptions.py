@@ -91,11 +91,7 @@ class IpsdkError(Exception):
         details (dict): Additional error details and context
     """
 
-    def __init__(
-        self,
-        message: str,
-        exc: Optional[httpx.HTTPError] = None
-    ) -> None:
+    def __init__(self, message: str, exc: Optional[httpx.HTTPError] = None) -> None:
         """
         Initialize the base SDK exception.
 
@@ -169,6 +165,7 @@ class RequestError(IpsdkError):
         ...     print(f"Network error: {e}")
         ...     print(f"Failed request: {e.request.url}")
     """
+
     def __init__(self, exc: httpx.HTTPError) -> None:
         super().__init__(exc.args[0], exc)
 
@@ -218,6 +215,7 @@ class HTTPStatusError(IpsdkError):
         ...     elif e.response.status_code == 401:
         ...         print("Authentication failed")
     """
+
     def __init__(self, exc: httpx.HTTPError) -> None:
         super().__init__(exc.args[0], exc)
 

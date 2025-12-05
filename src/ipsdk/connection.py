@@ -3,6 +3,7 @@
 
 import abc
 import urllib.parse
+
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -18,7 +19,6 @@ from .http import Response
 
 
 class ConnectionBase:
-
     client: Union[httpx.Client, httpx.AsyncClient]
 
     def __init__(
@@ -186,9 +186,7 @@ class ConnectionBase:
         # and Accept headers to "application/json".  Technically, httpx will do
         # this for us but setting it here to make it very explicit.
         if json is not None:
-            logging.debug(
-                "Setting Content-Type and Accept headers due to json data"
-            )
+            logging.debug("Setting Content-Type and Accept headers due to json data")
             headers.update(
                 {
                     "Content-Type": "application/json",
@@ -219,8 +217,7 @@ class ConnectionBase:
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Union[str, bytes, dict, list]] = None,
     ) -> None:
-        """
-        """
+        """ """
         if not isinstance(method, HTTPMethod):
             msg = "method must be of type `HTTPMethod`"
             raise exceptions.IpsdkError(msg)
@@ -239,10 +236,7 @@ class ConnectionBase:
 
     @abc.abstractmethod
     def __init_client__(
-        self,
-        base_url: Optional[str] = None,
-        verify: bool = True,
-        timeout: int = 30
+        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
     ) -> Union[httpx.Client, httpx.AsyncClient]:
         """
         Abstract method that will initialize the client
@@ -263,14 +257,10 @@ class ConnectionBase:
 
 
 class Connection(ConnectionBase):
-
     client: httpx.Client  # Override the Union type from base class
 
     def __init_client__(
-        self,
-        base_url: Optional[str] = None,
-        verify: bool = True,
-        timeout: int = 30
+        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
     ) -> httpx.Client:
         """
         Initialize the httpx.Client instance
@@ -449,9 +439,7 @@ class Connection(ConnectionBase):
             A `Response` object
         """
         logging.trace(self.post)
-        return self._send_request(
-            HTTPMethod.POST, path=path, params=params, json=json
-        )
+        return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
     def put(
         self,
@@ -484,9 +472,7 @@ class Connection(ConnectionBase):
             A `Response` object
         """
         logging.trace(self.put)
-        return self._send_request(
-            HTTPMethod.PUT, path=path, params=params, json=json
-        )
+        return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
     def patch(
         self,
@@ -519,20 +505,14 @@ class Connection(ConnectionBase):
             A `Response` object
         """
         logging.trace(self.patch)
-        return self._send_request(
-            HTTPMethod.PATCH, path=path, params=params, json=json
-        )
+        return self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)
 
 
 class AsyncConnection(ConnectionBase):
-
     client: httpx.AsyncClient  # Override the Union type from base class
 
     def __init_client__(
-        self,
-        base_url: Optional[str] = None,
-        verify: bool = True,
-        timeout: int = 30
+        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
     ) -> httpx.AsyncClient:
         """
         Initialize the httpx.AsyncClient instance
@@ -675,9 +655,7 @@ class AsyncConnection(ConnectionBase):
             A `Response` object
         """
         logging.trace(self.delete)
-        return await self._send_request(
-            HTTPMethod.DELETE, path=path, params=params
-        )
+        return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
     async def post(
         self,

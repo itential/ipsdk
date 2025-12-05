@@ -36,9 +36,7 @@ class TestIpsdkError:
         mock_response.status_code = 500
 
         httpx_exc = httpx.HTTPStatusError(
-            "Server error",
-            request=mock_request,
-            response=mock_response
+            "Server error", request=mock_request, response=mock_response
         )
 
         exc = exceptions.IpsdkError("Wrapped error", httpx_exc)
@@ -132,9 +130,7 @@ class TestHTTPStatusError:
         mock_response.status_code = 404
 
         httpx_exc = httpx.HTTPStatusError(
-            "Not found",
-            request=mock_request,
-            response=mock_response
+            "Not found", request=mock_request, response=mock_response
         )
         exc = exceptions.HTTPStatusError(httpx_exc)
 
@@ -152,9 +148,7 @@ class TestHTTPStatusError:
         mock_response.status_code = 400
 
         httpx_exc = httpx.HTTPStatusError(
-            "Bad request",
-            request=mock_request,
-            response=mock_response
+            "Bad request", request=mock_request, response=mock_response
         )
         exc = exceptions.HTTPStatusError(httpx_exc)
 
@@ -170,9 +164,7 @@ class TestHTTPStatusError:
         mock_response.status_code = 500
 
         httpx_exc = httpx.HTTPStatusError(
-            "Internal server error",
-            request=mock_request,
-            response=mock_response
+            "Internal server error", request=mock_request, response=mock_response
         )
         exc = exceptions.HTTPStatusError(httpx_exc)
 
@@ -187,9 +179,7 @@ class TestHTTPStatusError:
         mock_response.status_code = 403
 
         httpx_exc = httpx.HTTPStatusError(
-            "Forbidden",
-            request=mock_request,
-            response=mock_response
+            "Forbidden", request=mock_request, response=mock_response
         )
         exc = exceptions.HTTPStatusError(httpx_exc)
 
@@ -283,9 +273,7 @@ class TestExceptionHierarchy:
 
         httpx_request_exc = httpx.RequestError("Test", request=mock_request)
         httpx_status_exc = httpx.HTTPStatusError(
-            "Test",
-            request=mock_request,
-            response=mock_response
+            "Test", request=mock_request, response=mock_response
         )
 
         exception_instances = [
@@ -320,9 +308,7 @@ class TestExceptionHierarchy:
 
         httpx_request_exc = httpx.RequestError("Test", request=mock_request)
         httpx_status_exc = httpx.HTTPStatusError(
-            "Test",
-            request=mock_request,
-            response=mock_response
+            "Test", request=mock_request, response=mock_response
         )
 
         exceptions_to_test.append(exceptions.RequestError(httpx_request_exc))
@@ -430,9 +416,7 @@ class TestExceptionIntegration:
         for status_code in status_codes:
             mock_response.status_code = status_code
             httpx_err = httpx.HTTPStatusError(
-                f"HTTP {status_code}",
-                request=mock_request,
-                response=mock_response
+                f"HTTP {status_code}", request=mock_request, response=mock_response
             )
 
             sdk_err = exceptions.HTTPStatusError(httpx_err)
@@ -461,9 +445,7 @@ class TestBackwardCompatibility:
 
         httpx_request_exc = httpx.RequestError("Test", request=mock_request)
         httpx_status_exc = httpx.HTTPStatusError(
-            "Test",
-            request=mock_request,
-            response=mock_response
+            "Test", request=mock_request, response=mock_response
         )
 
         test_exceptions = [
@@ -491,9 +473,7 @@ class TestBackwardCompatibility:
         mock_response.text = "Not found"
 
         httpx_exc = httpx.HTTPStatusError(
-            "Not found",
-            request=mock_request,
-            response=mock_response
+            "Not found", request=mock_request, response=mock_response
         )
         sdk_exc = exceptions.HTTPStatusError(httpx_exc)
 

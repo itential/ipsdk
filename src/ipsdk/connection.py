@@ -1,6 +1,129 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+"""HTTP connection implementations for the Itential Python SDK.
+
+This module provides both synchronous and asynchronous HTTP client implementations
+for communicating with Itential Platform and Itential Automation Gateway. The
+connection classes handle request building, authentication, error handling, and
+response processing.
+
+Architecture
+------------
+The module uses an abstract base class pattern with three main classes:
+
+ConnectionBase:
+    Abstract base class that provides shared functionality for both sync and async
+    connections. Handles URL construction, request building, parameter validation,
+    and common configuration options (TLS, verification, timeouts, authentication).
+
+Connection:
+    Synchronous HTTP client implementation using httpx.Client. Provides blocking
+    HTTP methods (GET, POST, PUT, PATCH, DELETE) for making API requests. Supports
+    automatic authentication on first request and comprehensive error handling.
+
+AsyncConnection:
+    Asynchronous HTTP client implementation using httpx.AsyncClient. Provides
+    async/await-based HTTP methods for non-blocking API requests. Mirrors the
+    functionality of Connection but with async support.
+
+Key Features
+------------
+- Automatic URL construction from host, port, base_path, and TLS settings
+- Request building with automatic JSON Content-Type and Accept headers
+- Built-in authentication flow that triggers on first request
+- Bearer token support for OAuth authentication
+- Comprehensive error handling with SDK-specific exceptions
+- Support for query parameters and JSON request bodies
+- Custom User-Agent header with SDK version information
+- Request validation for method, path, params, and JSON body
+- Full support for all standard HTTP methods
+
+HTTP Methods
+------------
+Both Connection and AsyncConnection support the following HTTP methods:
+
+- GET: Retrieve resources (no request body)
+- POST: Create resources or submit data (with JSON body support)
+- PUT: Update/replace resources (with JSON body support)
+- PATCH: Partially update resources (with JSON body support)
+- DELETE: Delete resources (no request body)
+
+Authentication
+--------------
+The connection classes work with authentication mixins from the platform and
+gateway modules to handle different authentication schemes:
+
+- OAuth client credentials (Platform)
+- Basic username/password authentication (Platform and Gateway)
+
+Authentication is performed automatically on the first API request. Subsequent
+requests use the authentication token or session established during the initial
+authentication.
+
+Error Handling
+--------------
+All HTTP operations raise SDK-specific exceptions for consistent error handling:
+
+- RequestError: Network-level errors (connection refused, timeouts, DNS failures)
+- HTTPStatusError: HTTP error responses (4xx, 5xx status codes)
+- IpsdkError: General SDK errors (invalid parameters, configuration issues)
+
+Examples
+--------
+The connection classes are typically not instantiated directly but through
+factory functions::
+
+    from ipsdk import platform_factory
+
+    # Factory creates and configures Connection instance
+    platform = platform_factory(
+        host="platform.example.com",
+        port=443,
+        use_tls=True,
+        verify=True,
+        timeout=30
+    )
+
+    # Make API requests (authentication happens automatically)
+    response = platform.get("/api/v2.0/workflows")
+    print(response.json())
+
+Async usage::
+
+    from ipsdk import gateway_factory
+
+    # Factory creates AsyncConnection instance
+    gateway = gateway_factory(
+        host="gateway.example.com",
+        want_async=True
+    )
+
+    # Use async/await for requests
+    async def fetch_devices():
+        response = await gateway.get("/devices")
+        return response.json()
+
+Direct instantiation (advanced)::
+
+    from ipsdk.connection import Connection
+
+    # Create connection manually
+    conn = Connection(
+        host="api.example.com",
+        port=443,
+        base_path="/api/v2.0",
+        use_tls=True,
+        verify=True,
+        user="admin",
+        password="password",
+        timeout=30
+    )
+
+    # Must implement authenticate() method via mixin
+    # conn.authenticate() will be called automatically
+"""
+
 import abc
 import urllib.parse
 
@@ -217,7 +340,27 @@ class ConnectionBase:
         params: Optional[Dict[str, Any]] = None,
         json: Optional[Union[str, bytes, dict, list]] = None,
     ) -> None:
-        """ """
+        """
+        Validate request arguments to ensure they have correct types.
+
+        This method validates that all request parameters conform to expected
+        types before building and sending the HTTP request. It checks that the
+        method is a valid HTTPMethod enum, params is a dict if provided, json
+        is a dict or list if provided, and path is a string.
+
+        Args:
+            method (HTTPMethod): The HTTP method enum value to validate
+            path (str): The request path to validate
+            params (Optional[Dict[str, Any]]): Query parameters dict to validate
+            json (Optional[Union[str, bytes, dict, list]]): JSON body to validate
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If method is not HTTPMethod type, params is not dict,
+                json is not dict/list, or path is not string
+        """
         if not isinstance(method, HTTPMethod):
             msg = "method must be of type `HTTPMethod`"
             raise exceptions.IpsdkError(msg)
@@ -541,7 +684,9 @@ class AsyncConnection(ConnectionBase):
 
     @abc.abstractmethod
     async def authenticate(self) -> None:
-        pass
+        """
+        Abstract method for implementing authentication
+        """
 
     async def _send_request(
         self,

@@ -6,16 +6,24 @@
 [![Tests](https://github.com/itential/ipsdk/workflows/Run%20pre%20merge%20pipeline/badge.svg)](https://github.com/itential/ipsdk/actions)
 [![Coverage](https://img.shields.io/badge/coverage-95%25-green)](https://github.com/itential/ipsdk)
 
-The Itential Python SDK provides a client implementation in Python for writing
-scripts that can make API calls to Itential Platform or Itential Automation
-Gateway 4.x.
+The Itential Python SDK provides a robust client implementation in Python for writing
+scripts and applications that can make API calls to Itential Platform or Itential
+Automation Gateway 4.x.
+
+**Status**: Beta - Active development with comprehensive test coverage (95%+)
 
 ## Features
 
-- Easy API requests with automatic authentication
-- Support for OAuth and user/password login
-- Customizable connection settings
-- Centralized logging configuration
+- **Easy API Requests**: Automatic authentication on first API call with session management
+- **Multiple Authentication Methods**:
+  - OAuth (client credentials) for Itential Platform
+  - Basic authentication (username/password) for both Platform and Gateway
+- **Sync and Async Support**: Both synchronous and asynchronous HTTP clients via `want_async` parameter
+- **Comprehensive Logging**: Custom logging system with multiple levels (including FATAL), file and console handlers, and httpx integration control
+- **Flexible Configuration**: Customizable connection settings including TLS, certificate verification, timeouts, and proxy support
+- **Type Safety**: Full type hints with mypy support for enhanced development experience
+- **HTTP Methods**: Support for GET, POST, PUT, DELETE, and PATCH operations with automatic JSON handling
+- **Request/Response Wrappers**: Enhanced request and response objects with additional utilities beyond raw httpx
 
 ## Getting started
 
@@ -56,12 +64,17 @@ Itential Platform or Itential Automation Gateway.
 The `platform_factory(...)` function creates a connection to Itential Platform
 The `gateway_factory(...)` function creates a connection to Itential Automation Gateway
 
-Use one of the factory functions to create a new connection to the server
-and send requests.
+### Basic Authentication
+
+Use basic authentication with username and password:
 
 ```python
 >>> import ipsdk
->>> platform = ipsdk.platform_factory(host="platform.itential.dev", user="admin@pronghorn")
+>>> platform = ipsdk.platform_factory(
+...     host="platform.itential.dev",
+...     user="admin@pronghorn",
+...     password="your-password"
+... )
 >>> res = platform.get("/health/server")
 >>> res
 <Response [200 OK]>
@@ -69,13 +82,38 @@ and send requests.
 '{"version":"15.8.10-2023.2.44","release":"2023.2.9"...`
 ```
 
-The above works the same for Itential Automation Gateway, simply use
-`gateway_factory` instead of `platform_factory` to connect to Itential
-Automation Gateway.
+### OAuth Authentication
 
-Itential Python SDK also supports using `asyncio` to connect to servers as
-well. The example below demonstrates how to connect to the server using an
-async connection.
+For Itential Platform, you can use OAuth with client credentials:
+
+```python
+>>> import ipsdk
+>>> platform = ipsdk.platform_factory(
+...     host="platform.itential.dev",
+...     client_id="your-client-id",
+...     client_secret="your-client-secret"
+... )
+>>> res = platform.get("/adapters")
+```
+
+### Gateway Connection
+
+Connecting to Itential Automation Gateway uses the same pattern:
+
+```python
+>>> import ipsdk
+>>> gateway = ipsdk.gateway_factory(
+...     host="gateway.itential.dev",
+...     user="admin@itential",
+...     password="your-password"
+... )
+>>> res = gateway.get("/devices")
+```
+
+### Async Support
+
+The SDK fully supports `asyncio` for asynchronous operations. Set `want_async=True`
+when creating the connection:
 
 ```python
 import asyncio
@@ -93,6 +131,8 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+## HTTP Methods
 
 The connection object supports the following HTTP methods:
 
@@ -141,6 +181,38 @@ arguments for each function along with their default value.
  | `client_secret` | `None`             | Not Supported     |
  | `timeout`       | `30`               | `30`              |
  | `want_async`    | `False`            | `False`           |
+
+## Logging
+
+The SDK includes a comprehensive logging system accessible via `ipsdk.logging`:
+
+```python
+import ipsdk
+
+# Configure logging level
+ipsdk.logging.set_level(ipsdk.logging.DEBUG)
+
+# Enable file logging
+ipsdk.logging.configure_file_logging(
+    "/path/to/logfile.log",
+    level=ipsdk.logging.INFO
+)
+
+# Use convenience functions
+ipsdk.logging.info("Connected to platform")
+ipsdk.logging.debug("Request details: %s", request_data)
+ipsdk.logging.error("API call failed")
+```
+
+**Logging Features**:
+- **Multiple Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL, and custom FATAL (90) level
+- **Convenience Functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
+- **File Logging**: Automatic directory creation and custom formatting support
+- **Console Control**: Switch between stdout/stderr output
+- **httpx Integration**: Optional control of httpx/httpcore logging via `propagate` parameter
+- **Handler Management**: Add/remove file handlers and customize console output
+
+For detailed logging documentation, see the logging module docstrings.
 
 ## Development
 

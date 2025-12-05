@@ -9,6 +9,7 @@ identifiable information (PII) from log messages before they are written.
 """
 
 import re
+
 from typing import Callable
 from typing import Dict
 from typing import List
@@ -34,9 +35,7 @@ class Scanner:
     _instance: Optional["Scanner"] = None
     _initialized: bool = False
 
-    def __new__(
-        cls, _custom_patterns: Optional[Dict[str, str]] = None
-    ) -> "Scanner":
+    def __new__(cls, _custom_patterns: Optional[Dict[str, str]] = None) -> "Scanner":
         """Create or return the singleton instance.
 
         Args:

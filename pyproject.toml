@@ -219,7 +219,7 @@ ignore = [
     # Allow catching broad exceptions (necessary for HTTP client)
     "BLE001",
     # Allow raise without from inside except
-    "TRY200",
+    "B904",
     # Allow too many return statements
     "PLR0911",
     # Allow too many arguments
@@ -283,6 +283,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.isort]
 known-first-party = ["ipsdk"]
 force-single-line = true
+lines-between-types = 1
 
 [tool.ruff.lint.pylint]
 max-args = 8

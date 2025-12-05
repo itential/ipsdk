@@ -4,6 +4,7 @@
 """Tests for the ipsdk.__init__ module."""
 
 import ipsdk
+
 from ipsdk import gateway_factory
 from ipsdk import logging
 from ipsdk import metadata

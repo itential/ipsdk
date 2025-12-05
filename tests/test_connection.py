@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import json
+
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -1135,7 +1136,6 @@ def test_response_json_with_non_dict_data():
 
 @pytest.mark.asyncio
 
-
 # --------- Missing Coverage Tests ---------
 
 
@@ -1145,6 +1145,7 @@ class TestAbstractMethodCoverage:
     @pytest.mark.asyncio
     async def test_async_connection_abstract_authenticate_method(self):
         """Test AsyncConnection abstract authenticate method."""
+
         # Create test class inheriting from AsyncConnection
         class TestAsyncConnection(AsyncConnection):
             def __init__(self):

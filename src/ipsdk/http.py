@@ -223,9 +223,7 @@ class Response:
             bool: True if the status code is in the 2xx range, False otherwise
         """
         return (
-            HTTPStatus.OK.value
-            <= self.status_code
-            < HTTPStatus.MULTIPLE_CHOICES.value
+            HTTPStatus.OK.value <= self.status_code < HTTPStatus.MULTIPLE_CHOICES.value
         )
 
     def is_error(self) -> bool:

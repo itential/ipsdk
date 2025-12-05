@@ -117,10 +117,7 @@ class TestHTTPStatus:
     def test_status_code_comparison(self):
         """Test comparing status codes."""
         assert HTTPStatus.OK.value < HTTPStatus.NOT_FOUND.value
-        assert (
-            HTTPStatus.NOT_FOUND.value
-            < HTTPStatus.INTERNAL_SERVER_ERROR.value
-        )
+        assert HTTPStatus.NOT_FOUND.value < HTTPStatus.INTERNAL_SERVER_ERROR.value
         assert HTTPStatus.OK == HTTPStatus.OK
         assert HTTPStatus.OK != HTTPStatus.CREATED
 
@@ -363,7 +360,6 @@ class TestHTTPMethod:
         for method in non_idempotent:
             assert method.value in ["POST", "PATCH"]
 
-
         """Test that enum members cannot be deleted."""
         # Enums don't allow deleting members
         with pytest.raises(AttributeError):
@@ -515,12 +511,8 @@ class TestEnumsIntegration:
     def test_building_http_response_mapping(self):
         """Test building a response mapping with enums."""
         response_map = {
-            (HTTPMethod.GET, HTTPStatus.OK): (
-                "Resource retrieved successfully"
-            ),
-            (HTTPMethod.POST, HTTPStatus.CREATED): (
-                "Resource created successfully"
-            ),
+            (HTTPMethod.GET, HTTPStatus.OK): ("Resource retrieved successfully"),
+            (HTTPMethod.POST, HTTPStatus.CREATED): ("Resource created successfully"),
             (HTTPMethod.DELETE, HTTPStatus.NO_CONTENT): (
                 "Resource deleted successfully"
             ),

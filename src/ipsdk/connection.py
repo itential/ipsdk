@@ -203,6 +203,7 @@ class ConnectionBase:
             timeout (int): The request timeout for sending requests to the
                 server.
         """
+        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
 
         self.user = user
         self.password = password
@@ -255,7 +256,7 @@ class ConnectionBase:
         Returns:
             A string that represents the full URL
         """
-        logging.trace(self._make_base_url)
+        logging.trace(self._make_base_url, modname=__name__, clsname=self.__class__)
 
         if port == 0:
             port = 443 if use_tls is True else 80
@@ -299,7 +300,7 @@ class ConnectionBase:
         Returns:
             A `httpx.Request` object that can be used to send to the server
         """
-        logging.trace(self._build_request)
+        logging.trace(self._build_request, modname=__name__, clsname=self.__class__)
 
         self._validate_request_args(method, path, params, json)
 
@@ -361,6 +362,9 @@ class ConnectionBase:
             IpsdkError: If method is not HTTPMethod type, params is not dict,
                 json is not dict/list, or path is not string
         """
+        logging.trace(
+            self._validate_request_args, modname=__name__, clsname=self.__class__
+        )
         if not isinstance(method, HTTPMethod):
             msg = "method must be of type `HTTPMethod`"
             raise exceptions.IpsdkError(msg)
@@ -425,7 +429,7 @@ class Connection(ConnectionBase):
         Returns:
             An instance of `httpx.Client`
         """
-        logging.trace(self.__init_client__)
+        logging.trace(self.__init_client__, modname=__name__, clsname=self.__class__)
         logging.info(f"Creating new client for {base_url}")
         return httpx.Client(
             base_url=base_url or "",
@@ -475,7 +479,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self._send_request)
+        logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
         if self.authenticated is not True:
             self.authenticate()
@@ -526,7 +530,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.get)
+        logging.trace(self.get, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
     def delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Response:
@@ -548,7 +552,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.delete)
+        logging.trace(self.delete, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.DELETE.value, path=path, params=params)
 
     def post(
@@ -581,7 +585,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.post)
+        logging.trace(self.post, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
     def put(
@@ -614,7 +618,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.put)
+        logging.trace(self.put, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
     def patch(
@@ -647,7 +651,7 @@ class Connection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.patch)
+        logging.trace(self.patch, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)
 
 
@@ -676,7 +680,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             An instance of `httpx.AsyncClient`
         """
-        logging.trace(self.__init_client__)
+        logging.trace(self.__init_client__, modname=__name__, clsname=self.__class__)
         logging.info(f"Creating new async client for {base_url}")
         return httpx.AsyncClient(
             base_url=base_url or "", verify=verify, timeout=timeout
@@ -724,7 +728,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self._send_request)
+        logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
         if self.authenticated is False:
             await self.authenticate()
@@ -775,7 +779,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.get)
+        logging.trace(self.get, modname=__name__, clsname=self.__class__)
         return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
     async def delete(
@@ -799,7 +803,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.delete)
+        logging.trace(self.delete, modname=__name__, clsname=self.__class__)
         return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
     async def post(
@@ -832,7 +836,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.post)
+        logging.trace(self.post, modname=__name__, clsname=self.__class__)
         return await self._send_request(
             HTTPMethod.POST, path=path, params=params, json=json
         )
@@ -867,7 +871,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.put)
+        logging.trace(self.put, modname=__name__, clsname=self.__class__)
         return await self._send_request(
             HTTPMethod.PUT, path=path, params=params, json=json
         )
@@ -902,7 +906,7 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.patch)
+        logging.trace(self.patch, modname=__name__, clsname=self.__class__)
         return await self._send_request(
             HTTPMethod.PATCH, path=path, params=params, json=json
         )

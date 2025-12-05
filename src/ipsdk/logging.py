@@ -175,7 +175,11 @@ error = partial(log, logging.ERROR)
 critical = partial(log, logging.CRITICAL)
 
 
-def trace(f: Callable) -> None:
+def trace(
+    f: Callable,
+    modname: Optional[str] = None,
+    clsname: Optional[str] = None
+) -> None:
     """Log a trace message for function invocation.
 
     This function logs a trace-level message indicating that a function
@@ -190,7 +194,17 @@ def trace(f: Callable) -> None:
     Raises:
         None
     """
-    log(logging.TRACE, f"invoking {f.__name__}")
+    msg = ""
+
+    if modname is not None:
+        msg += f"{modname}."
+
+    if clsname is not None:
+        msg += f"{clsname.__name__}."
+
+    msg += f.__name__
+
+    log(logging.TRACE, msg)
 
 
 def exception(exc: Exception) -> None:

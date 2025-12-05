@@ -165,6 +165,7 @@ def _make_path() -> str:
     Returns:
         A string that provides the login url
     """
+    logging.trace(_make_path, modname=__name__)
     return "/login"
 
 
@@ -181,6 +182,7 @@ def _make_body(user: str, password: str) -> dict[str, str]:
         A dict object that can be used to send in the body of the
             authentication request
     """
+    logging.trace(_make_body, modname=__name__)
     return {"username": user, "password": password}
 
 
@@ -191,6 +193,7 @@ def _make_headers() -> dict[str, str]:
     Returns:
         A dict object that can be passed to a request to set the headers
     """
+    logging.trace(_make_headers, modname=__name__)
     return {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -211,6 +214,7 @@ class AuthMixin:
         """
         Provides the authentication function for authenticating to the server
         """
+        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         assert self.user is not None
         assert self.password is not None
 
@@ -245,6 +249,7 @@ class AsyncAuthMixin:
         """
         Provides the authentication function for authenticating to the server
         """
+        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         assert self.user is not None
         assert self.password is not None
 
@@ -320,6 +325,7 @@ def gateway_factory(
     Returns:
         An initialized connection instance
     """
+    logging.trace(gateway_factory, modname=__name__)
 
     factory = AsyncGateway if want_async is True else Gateway
     return factory(

@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2025-12-08
+
+### Added
+- GitHub Release creation to release workflow (#77)
+- Tox multi-version testing support (#74)
+- Sensitive data filtering and enhanced logging capabilities (#72)
+- Comprehensive HTTP enums and integrate with connection module (#71)
+
+### Changed
+- Add comprehensive logging.trace() calls with module and class context (#81)
+- Add comprehensive module and function docstrings (#80)
+- Update ruff configuration and apply import formatting (#79)
+- Simplify exception hierarchy and improve code quality (#78)
+- Update documentation with comprehensive development guide and accurate exception references (#76)
+- Enhance exception logging with full tracebacks (#75)
+- Consolidate HTTP utilities into module (#73)
+- Expand and organize .gitignore patterns (#70)
+- Update README.md (#67)
+
+### Dependencies
+- ci(deps): bump actions/checkout from 5 to 6 (#69)
+- ci(deps): bump astral-sh/setup-uv from 6 to 7 (#68)
+
 ## [0.5.0] - 2025-09-23
 
 ### Added

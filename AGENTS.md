@@ -22,14 +22,13 @@ This project uses `uv` as the Python package manager and build tool. Key command
 - **Run premerge checks**: `make premerge` (runs clean, lint, security, and coverage-check with 95% threshold)
 - **Run specific test module**: `uv run pytest tests/test_<module>.py`
 - **Pre-commit hooks**: `uv run pre-commit install` (install git hooks), `uv run pre-commit run --all-files` (run on all files)
-- **Generate changelog**: `make changelog` (generates full CHANGELOG.md), `make changelog-unreleased` (shows unreleased changes)
-- **git-cliff**: Uses conventional commits to generate changelog automatically on version tags
 - **Tox multi-version testing**: `uv run tox` (runs premerge tests across Python 3.10, 3.11, 3.12, 3.13)
   - `uv run tox -e py310` - Run tests on Python 3.10 only
   - `uv run tox -e py311` - Run tests on Python 3.11 only
   - `uv run tox -e py312` - Run tests on Python 3.12 only
   - `uv run tox -e py313` - Run tests on Python 3.13 only
-  - `uv run tox -e coverage` - Run coverage report on Python 3.13
+  - `uv run tox -e coverage` - Run coverage report with HTML output on Python 3.13
+  - `uv run tox -e format` - Run code formatting with ruff on Python 3.13
   - `uv run tox -e quick` - Run only tests (no lint/security) on Python 3.13
   - `uv run tox -p auto` - Run all environments in parallel
 
@@ -40,8 +39,9 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 ### Project Details
 
 - **License**: GPL-3.0-or-later
-- **Python Support**: >=3.8 (tested on 3.10, 3.11, 3.12, 3.13)
+- **Python Support**: >=3.10 (tested on 3.10, 3.11, 3.12, 3.13)
 - **Status**: Beta
+- **Current Version**: 0.6.0 (released 2025-12-09)
 - **Primary Dependency**: httpx>=0.28.1
 - **Build System**: Hatchling with uv-dynamic-versioning
 - **Version**: Dynamic versioning from git tags using PEP440 style
@@ -51,7 +51,7 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 - **Factory Functions**: Entry points in `__init__.py`
   - `platform_factory()` - Creates connections to Itential Platform
   - `gateway_factory()` - Creates connections to Itential Automation Gateway
-  - Exports: `gateway_factory`, `logger`, `platform_factory`
+  - Exports: `gateway_factory`, `logging`, `platform_factory`
 
 - **Connection Layer** (`connection.py`):
   - `ConnectionBase` - Abstract base class with shared functionality
@@ -74,8 +74,10 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
   - `connection.py` - HTTP client implementations and request/response wrappers
   - `exceptions.py` - Centralized exception classes for error handling
   - `gateway.py` - Itential Automation Gateway client with basic auth
+  - `heuristics.py` - Sensitive data scanner for detecting and redacting PII, API keys, passwords, and tokens from logs
+  - `http.py` - HTTP utilities and enumerations (HTTPStatus, HTTPMethod) with Python < 3.11 backward compatibility
   - `jsonutils.py` - JSON serialization/deserialization utilities
-  - `logging.py` - Comprehensive logging system with file/console handlers, custom FATAL level (90), and httpx/httpcore control
+  - `logging.py` - Comprehensive logging system with TRACE level, file/console handlers, custom FATAL level (90), sensitive data filtering, and httpx/httpcore control
   - `metadata.py` - Package metadata and dynamic version information from importlib
   - `platform.py` - Itential Platform client with OAuth and basic auth support
 
@@ -85,12 +87,15 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 - Support for both sync and async operations (controlled by `want_async` parameter)
 - Configurable TLS, certificate verification, timeouts
 - **Comprehensive Logging System**:
-  - Multiple log levels including custom FATAL (90) level
-  - Convenience functions: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
+  - Multiple log levels including custom TRACE (5) and FATAL (90) levels
+  - Convenience functions: `trace()`, `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
   - File logging with automatic directory creation and custom formatting
   - Console output control (stdout/stderr switching)
   - httpx/httpcore logging control via `propagate` parameter
   - Centralized configuration via `set_level()` and `configure_file_logging()`
+  - **Sensitive Data Filtering**: Automatic detection and redaction of PII, API keys, passwords, and tokens
+  - Comprehensive trace logging with module and class context throughout the SDK
+- **HTTP Utilities**: HTTPStatus and HTTPMethod enumerations with backward compatibility for Python < 3.11
 - JSON request/response handling with automatic Content-Type headers
 
 
@@ -117,12 +122,23 @@ The Itential Python SDK provides HTTP client implementations for connecting to I
 Core dev dependencies in `dependency-groups.dev`:
 - **Testing**: pytest, pytest-cov, pytest-asyncio, tox, tox-uv
 - **Linting/Formatting**: ruff, mypy
+- **Security**: bandit[toml]
 - **Utilities**: q (debugging), coverage, build, pre-commit
 
 ### Testing
 
 - Uses pytest with async support (`pytest-asyncio`)
-- Test files in `tests/` directory cover all main components: connection, exceptions, gateway, jsonutils, logging, platform
+- Test files in `tests/` directory cover all main components:
+  - `test_connection.py` - HTTP client and request/response wrappers
+  - `test_exceptions.py` - Exception hierarchy and error handling
+  - `test_gateway.py` - Gateway client and authentication
+  - `test_heuristics.py` - Sensitive data scanning and redaction
+  - `test_enums.py` - HTTP utilities and enumerations
+  - `test_init.py` - Module initialization and exports
+  - `test_jsonutils.py` - JSON serialization/deserialization
+  - `test_logging.py` - Comprehensive logging system (38 test cases)
+  - `test_metadata.py` - Package metadata and versioning
+  - `test_platform.py` - Platform client and OAuth/basic auth
 - Coverage reporting available via pytest-cov with HTML and terminal output
 - **Coverage requirement**: Minimum 95% test coverage enforced in CI/CD pipeline
 - Tests include extensive per-file ignore rules in ruff config to allow test-specific patterns
@@ -143,15 +159,14 @@ The `tests/test_logging.py` file provides comprehensive testing coverage for the
 
 #### Python Version Testing Matrix
 
-The SDK officially supports Python 3.8+ but is tested on the following versions:
+The SDK officially supports Python 3.10+ and is tested on the following versions:
 
 | Python Version | Status | Notes |
 |----------------|--------|-------|
-| 3.10           | ✅ Tested | Minimum recommended version |
+| 3.10           | ✅ Tested | Minimum supported version |
 | 3.11           | ✅ Tested | Full support |
 | 3.12           | ✅ Tested | Full support |
 | 3.13           | ✅ Tested | Latest stable release |
-| 3.14           | 🔄 Beta | Development/preview testing |
 
 **Testing Commands by Version:**
 - `uv run --python 3.10 pytest tests` - Test with Python 3.10
@@ -190,17 +205,30 @@ The `.github/workflows/premerge.yaml` workflow runs tests against all supported 
 
 - **Request/Response Wrappers**: The SDK provides `Request` and `Response` wrapper classes that encapsulate HTTP request/response data with additional functionality beyond raw httpx objects
 - **Advanced Logging System**: Full-featured logging implementation with comprehensive functionality:
-  - **Custom Levels**: FATAL level (90) in addition to standard levels (DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50)
+  - **Custom Levels**: TRACE (5) and FATAL (90) levels in addition to standard levels (DEBUG=10, INFO=20, WARNING=30, ERROR=40, CRITICAL=50)
   - **Multiple Handlers**: File handlers, console handlers (stdout/stderr), with automatic cleanup
-  - **Configuration Functions**: 
+  - **Configuration Functions**:
     - `set_level(lvl, *, propagate=False)` - Set logging level with optional httpx/httpcore control
     - `configure_file_logging(file_path, level=INFO, *, propagate=False, format_string=None)` - One-call setup
     - `add_file_handler()`, `remove_file_handlers()` - File logging management
     - `set_console_output()`, `add_stdout_handler()`, `add_stderr_handler()` - Console control
-  - **Convenience Functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
+  - **Convenience Functions**: `trace()`, `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
   - **Automatic Features**: Directory creation, custom formatting, propagation control, handler cleanup
   - **Google-style Documentation**: All functions have comprehensive docstrings with Args/Returns/Raises sections
-- **Exception Handling**: Centralized exception classes in `exceptions.py` for consistent error handling across the SDK
+  - **Comprehensive Trace Logging**: Module and class context throughout the SDK for detailed debugging
+- **Sensitive Data Filtering**: Heuristics-based scanner (`heuristics.py`) for automatic detection and redaction of:
+  - API keys, bearer tokens, authentication tokens
+  - Passwords and credentials
+  - Social Security Numbers (SSNs)
+  - Credit card numbers
+  - Email addresses
+  - Custom patterns via extensible pattern registry
+  - Singleton pattern ensures consistent filtering across the application
+- **HTTP Utilities**: Comprehensive HTTP enumerations (`http.py`) with backward compatibility:
+  - HTTPMethod enum (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, TRACE, CONNECT)
+  - HTTPStatus codes from standard library
+  - Automatic fallback for Python < 3.11 compatibility
+- **Exception Handling**: Centralized exception hierarchy in `exceptions.py` with improved error messages and full traceback logging
 - **JSON Utilities**: Dedicated `jsonutils.py` module for JSON serialization/deserialization operations
 - **Metadata Management**: Version and package metadata handled via `metadata.py` with dynamic versioning from git using importlib.metadata
 - **Build System**: Uses Hatchling with uv-dynamic-versioning for PEP440-style git tag-based versioning with bump support and 0.0.0 fallback

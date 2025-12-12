@@ -71,7 +71,7 @@ class Scanner:
             re.error: If any of the regex patterns are invalid.
         """
         # Only initialize once due to Singleton pattern
-        if not self._initialized:
+        if self._initialized is False:
             self._patterns: Dict[str, Pattern] = {}
             self._redaction_functions: Dict[str, Callable[[str], str]] = {}
 
@@ -79,7 +79,7 @@ class Scanner:
             self._init_default_patterns()
 
             # Add custom patterns if provided
-            if custom_patterns:
+            if custom_patterns is not None:
                 for name, pattern in custom_patterns.items():
                     self.add_pattern(name, pattern)
 
@@ -170,7 +170,7 @@ class Scanner:
             compiled_pattern = re.compile(pattern)
             self._patterns[name] = compiled_pattern
 
-            if redaction_func:
+            if redaction_func is not None:
                 self._redaction_functions[name] = redaction_func
             else:
                 self._redaction_functions[name] = lambda _: f"[REDACTED_{name.upper()}]"

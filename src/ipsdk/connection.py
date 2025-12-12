@@ -268,7 +268,7 @@ class ConnectionBase:
             host = f"{host}:{port}"
 
         base_path = "" if base_path is None else base_path
-        proto = "https" if use_tls else "http"
+        proto = "https" if use_tls is True else "http"
 
         return urllib.parse.urlunsplit((proto, host, base_path, None, None))
 
@@ -368,19 +368,19 @@ class ConnectionBase:
         logging.trace(
             self._validate_request_args, modname=__name__, clsname=self.__class__
         )
-        if not isinstance(method, HTTPMethod):
+        if isinstance(method, HTTPMethod) is False:
             msg = "method must be of type `HTTPMethod`"
             raise exceptions.IpsdkError(msg)
 
-        if all((params is not None, not isinstance(params, dict))):
+        if all((params is not None, isinstance(params, dict) is False)):
             msg = "params must be of type `dict`"
             raise exceptions.IpsdkError(msg)
 
-        if all((json is not None, not isinstance(json, (list, dict)))):
+        if all((json is not None, isinstance(json, (list, dict)) is False)):
             msg = "json must be of type `dict` or `list`"
             raise exceptions.IpsdkError(msg)
 
-        if not isinstance(path, str):
+        if isinstance(path, str) is False:
             msg = "path must be of type `str`"
             raise exceptions.IpsdkError(msg)
 
@@ -488,10 +488,10 @@ class Connection(ConnectionBase):
         """
         logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
-        if self.authenticated is not True:
+        if self.authenticated is False:
             assert self._auth_lock is not None
             with self._auth_lock:
-                if self.authenticated is not True:
+                if self.authenticated is False:
                     self.authenticate()
                     self.authenticated = True
 

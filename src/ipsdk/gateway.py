@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import annotations
+
 """Itential Automation Gateway client implementation for the SDK.
 
 This module provides client implementations for connecting to and interacting
@@ -149,7 +151,6 @@ Error handling::
 """
 
 from typing import Any
-from typing import Optional
 
 import httpx
 
@@ -206,8 +207,8 @@ class AuthMixin:
     """
 
     # Attributes that should be provided by ConnectionBase
-    user: Optional[str]
-    password: Optional[str]
+    user: str | None
+    password: str | None
     client: httpx.Client
 
     def authenticate(self) -> None:
@@ -242,8 +243,8 @@ class AsyncAuthMixin:
     """
 
     # Attributes that should be provided by ConnectionBase
-    user: Optional[str]
-    password: Optional[str]
+    user: str | None
+    password: str | None
     client: httpx.AsyncClient
 
     async def authenticate(self) -> None:

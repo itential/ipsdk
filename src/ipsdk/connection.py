@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import annotations
+
 """HTTP connection implementations for the Itential Python SDK.
 
 This module provides both synchronous and asynchronous HTTP client implementations
@@ -130,9 +132,6 @@ import threading
 import urllib.parse
 
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Union
 
 import httpx
 
@@ -144,7 +143,7 @@ from .http import Response
 
 
 class ConnectionBase:
-    client: Union[httpx.Client, httpx.AsyncClient]
+    client: httpx.Client | httpx.AsyncClient
 
     def __init__(
         self,
@@ -196,7 +195,7 @@ class ConnectionBase:
         self.token = None
 
         self.authenticated = False
-        self._auth_lock: Optional[Any] = None
+        self._auth_lock: Any | None = None
 
         self.client = self.__init_client__(
             base_url=self._make_base_url(host, port, base_path, use_tls),
@@ -247,8 +246,8 @@ class ConnectionBase:
         self,
         method: HTTPMethod,
         path: str,
-        json: Union[str, bytes, dict, list] | None = None,
-        params: dict[str, Any] | None = None,
+        json: str | bytes | dict | list | None = None,
+        params: dict[str, Any | None] | None = None,
     ) -> httpx.Request:
         """Build an HTTP request object.
 
@@ -307,8 +306,8 @@ class ConnectionBase:
         self,
         method: HTTPMethod,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | dict | (list | None) = None,
     ) -> None:
         """
         Validate request arguments to ensure they have correct types.
@@ -321,8 +320,8 @@ class ConnectionBase:
         Args:
             method (HTTPMethod): The HTTP method enum value to validate
             path (str): The request path to validate
-            params (Optional[Dict[str, Any]]): Query parameters dict to validate
-            json (Optional[Union[str, bytes, dict, list]]): JSON body to validate
+            params (dict[str, Any | None]): Query parameters dict to validate
+            json (Union[str, bytes, dict, list | None]): JSON body to validate
 
         Returns:
             None
@@ -353,7 +352,7 @@ class ConnectionBase:
     @abc.abstractmethod
     def __init_client__(
         self, base_url: str | None = None, verify: bool = True, timeout: int = 30
-    ) -> Union[httpx.Client, httpx.AsyncClient]:
+    ) -> httpx.Client | httpx.AsyncClient:
         """Initialize the HTTP client.
 
         Abstract method to be implemented by subclasses to create either a
@@ -365,7 +364,7 @@ class ConnectionBase:
             timeout: Connection timeout in seconds. Defaults to 30.
 
         Returns:
-            Union[httpx.Client, httpx.AsyncClient]: The initialized HTTP client.
+            httpx.Client | httpx.AsyncClient: The initialized HTTP client.
 
         Raises:
             None
@@ -416,8 +415,8 @@ class Connection(ConnectionBase):
         self,
         method: HTTPMethod,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, dict, list] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | dict | list | None = None,
     ) -> Response:
         """Send an HTTP request to the API endpoint.
 
@@ -473,7 +472,7 @@ class Connection(ConnectionBase):
 
         return Response(res)
 
-    def get(self, path: str, params: dict[str, Any] | None = None) -> Response:
+    def get(self, path: str, params: dict[str, Any | None] | None = None) -> Response:
         """Send an HTTP GET request to the server.
 
         Args:
@@ -490,7 +489,9 @@ class Connection(ConnectionBase):
         logging.trace(self.get, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    def delete(self, path: str, params: dict[str, Any] | None = None) -> Response:
+    def delete(
+        self, path: str, params: dict[str, Any | None] | None = None
+    ) -> Response:
         """Send an HTTP DELETE request to the server.
 
         Args:
@@ -510,8 +511,8 @@ class Connection(ConnectionBase):
     def post(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, list, dict] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | list | dict | None = None,
     ) -> Response:
         """Send an HTTP POST request to the server.
 
@@ -534,8 +535,8 @@ class Connection(ConnectionBase):
     def put(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, list, dict] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | list | dict | None = None,
     ) -> Response:
         """Send an HTTP PUT request to the server.
 
@@ -558,8 +559,8 @@ class Connection(ConnectionBase):
     def patch(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, list, dict] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | list | dict | None = None,
     ) -> Response:
         """Send an HTTP PATCH request to the server.
 
@@ -588,7 +589,7 @@ class AsyncConnection(ConnectionBase):
         self._auth_lock = asyncio.Lock()
 
     def __init_client__(
-        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
+        self, base_url: str | None = None, verify: bool = True, timeout: int = 30
     ) -> httpx.AsyncClient:
         """
         Initialize the httpx.AsyncClient instance
@@ -625,8 +626,8 @@ class AsyncConnection(ConnectionBase):
         self,
         method: HTTPMethod,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, dict, list] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | dict | list | None = None,
     ) -> Response:
         """Send an asynchronous HTTP request to the API endpoint.
 
@@ -682,7 +683,9 @@ class AsyncConnection(ConnectionBase):
 
         return Response(res)
 
-    async def get(self, path: str, params: dict[str, Any] | None = None) -> Response:
+    async def get(
+        self, path: str, params: dict[str, Any | None] | None = None
+    ) -> Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -705,7 +708,7 @@ class AsyncConnection(ConnectionBase):
         return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
     async def delete(
-        self, path: str, params: dict[str, Any] | None = None
+        self, path: str, params: dict[str, Any | None] | None = None
     ) -> Response:
         """
         Send a HTTP DELETE request to the server and return the response.
@@ -731,8 +734,8 @@ class AsyncConnection(ConnectionBase):
     async def post(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, dict, list] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | dict | list | None = None,
     ) -> Response:
         """
         Send a HTTP POST request to the server and return the response.
@@ -766,8 +769,8 @@ class AsyncConnection(ConnectionBase):
     async def put(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, dict, list] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | dict | list | None = None,
     ) -> Response:
         """
         Send a HTTP PUT request to the server and return the response.
@@ -801,8 +804,8 @@ class AsyncConnection(ConnectionBase):
     async def patch(
         self,
         path: str,
-        params: dict[str, Any] | None = None,
-        json: Union[str, bytes, dict, list] | None = None,
+        params: dict[str, Any | None] | None = None,
+        json: str | bytes | dict | list | None = None,
     ) -> Response:
         """
         Send a HTTP PATCH request to the server and return the response.

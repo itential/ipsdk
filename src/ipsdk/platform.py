@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import annotations
+
 """Itential Platform client implementation for the SDK.
 
 This module provides client implementations for connecting to and interacting
@@ -219,7 +221,6 @@ Working with responses::
 """
 
 from typing import Any
-from typing import Optional
 
 import httpx
 
@@ -349,12 +350,12 @@ class AuthMixin:
     """
 
     # Attributes that should be provided by ConnectionBase
-    user: Optional[str]
-    password: Optional[str]
-    client_id: Optional[str]
-    client_secret: Optional[str]
+    user: str | None
+    password: str | None
+    client_id: str | None
+    client_secret: str | None
     client: httpx.Client
-    token: Optional[str]
+    token: str | None
 
     def authenticate(self) -> None:
         """
@@ -443,12 +444,12 @@ class AsyncAuthMixin:
     """
 
     # Attributes that should be provided by ConnectionBase
-    user: Optional[str]
-    password: Optional[str]
-    client_id: Optional[str]
-    client_secret: Optional[str]
+    user: str | None
+    password: str | None
+    client_id: str | None
+    client_secret: str | None
     client: httpx.AsyncClient
-    token: Optional[str]
+    token: str | None
 
     async def authenticate(self) -> None:
         """
@@ -542,8 +543,8 @@ def platform_factory(
     verify: bool = True,
     user: str = "admin",
     password: str = "admin",
-    client_id: Optional[str] = None,
-    client_secret: Optional[str] = None,
+    client_id: str | None = None,
+    client_secret: str | None = None,
     timeout: int = 30,
     want_async: bool = False,
 ) -> Any:

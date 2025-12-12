@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import annotations
+
 r"""Comprehensive logging system for the Itential Python SDK.
 
 This module provides a full-featured logging implementation with support for
@@ -103,9 +105,6 @@ import traceback
 from functools import cache
 from functools import partial
 from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
 
 from . import heuristics
 from . import metadata
@@ -178,8 +177,8 @@ critical = partial(log, logging.CRITICAL)
 
 def trace(
     f: Callable,
-    modname: Optional[str] = None,
-    clsname: Optional[str] = None
+    modname: str | None = None,
+    clsname: str | None = None
 ) -> None:
     """Log a trace message for function invocation.
 
@@ -381,7 +380,7 @@ def is_sensitive_data_filtering_enabled() -> bool:
 
 
 def configure_sensitive_data_patterns(
-    custom_patterns: Optional[Dict[str, str]] = None,
+    custom_patterns: dict[str, str | None] | None = None,
 ) -> None:
     """Configure custom patterns for sensitive data detection.
 
@@ -390,7 +389,7 @@ def configure_sensitive_data_patterns(
     match sensitive data that needs to be protected.
 
     Args:
-        custom_patterns (Optional[Dict[str, str]]): Dictionary of custom regex
+        custom_patterns (dict[str, str | None]): Dictionary of custom regex
             patterns to add to the sensitive data scanner. Keys are pattern
             names (for identification) and values are regex patterns to match
             sensitive data. If None, no patterns are added
@@ -404,7 +403,7 @@ def configure_sensitive_data_patterns(
     heuristics.configure_scanner(custom_patterns)
 
 
-def get_sensitive_data_patterns() -> List[str]:
+def get_sensitive_data_patterns() -> list[str]:
     """Get a list of all sensitive data patterns currently configured.
 
     Returns the names of all patterns currently registered with the sensitive
@@ -414,7 +413,7 @@ def get_sensitive_data_patterns() -> List[str]:
         None
 
     Returns:
-        List[str]: List of pattern names that are being scanned for
+        list[str]: List of pattern names that are being scanned for
 
     Raises:
         None

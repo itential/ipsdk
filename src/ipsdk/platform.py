@@ -516,6 +516,15 @@ class AsyncAuthMixin:
             res = await self.client.post(path, headers=headers, data=data)
             res.raise_for_status()
 
+            # Parse the response to extract the token
+            response_data = jsonutils.loads(res.text)
+            if isinstance(response_data, dict):
+                access_token = response_data.get("access_token")
+            else:
+                access_token = None
+
+            self.token = access_token
+
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
             raise exceptions.HTTPStatusError(exc.message, exc)

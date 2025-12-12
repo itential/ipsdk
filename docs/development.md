@@ -454,6 +454,234 @@ This helps identify performance bottlenecks by showing exactly which functions a
 4. **Review timing data** - Use logs to identify slow operations during development
 5. **Combine with other logging** - Mix with `debug()`, `info()`, etc. for comprehensive visibility
 
+## Authentication and Session Management
+
+### Time to Live (TTL) for Authentication
+
+The SDK supports automatic reauthentication through the `ttl` (time to live) parameter. This feature forces the SDK to reauthenticate after a specified period, which is useful for long-running applications or when working with authentication tokens that expire.
+
+#### What is TTL?
+
+TTL (time to live) defines how long an authentication session remains valid before forcing reauthentication. When the TTL expires:
+1. The SDK automatically detects the timeout on the next API request
+2. The authentication token is cleared
+3. A new authentication request is made before proceeding
+4. The timestamp is reset for the next TTL period
+
+#### When to Use TTL
+
+Use the `ttl` parameter when:
+- **Long-running applications**: Services that run for extended periods (hours or days)
+- **Token expiration**: Your authentication tokens expire after a certain time
+- **Security requirements**: Your organization requires periodic reauthentication
+- **Session refresh**: You want to ensure fresh credentials are used regularly
+
+#### Default Behavior
+
+By default, `ttl` is set to `0`, which means reauthentication is **disabled**. The SDK will authenticate once and reuse the same token/session for the lifetime of the connection object.
+
+#### Basic Usage
+
+```python
+import ipsdk
+
+# Create a Platform connection with 30-minute TTL (1800 seconds)
+platform = ipsdk.platform_factory(
+    host="platform.example.com",
+    user="admin",
+    password="password",
+    ttl=1800  # Force reauthentication every 30 minutes
+)
+
+# Create a Gateway connection with 1-hour TTL (3600 seconds)
+gateway = ipsdk.gateway_factory(
+    host="gateway.example.com",
+    user="admin@itential",
+    password="password",
+    ttl=3600  # Force reauthentication every hour
+)
+```
+
+#### How It Works
+
+```python
+import time
+import ipsdk
+
+# Create connection with 10-second TTL for demonstration
+platform = ipsdk.platform_factory(
+    host="platform.example.com",
+    user="admin",
+    password="password",
+    ttl=10  # Very short TTL for testing
+)
+
+# First request - authenticates
+response = platform.get("/api/v2.0/workflows")
+print("First request successful")
+
+# Wait 5 seconds - within TTL window
+time.sleep(5)
+response = platform.get("/api/v2.0/workflows")
+print("Second request - reused existing authentication")
+
+# Wait another 6 seconds - total 11 seconds, exceeds TTL
+time.sleep(6)
+response = platform.get("/api/v2.0/workflows")
+print("Third request - automatically reauthenticated")
+```
+
+#### TTL with Different Authentication Methods
+
+The TTL feature works with all supported authentication methods:
+
+**OAuth (Platform only):**
+```python
+platform = ipsdk.platform_factory(
+    host="platform.example.com",
+    client_id="your_client_id",
+    client_secret="your_client_secret",
+    ttl=1800  # Reauthenticate every 30 minutes
+)
+```
+
+**Basic Authentication (Platform and Gateway):**
+```python
+# Platform with basic auth
+platform = ipsdk.platform_factory(
+    host="platform.example.com",
+    user="admin",
+    password="password",
+    ttl=3600  # Reauthenticate every hour
+)
+
+# Gateway with basic auth
+gateway = ipsdk.gateway_factory(
+    host="gateway.example.com",
+    user="admin@itential",
+    password="password",
+    ttl=3600  # Reauthenticate every hour
+)
+```
+
+#### TTL with Async Connections
+
+The TTL feature works identically with async connections:
+
+```python
+import asyncio
+import ipsdk
+
+async def main():
+    # Create async connection with TTL
+    platform = ipsdk.platform_factory(
+        host="platform.example.com",
+        user="admin",
+        password="password",
+        ttl=1800,  # 30 minutes
+        want_async=True
+    )
+
+    # First request - authenticates
+    response = await platform.get("/api/v2.0/workflows")
+
+    # Subsequent requests within TTL window reuse authentication
+    response = await platform.get("/api/v2.0/devices")
+
+    # After TTL expires, next request will automatically reauthenticate
+    await asyncio.sleep(1801)
+    response = await platform.get("/api/v2.0/workflows")
+
+asyncio.run(main())
+```
+
+#### Thread Safety
+
+The SDK's TTL implementation is thread-safe:
+- Synchronous connections use `threading.Lock()`
+- Asynchronous connections use `asyncio.Lock()`
+- Multiple threads/tasks attempting simultaneous requests will only trigger one reauthentication
+
+#### Logging TTL Activity
+
+Enable logging to monitor TTL-related reauthentication:
+
+```python
+import ipsdk
+
+# Enable INFO level logging to see TTL messages
+ipsdk.logging.set_level(ipsdk.logging.INFO)
+
+platform = ipsdk.platform_factory(
+    host="platform.example.com",
+    user="admin",
+    password="password",
+    ttl=1800
+)
+
+# When TTL expires, you'll see log messages like:
+# Auth TTL exceeded (1801.2s >= 1800s)
+# Forcing reauthentication due to timeout
+```
+
+#### Best Practices
+
+1. **Match token expiration**: Set TTL slightly lower than your token expiration time
+   ```python
+   # If tokens expire after 1 hour, set TTL to 55 minutes
+   ttl=3300  # 55 minutes
+   ```
+
+2. **Use reasonable intervals**: Don't set TTL too low (causes unnecessary authentication overhead)
+   ```python
+   # Good: 30 minutes to 1 hour for most applications
+   ttl=1800  # 30 minutes
+
+   # Avoid: Very short intervals (causes performance issues)
+   ttl=60  # Not recommended unless required
+   ```
+
+3. **Consider your workload**: Balance security needs with authentication overhead
+   - High-frequency API calls: Use longer TTL (1+ hour)
+   - Low-frequency periodic jobs: Use shorter TTL (15-30 minutes)
+
+4. **Disable for short scripts**: Set `ttl=0` (default) for scripts that complete quickly
+   ```python
+   # Quick data extraction script - no TTL needed
+   platform = ipsdk.platform_factory(
+       host="platform.example.com",
+       user="admin",
+       password="password"
+       # ttl=0 is the default - no need to specify
+   )
+   ```
+
+5. **Test TTL behavior**: Use short TTL values during development to verify reauthentication works correctly
+
+#### Common TTL Values
+
+| Duration | Seconds | Use Case |
+|----------|---------|----------|
+| 15 minutes | 900 | High-security environments, frequent token rotation |
+| 30 minutes | 1800 | Balanced security and performance, recommended default |
+| 1 hour | 3600 | Long-running applications with stable tokens |
+| 2 hours | 7200 | Low-security environments, infrequent authentication |
+
+#### Troubleshooting
+
+**Issue: Frequent authentication errors**
+- Your TTL may be longer than your token expiration time
+- Solution: Reduce TTL to be shorter than token lifetime
+
+**Issue: Too many authentication requests**
+- Your TTL is too short for your usage pattern
+- Solution: Increase TTL to reduce authentication overhead
+
+**Issue: Reauthentication not happening**
+- Verify TTL is set to a non-zero value
+- Check that enough time has passed between requests
+- Enable logging to see TTL status messages
+
 ## Documentation Standards
 
 All code in the SDK follows strict documentation standards:

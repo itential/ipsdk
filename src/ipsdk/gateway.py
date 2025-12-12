@@ -290,6 +290,7 @@ def gateway_factory(
     user: str = "admin@itential",
     password: str = "admin",
     timeout: int = 30,
+    ttl: int = 0,
     want_async: bool = False,
 ) -> Any:
     """Create a new instance of a Gateway connection.
@@ -322,6 +323,9 @@ def gateway_factory(
 
         timeout (int): Timeout for the connection, in seconds.
 
+        ttl (int): Time to live in seconds before forcing reauthentication. If 0,
+            reauthentication is disabled. The default value is `0`.
+
         want_async (bool): When set to True, the factory function will return
             an async connection object and when set to False the factory will
             return a connection object.
@@ -338,5 +342,6 @@ def gateway_factory(
         user=user,
         password=password,
         timeout=timeout,
+        ttl=ttl,
         base_path="/api/v2.0",
     )

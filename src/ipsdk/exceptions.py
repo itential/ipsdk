@@ -265,28 +265,3 @@ class SerializationError(IpsdkError):
         ... except SerializationError as e:
         ...     print(f"JSON serialization failed: {e}")
     """
-
-
-class _MockDetectionError(Exception):
-    """Internal exception for detecting Mock objects with side effects."""
-
-
-def _detect_mock_side_effect(response_text: Any) -> None:
-    """
-    Detect Mock objects with side effects and raise an exception for test handling.
-
-    Args:
-        response_text: The response text object to check
-
-    Raises:
-        _MockDetectionError: If a Mock with side_effect is detected
-    """
-    logging.trace(_detect_mock_side_effect, modname=__name__)
-    response_str = str(response_text)
-    if (
-        "Mock" in response_str
-        and hasattr(response_text, "side_effect")
-        and response_text.side_effect is not None
-    ):
-        mock_detected_msg = "Mock side_effect detected"
-        raise _MockDetectionError(mock_detected_msg)

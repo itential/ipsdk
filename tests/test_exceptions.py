@@ -227,41 +227,6 @@ class TestSerializationError:
             assert str(e) == "Test"
 
 
-class TestInternalFunctions:
-    """Test cases for internal helper functions."""
-
-    def test_detect_mock_side_effect_with_mock(self):
-        """Test _detect_mock_side_effect detects mocks with side effects."""
-        mock_obj = Mock()
-        mock_obj.side_effect = Exception("test")
-
-        with pytest.raises(exceptions._MockDetectionError):
-            exceptions._detect_mock_side_effect(mock_obj)
-
-    def test_detect_mock_side_effect_with_mock_no_side_effect(self):
-        """Test _detect_mock_side_effect ignores mocks without side effects."""
-        mock_obj = Mock()
-        mock_obj.side_effect = None
-
-        # Should not raise an exception
-        exceptions._detect_mock_side_effect(mock_obj)
-
-    def test_detect_mock_side_effect_with_regular_string(self):
-        """Test _detect_mock_side_effect with regular string."""
-        regular_string = "This is just a regular string"
-
-        # Should not raise an exception
-        exceptions._detect_mock_side_effect(regular_string)
-
-    def test_detect_mock_side_effect_with_mock_like_string(self):
-        """Test _detect_mock_side_effect with string containing 'Mock'."""
-        # String contains "Mock" but is not actually a Mock object
-        mock_like_string = "This Mock string should not trigger"
-
-        # Should not raise an exception
-        exceptions._detect_mock_side_effect(mock_like_string)
-
-
 class TestExceptionHierarchy:
     """Test cases for the overall exception hierarchy."""
 

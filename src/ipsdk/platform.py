@@ -220,8 +220,6 @@ Working with responses::
         print(f"Request failed with status {response.status_code}")
 """
 
-from typing import Any
-
 import httpx
 
 from . import connection
@@ -229,52 +227,17 @@ from . import exceptions
 from . import jsonutils
 from . import logging
 
+# OAuth constants
+_OAUTH_HEADERS: dict[str, str] = {"Content-Type": "application/x-www-form-urlencoded"}
+_OAUTH_PATH: str = "/oauth/token"
 
-@logging.trace
-def _make_oauth_headers() -> dict[str, str]:
-    """
-    Create HTTP headers for OAuth token request.
-
-    Returns the headers dict required for OAuth client credentials
-    token requests. The Content-Type is set to application/x-www-form-urlencoded
-    as required by the OAuth 2.0 specification.
-
-    Args:
-        None
-
-    Returns:
-        dict[str, str]: Headers dict with Content-Type for OAuth requests
-
-    Raises:
-        None
-    """
-    return {"Content-Type": "application/x-www-form-urlencoded"}
-
-
-@logging.trace
-def _make_oauth_path() -> str:
-    """
-    Get the URL path for OAuth token endpoint.
-
-    Returns the API path used to request OAuth access tokens using
-    client credentials grant type.
-
-    Args:
-        None
-
-    Returns:
-        str: The OAuth token endpoint path
-
-    Raises:
-        None
-    """
-    return "/oauth/token"
+# Basic authentication constants
+_BASICAUTH_PATH: str = "/login"
 
 
 @logging.trace
 def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
-    """
-    Create request body for OAuth client credentials authentication.
+    """Create request body for OAuth client credentials authentication.
 
     Constructs the form data required for OAuth 2.0 client credentials
     grant type. The body includes grant_type, client_id, and client_secret
@@ -286,9 +249,6 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
 
     Returns:
         dict[str, str]: Form data dict for OAuth token request
-
-    Raises:
-        None
     """
     return {
         "grant_type": "client_credentials",
@@ -299,8 +259,7 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
 
 @logging.trace
 def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
-    """
-    Create request body for basic username/password authentication.
+    """Create request body for basic username/password authentication.
 
     Constructs the JSON request body required for basic authentication
     to Platform. The body contains a nested user object with username
@@ -312,9 +271,6 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
 
     Returns:
         dict[str, dict[str, str]]: JSON body dict for basic auth request
-
-    Raises:
-        None
     """
     return {
         "user": {
@@ -324,29 +280,32 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
     }
 
 
-@logging.trace
-def _make_basicauth_path() -> str:
-    """
-    Get the URL path for basic authentication endpoint.
-
-    Returns the API path used for username/password authentication
-    to Platform.
-
-    Args:
-        None
-
-    Returns:
-        str: The basic authentication endpoint path
-
-    Raises:
-        None
-    """
-    return "/login"
-
 
 class AuthMixin:
-    """
-    Authorization mixin for authenticating to Itential Platform.
+    """Authorization mixin for Itential Platform synchronous authentication.
+
+    This mixin provides authentication methods for Platform connections,
+    supporting both OAuth 2.0 client credentials and basic username/password
+    authentication. It's designed to be mixed with Connection to create
+    the Platform class.
+
+    The mixin automatically selects the appropriate authentication method
+    based on which credentials are provided:
+    - OAuth: Requires client_id and client_secret
+    - Basic: Requires user and password
+
+    Attributes:
+        user (str | None): Username for basic authentication (from ConnectionBase)
+        password (str | None): Password for basic authentication (from ConnectionBase)
+        client_id (str | None): OAuth client ID (from ConnectionBase)
+        client_secret (str | None): OAuth client secret (from ConnectionBase)
+        client (httpx.Client): HTTP client instance for making requests
+        token (str | None): Access token for OAuth authentication
+
+    Methods:
+        authenticate(): Main authentication entry point
+        authenticate_basicauth(): Basic username/password authentication
+        authenticate_oauth(): OAuth 2.0 client credentials authentication
     """
 
     # Attributes that should be provided by ConnectionBase
@@ -359,13 +318,25 @@ class AuthMixin:
 
     @logging.trace
     def authenticate(self) -> None:
-        """
-        Provides the authentication function for authenticating to the server
+        """Authenticate to Itential Platform using configured credentials.
+
+        Automatically selects OAuth or basic authentication based on which
+        credentials are provided (client_id/client_secret or user/password).
+        Authentication is performed on the first API request and the session
+        or token is maintained for subsequent requests.
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If no valid authentication credentials are provided
+            HTTPStatusError: If authentication request fails with HTTP error
+            RequestError: If authentication request fails due to network error
         """
         if self.client_id is not None and self.client_secret is not None:
             self.authenticate_oauth()
         elif self.user is not None and self.password is not None:
-            self.authenticate_user()
+            self.authenticate_basicauth()
         else:
             msg = (
                 "No valid authentication credentials provided. "
@@ -376,9 +347,21 @@ class AuthMixin:
         logging.info("client connection successfully authenticated")
 
     @logging.trace
-    def authenticate_user(self) -> None:
-        """
-        Performs authentication for basic authorization
+    def authenticate_basicauth(self) -> None:
+        """Perform basic username/password authentication to Platform.
+
+        Authenticates to Itential Platform using username and password credentials.
+        Sends credentials to the /login endpoint and maintains a session via cookies
+        for subsequent requests.
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If username or password is missing
+            HTTPStatusError: If server returns HTTP error status (401, 403, etc.)
+            RequestError: If network/connection error occurs (timeout, DNS
+                failure, etc.)
         """
         logging.info("Attempting to perform basic authentication")
 
@@ -387,7 +370,7 @@ class AuthMixin:
             raise exceptions.IpsdkError(msg)
 
         data = _make_basicauth_body(self.user, self.password)
-        path = _make_basicauth_path()
+        path = _BASICAUTH_PATH
 
         try:
             res = self.client.post(path, json=data)
@@ -395,16 +378,29 @@ class AuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc.message, exc)
+            raise exceptions.HTTPStatusError(exc)
 
         except httpx.RequestError as exc:
-            logging.exception(exc.message, exc)
-            raise exceptions.RequestError(exc.message, exc)
+            logging.exception(exc)
+            raise exceptions.RequestError(exc)
 
     @logging.trace
     def authenticate_oauth(self) -> None:
-        """
-        Performs authentication for OAuth client credentials
+        """Perform OAuth 2.0 client credentials authentication to Platform.
+
+        Authenticates to Itential Platform using OAuth 2.0 client credentials flow.
+        Requests an access token from the /oauth/token endpoint using client_id
+        and client_secret. The token is stored in self.token and included in
+        subsequent requests as a Bearer token in the Authorization header.
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If client_id or client_secret is missing
+            HTTPStatusError: If server returns HTTP error status (401, 403, etc.)
+            RequestError: If network/connection error occurs (timeout, DNS
+                failure, etc.)
         """
         logging.info("Attempting to perform oauth authentication")
 
@@ -413,8 +409,8 @@ class AuthMixin:
             raise exceptions.IpsdkError(msg)
 
         data = _make_oauth_body(self.client_id, self.client_secret)
-        headers = _make_oauth_headers()
-        path = _make_oauth_path()
+        headers = _OAUTH_HEADERS
+        path = _OAUTH_PATH
 
         try:
             res = self.client.post(path, headers=headers, data=data)
@@ -431,16 +427,38 @@ class AuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc.message, exc)
+            raise exceptions.HTTPStatusError(exc)
 
         except httpx.RequestError as exc:
-            logging.exception(exc.message, exc)
-            raise exceptions.RequestError(exc.message, exc)
+            logging.exception(exc)
+            raise exceptions.RequestError(exc)
 
 
 class AsyncAuthMixin:
-    """
-    Platform is a HTTP connection to Itential Platform
+    """Authorization mixin for Itential Platform asynchronous authentication.
+
+    This mixin provides async authentication methods for Platform connections,
+    supporting both OAuth 2.0 client credentials and basic username/password
+    authentication with async/await support. It's designed to be mixed with
+    AsyncConnection to create the AsyncPlatform class.
+
+    The mixin automatically selects the appropriate authentication method
+    based on which credentials are provided:
+    - OAuth: Requires client_id and client_secret
+    - Basic: Requires user and password
+
+    Attributes:
+        user (str | None): Username for basic authentication (from ConnectionBase)
+        password (str | None): Password for basic authentication (from ConnectionBase)
+        client_id (str | None): OAuth client ID (from ConnectionBase)
+        client_secret (str | None): OAuth client secret (from ConnectionBase)
+        client (httpx.AsyncClient): Async HTTP client instance for making requests
+        token (str | None): Access token for OAuth authentication
+
+    Methods:
+        authenticate(): Main async authentication entry point
+        authenticate_basicauth(): Async basic username/password authentication
+        authenticate_oauth(): Async OAuth 2.0 client credentials authentication
     """
 
     # Attributes that should be provided by ConnectionBase
@@ -453,8 +471,20 @@ class AsyncAuthMixin:
 
     @logging.trace
     async def authenticate(self) -> None:
-        """
-        Provides the authentication function for authenticating to the server
+        """Asynchronously authenticate to Platform using configured credentials.
+
+        Automatically selects OAuth or basic authentication based on which
+        credentials are provided (client_id/client_secret or user/password).
+        Authentication is performed on the first API request and the session
+        or token is maintained for subsequent requests.
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If no valid authentication credentials are provided
+            HTTPStatusError: If authentication request fails with HTTP error
+            RequestError: If authentication request fails due to network error
         """
         if self.client_id is not None and self.client_secret is not None:
             await self.authenticate_oauth()
@@ -473,8 +503,20 @@ class AsyncAuthMixin:
 
     @logging.trace
     async def authenticate_basicauth(self) -> None:
-        """
-        Performs authentication for basic authorization
+        """Asynchronously perform basic username/password authentication to Platform.
+
+        Authenticates to Itential Platform using username and password credentials.
+        Sends credentials to the /login endpoint and maintains a session via cookies
+        for subsequent requests. Uses async/await for non-blocking operation.
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If username or password is missing
+            HTTPStatusError: If server returns HTTP error status (401, 403, etc.)
+            RequestError: If network/connection error occurs (timeout, DNS
+                failure, etc.)
         """
         logging.info("Attempting to perform basic authentication")
 
@@ -483,7 +525,7 @@ class AsyncAuthMixin:
             raise exceptions.IpsdkError(msg)
 
         data = _make_basicauth_body(self.user, self.password)
-        path = _make_basicauth_path()
+        path = _BASICAUTH_PATH
 
         try:
             res = await self.client.post(path, json=data)
@@ -491,16 +533,30 @@ class AsyncAuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc.message, exc)
+            raise exceptions.HTTPStatusError(exc)
 
         except httpx.RequestError as exc:
-            logging.exception(exc.message, exc)
-            raise exceptions.RequestError(exc.message, exc)
+            logging.exception(exc)
+            raise exceptions.RequestError(exc)
 
     @logging.trace
     async def authenticate_oauth(self) -> None:
-        """
-        Performs authentication for OAuth client credentials
+        """Asynchronously perform OAuth 2.0 client credentials authentication.
+
+        Authenticates to Itential Platform using OAuth 2.0 client credentials flow.
+        Requests an access token from the /oauth/token endpoint using client_id
+        and client_secret. The token is stored in self.token and included in
+        subsequent requests as a Bearer token in the Authorization header.
+        Uses async/await for non-blocking operation.
+
+        Returns:
+            None
+
+        Raises:
+            IpsdkError: If client_id or client_secret is missing
+            HTTPStatusError: If server returns HTTP error status (401, 403, etc.)
+            RequestError: If network/connection error occurs (timeout, DNS
+                failure, etc.)
         """
         logging.info("Attempting to perform oauth authentication")
 
@@ -509,8 +565,8 @@ class AsyncAuthMixin:
             raise exceptions.IpsdkError(msg)
 
         data = _make_oauth_body(self.client_id, self.client_secret)
-        headers = _make_oauth_headers()
-        path = _make_oauth_path()
+        headers = _OAUTH_HEADERS
+        path = _OAUTH_PATH
 
         try:
             res = await self.client.post(path, headers=headers, data=data)
@@ -527,11 +583,11 @@ class AsyncAuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc.message, exc)
+            raise exceptions.HTTPStatusError(exc)
 
         except httpx.RequestError as exc:
-            logging.exception(exc.message, exc)
-            raise exceptions.RequestError(exc.message, exc)
+            logging.exception(exc)
+            raise exceptions.RequestError(exc)
 
 
 # Define type aliases for the dynamically created classes
@@ -555,7 +611,7 @@ def platform_factory(
     client_secret: str | None = None,
     timeout: int = 30,
     want_async: bool = False,
-) -> Any:
+) -> Platform | AsyncPlatform:
     """
     Create a new instance of a Platform connection.
 
@@ -603,7 +659,7 @@ def platform_factory(
     Returns:
         Platform: An initialized Platform connection instance.
     """
-    factory = AsyncPlatform if want_async is True else Platform
+    factory = AsyncPlatform if want_async else Platform
     return factory(
         host=host,
         port=port,

@@ -618,8 +618,12 @@ async def test_async_authenticate_oauth_success():
     mock_response.raise_for_status = Mock()
     mixin.client.post.return_value = mock_response
 
-    await mixin.authenticate_oauth()
+    with patch(
+        "ipsdk.jsonutils.loads", return_value={"access_token": "async_token_123"}
+    ):
+        await mixin.authenticate_oauth()
 
+    assert mixin.token == "async_token_123"
     # Verify the post was called with correct params
     mixin.client.post.assert_awaited_once_with(
         "/oauth/token",
@@ -676,6 +680,48 @@ async def test_async_authenticate_oauth_request_error():
     # Source has bug: passes exc.message but RequestError only takes exc
     with pytest.raises(TypeError):
         await mixin.authenticate_oauth()
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_no_access_token():
+    """Test async authenticate_oauth when response has no access_token."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock response without access_token
+    mock_response = Mock(spec=Response)
+    mock_response.text = '{"error": "invalid_grant"}'
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    with patch("ipsdk.jsonutils.loads", return_value={"error": "invalid_grant"}):
+        await mixin.authenticate_oauth()
+
+    # Token should be None when access_token is missing
+    assert mixin.token is None
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_non_dict_response():
+    """Test async authenticate_oauth when response is not a dict."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = "test_id"
+    mixin.client_secret = "test_secret"
+    mixin.client = AsyncMock()
+
+    # Mock response that parses to a list instead of dict
+    mock_response = Mock(spec=Response)
+    mock_response.text = '["invalid", "response"]'
+    mock_response.raise_for_status = Mock()
+    mixin.client.post.return_value = mock_response
+
+    with patch("ipsdk.jsonutils.loads", return_value=["invalid", "response"]):
+        await mixin.authenticate_oauth()
+
+    # Token should be None when response is not a dict
+    assert mixin.token is None
 
 
 @pytest.mark.asyncio
@@ -753,11 +799,16 @@ async def test_async_authenticate_oauth_path():
     # Mock successful response
     mock_response = Mock()
     mock_response.status_code = 200
+    mock_response.text = '{"access_token": "test_token_123"}'
     mock_response.raise_for_status = Mock()
     mixin.client.post.return_value = mock_response
 
-    await mixin.authenticate()
+    with patch(
+        "ipsdk.jsonutils.loads", return_value={"access_token": "test_token_123"}
+    ):
+        await mixin.authenticate()
 
+    assert mixin.token == "test_token_123"
     # Verify OAuth was called
     mixin.client.post.assert_awaited_once_with(
         "/oauth/token",

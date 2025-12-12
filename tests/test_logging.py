@@ -291,6 +291,9 @@ class TestGetLoggersFunction:
         # Create a test httpx logger
         logging.getLogger("httpx.test")
 
+        # Clear cache to pick up newly created logger
+        ipsdk_logging._get_loggers.cache_clear()
+
         loggers = ipsdk_logging._get_loggers()
         logger_names = {logger.name for logger in loggers}
 

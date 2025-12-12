@@ -381,8 +381,10 @@ class AuthMixin:
         logging.trace(self.authenticate_user, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform basic authentication")
 
-        assert self.user is not None
-        assert self.password is not None
+        if self.user is None or self.password is None:
+            msg = "Username and password are required for basic authentication"
+            raise exceptions.IpsdkError(msg)
+
         data = _make_basicauth_body(self.user, self.password)
         path = _make_basicauth_path()
 
@@ -405,8 +407,10 @@ class AuthMixin:
         logging.trace(self.authenticate_oauth, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform oauth authentication")
 
-        assert self.client_id is not None
-        assert self.client_secret is not None
+        if self.client_id is None or self.client_secret is None:
+            msg = "Client ID and client secret are required for OAuth authentication"
+            raise exceptions.IpsdkError(msg)
+
         data = _make_oauth_body(self.client_id, self.client_secret)
         headers = _make_oauth_headers()
         path = _make_oauth_path()
@@ -475,8 +479,10 @@ class AsyncAuthMixin:
         )
         logging.info("Attempting to perform basic authentication")
 
-        assert self.user is not None
-        assert self.password is not None
+        if self.user is None or self.password is None:
+            msg = "Username and password are required for basic authentication"
+            raise exceptions.IpsdkError(msg)
+
         data = _make_basicauth_body(self.user, self.password)
         path = _make_basicauth_path()
 
@@ -499,8 +505,10 @@ class AsyncAuthMixin:
         logging.trace(self.authenticate_oauth, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform oauth authentication")
 
-        assert self.client_id is not None
-        assert self.client_secret is not None
+        if self.client_id is None or self.client_secret is None:
+            msg = "Client ID and client secret are required for OAuth authentication"
+            raise exceptions.IpsdkError(msg)
+
         data = _make_oauth_body(self.client_id, self.client_secret)
         headers = _make_oauth_headers()
         path = _make_oauth_path()

@@ -266,31 +266,44 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 # Public API functions can use boolean parameters
 "src/ipsdk/connection.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
     "FBT001",   # Boolean-typed positional argument (part of public API)
     "FBT002",   # Boolean default positional argument (part of public API)
     "TRY301",   # Abstract raise to inner function (acceptable for error handling)
 ]
 
 "src/ipsdk/platform.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
     "FBT001",   # Boolean-typed positional argument (part of public API)
     "FBT002",   # Boolean default positional argument (part of public API)
     "TRY301",   # Abstract raise to inner function (acceptable for error handling)
 ]
 
 "src/ipsdk/gateway.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
     "FBT001",   # Boolean-typed positional argument (part of public API)
     "FBT002",   # Boolean default positional argument (part of public API)
 ]
 
 "src/ipsdk/exceptions.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
     "S110",     # try-except-pass (intentional for error handling)
 ]
 
 "src/ipsdk/logging.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
     "FBT001",   # Boolean-typed positional argument (part of public API)
     "FBT002",   # Boolean default positional argument (part of public API)
     "G004",     # Logging statement uses f-string (acceptable for informational logging)
     "E501",     # Line too long (docstrings can be longer)
+]
+
+"src/ipsdk/heuristics.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
+]
+
+"src/ipsdk/http.py" = [
+    "E402",     # Module level import not at top of file (after module docstring)
 ]
 
 [tool.ruff.lint.isort]

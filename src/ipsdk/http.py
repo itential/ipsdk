@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import annotations
+
 """HTTP utilities and enumerations for the Itential Python SDK.
 
 This module provides HTTP-related enumerations with compatibility across
@@ -9,14 +11,13 @@ to ensure consistent behavior across all supported Python versions.
 """
 
 from http import HTTPStatus
+from typing import TYPE_CHECKING
 from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Union
-
-import httpx
 
 from . import logging
+
+if TYPE_CHECKING:
+    import httpx
 
 # Import HTTPMethod from standard library (Python 3.11+) or define fallback
 try:
@@ -66,8 +67,8 @@ class Request:
     Args:
         method (str): The HTTP method (GET, POST, PUT, DELETE, PATCH)
         path (str): The URL path for the request
-        params (Dict[str, Any], optional): Query parameters for the request
-        headers (Dict[str, str], optional): HTTP headers for the request
+        params (dict[str, Any], optional): Query parameters for the request
+        headers (dict[str, str], optional): HTTP headers for the request
         json (Union[str, bytes, dict, list], optional): JSON data for the request body
 
     Raises:
@@ -78,9 +79,9 @@ class Request:
         self,
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any | None] | None = None,
+        headers: dict[str, str | None] | None = None,
+        json: str | bytes | dict | (list | None) = None,
     ) -> None:
         logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         self.method = method
@@ -195,12 +196,12 @@ class Response:
         """
         return self._response.request
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         """
         Parse the response content as JSON
 
         Returns:
-            Dict[str, Any]: The parsed JSON response
+            dict[str, Any]: The parsed JSON response
 
         Raises:
             ValueError: If the response content is not valid JSON

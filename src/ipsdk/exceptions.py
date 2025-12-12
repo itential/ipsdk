@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+from __future__ import annotations
+
 """
 Exception hierarchy for the Itential Python SDK.
 
@@ -73,12 +75,13 @@ Accessing request and response details::
         print(f"Response body: {e.response.text}")
 """
 
+from typing import TYPE_CHECKING
 from typing import Any
-from typing import Optional
-
-import httpx
 
 from . import logging
+
+if TYPE_CHECKING:
+    import httpx
 
 
 class IpsdkError(Exception):
@@ -93,7 +96,7 @@ class IpsdkError(Exception):
         details (dict): Additional error details and context
     """
 
-    def __init__(self, message: str, exc: Optional[httpx.HTTPError] = None) -> None:
+    def __init__(self, message: str, exc: httpx.HTTPError | None = None) -> None:
         """
         Initialize the base SDK exception.
 

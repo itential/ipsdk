@@ -16,8 +16,6 @@ from typing import List
 from typing import Optional
 from typing import Pattern
 
-from . import logging
-
 
 class Scanner:
     """Scanner for detecting and redacting sensitive data patterns in text.
@@ -192,7 +190,6 @@ class Scanner:
         Raises:
             None
         """
-        logging.trace(self.remove_pattern, modname=__name__, clsname=self.__class__)
         if name in self._patterns:
             del self._patterns[name]
             del self._redaction_functions[name]
@@ -208,7 +205,6 @@ class Scanner:
         Raises:
             None
         """
-        logging.trace(self.list_patterns, modname=__name__, clsname=self.__class__)
         return list(self._patterns.keys())
 
     def scan_and_redact(self, text: str) -> str:
@@ -266,9 +262,6 @@ class Scanner:
         Raises:
             None
         """
-        logging.trace(
-            self.get_sensitive_data_types, modname=__name__, clsname=self.__class__
-        )
         if not text:
             return []
 
@@ -293,7 +286,6 @@ class Scanner:
         Raises:
             None
         """
-        logging.trace(cls.reset_singleton, modname=__name__, clsname=cls)
         cls._instance = None
         cls._initialized = False
 
@@ -331,7 +323,6 @@ def configure_scanner(
     Raises:
         re.error: If any custom patterns are invalid.
     """
-    logging.trace(configure_scanner, modname=__name__)
     # Reset the singleton to allow reconfiguration
     Scanner.reset_singleton()
     return Scanner(custom_patterns)

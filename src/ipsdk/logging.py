@@ -100,6 +100,7 @@ import logging
 import sys
 import traceback
 
+from functools import cache
 from functools import partial
 from typing import Callable
 from typing import Dict
@@ -250,11 +251,18 @@ def fatal(msg: str) -> None:
     sys.exit(1)
 
 
+@cache
 def _get_loggers() -> set[logging.Logger]:
     """Get all relevant loggers for the application.
 
     Retrieves loggers that belong to the Itential MCP application and its
-    dependencies (ipsdk, FastMCP).
+    dependencies (ipsdk, FastMCP). Results are cached to improve performance
+    on subsequent calls.
+
+    Note:
+        The cached result may not immediately reflect loggers created after
+        the first call. Call _get_loggers.cache_clear() to force a refresh
+        if needed.
 
     Returns:
         set[logging.Logger]: Set of logger instances for the application and dependencies.
@@ -308,6 +316,8 @@ def set_level(lvl: int, *, propagate: bool = False) -> None:
     logger.log(logging.INFO, f"Logging level set to {lvl}")
 
     if propagate is True:
+        # Clear cache to ensure we get all current loggers including httpx
+        _get_loggers.cache_clear()
         for logger in _get_loggers():
             logger.setLevel(lvl)
 
@@ -470,6 +480,9 @@ def initialize() -> None:
     Raises:
         None
     """
+    # Clear cache to ensure we get all current loggers
+    _get_loggers.cache_clear()
+
     for logger in _get_loggers():
         handlers = logger.handlers[:]
 

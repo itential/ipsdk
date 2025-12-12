@@ -161,7 +161,7 @@ def log(lvl: int, msg: str) -> None:
         None
     """
     # Apply sensitive data filtering if enabled
-    if _sensitive_data_filtering_enabled:
+    if _sensitive_data_filtering_enabled is True:
         msg = heuristics.scan_and_redact(msg)
 
     logging.getLogger(metadata.name).log(lvl, msg)

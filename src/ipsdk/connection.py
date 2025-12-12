@@ -125,6 +125,8 @@ Direct instantiation (advanced)::
 """
 
 import abc
+import asyncio
+import threading
 import urllib.parse
 
 from typing import Any
@@ -214,6 +216,7 @@ class ConnectionBase:
         self.token = None
 
         self.authenticated = False
+        self._auth_lock: Optional[Any] = None
 
         self.client = self.__init_client__(
             base_url=self._make_base_url(host, port, base_path, use_tls),
@@ -406,6 +409,10 @@ class ConnectionBase:
 class Connection(ConnectionBase):
     client: httpx.Client  # Override the Union type from base class
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._auth_lock = threading.Lock()
+
     def __init_client__(
         self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
     ) -> httpx.Client:
@@ -482,8 +489,11 @@ class Connection(ConnectionBase):
         logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
         if self.authenticated is not True:
-            self.authenticate()
-            self.authenticated = True
+            assert self._auth_lock is not None
+            with self._auth_lock:
+                if self.authenticated is not True:
+                    self.authenticate()
+                    self.authenticated = True
 
         request = self._build_request(
             method=method,
@@ -658,6 +668,10 @@ class Connection(ConnectionBase):
 class AsyncConnection(ConnectionBase):
     client: httpx.AsyncClient  # Override the Union type from base class
 
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._auth_lock = asyncio.Lock()
+
     def __init_client__(
         self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
     ) -> httpx.AsyncClient:
@@ -731,8 +745,11 @@ class AsyncConnection(ConnectionBase):
         logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
         if self.authenticated is False:
-            await self.authenticate()
-            self.authenticated = True
+            assert self._auth_lock is not None
+            async with self._auth_lock:
+                if self.authenticated is False:
+                    await self.authenticate()
+                    self.authenticated = True
 
         request = self._build_request(
             method=method,

@@ -268,19 +268,19 @@ def test_auth_mixin_assertion_errors():
     # Test with no user
     mixin.user = None
     mixin.password = "password"
-    with pytest.raises(AssertionError):
+    with pytest.raises(exceptions.IpsdkError):
         mixin.authenticate()
 
     # Test with no password
     mixin.user = "user"
     mixin.password = None
-    with pytest.raises(AssertionError):
+    with pytest.raises(exceptions.IpsdkError):
         mixin.authenticate()
 
     # Test with both None
     mixin.user = None
     mixin.password = None
-    with pytest.raises(AssertionError):
+    with pytest.raises(exceptions.IpsdkError):
         mixin.authenticate()
 
 
@@ -292,19 +292,19 @@ async def test_async_auth_mixin_assertion_errors():
     # Test with no user
     mixin.user = None
     mixin.password = "password"
-    with pytest.raises(AssertionError):
+    with pytest.raises(exceptions.IpsdkError):
         await mixin.authenticate()
 
     # Test with no password
     mixin.user = "user"
     mixin.password = None
-    with pytest.raises(AssertionError):
+    with pytest.raises(exceptions.IpsdkError):
         await mixin.authenticate()
 
     # Test with both None
     mixin.user = None
     mixin.password = None
-    with pytest.raises(AssertionError):
+    with pytest.raises(exceptions.IpsdkError):
         await mixin.authenticate()
 
 

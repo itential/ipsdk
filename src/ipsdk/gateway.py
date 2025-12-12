@@ -215,8 +215,9 @@ class AuthMixin:
         Provides the authentication function for authenticating to the server
         """
         logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
-        assert self.user is not None
-        assert self.password is not None
+        if self.user is None or self.password is None:
+            msg = "Username and password are required for Gateway authentication"
+            raise exceptions.IpsdkError(msg)
 
         data = _make_body(self.user, self.password)
         headers = _make_headers()
@@ -250,8 +251,9 @@ class AsyncAuthMixin:
         Provides the authentication function for authenticating to the server
         """
         logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
-        assert self.user is not None
-        assert self.password is not None
+        if self.user is None or self.password is None:
+            msg = "Username and password are required for Gateway authentication"
+            raise exceptions.IpsdkError(msg)
 
         data = _make_body(self.user, self.password)
         headers = _make_headers()

@@ -265,7 +265,7 @@ class TestFatalFunction:
             ipsdk_logging.fatal("fatal error")
 
             mock_log.assert_called_once_with(ipsdk_logging.FATAL, "fatal error")
-            mock_print.assert_called_once_with("ERROR: fatal error")
+            mock_print.assert_called_once_with("ERROR: fatal error", file=sys.stderr)
             mock_exit.assert_called_once_with(1)
 
     def test_fatal_function_different_messages(self):
@@ -279,7 +279,8 @@ class TestFatalFunction:
                 ipsdk_logging.fatal(message)
 
                 mock_log.assert_called_once_with(ipsdk_logging.FATAL, message)
-                mock_print.assert_called_once_with(f"ERROR: {message}")
+                expected_msg = f"ERROR: {message}"
+                mock_print.assert_called_once_with(expected_msg, file=sys.stderr)
                 mock_exit.assert_called_once_with(1)
 
 

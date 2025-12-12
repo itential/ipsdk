@@ -150,60 +150,40 @@ class ConnectionBase:
         self,
         host: str,
         port: int = 0,
-        base_path: Optional[str] = None,
+        base_path: str | None = None,
         use_tls: bool = True,
         verify: bool = True,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
+        user: str | None = None,
+        password: str | None = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
         timeout: int = 30,
     ) -> None:
-        """
-        Base class for all connection classes
+        """Initialize the base connection class.
 
         ConnectionBase is the base connection type that all connection classes
-        are derived from.  It provides a set of common properties used by both
-        the sync and async connection types.
+        are derived from. It provides common properties used by both sync and
+        async connection types.
 
         Args:
-            host (str): The hostname or IP address to connect to
+            host: Hostname or IP address to connect to.
+            port: Port value for API connection. If 0, auto-determined based on
+                use_tls (443 for TLS, 80 for non-TLS). Defaults to 0.
+            base_path: Base URL path prepended to requests. Should not include
+                hostname or port. Defaults to None.
+            use_tls: Enable TLS for the connection. Defaults to True.
+            verify: Enable certificate verification. Defaults to True.
+            user: Username for server authentication. Defaults to None.
+            password: Password for server authentication. Defaults to None.
+            client_id: Client ID for OAuth authentication. Defaults to None.
+            client_secret: Client secret for OAuth authentication. Defaults to None.
+            timeout: Request timeout in seconds. Defaults to 30.
 
-            port (int): The port value used when connecting to the API.  If
-                this value is 0, the actual port value will be auto determined
-                using the value of use_tls.  When use_tls is True, the port
-                value will be set to 443 and when use_tls is False, the port
-                value will be set to 80.  The default value for port is 0.
+        Returns:
+            None
 
-            base_path (str): The base url that is prepended to requests.  This
-                value should not include the hostname or port value.  The
-                default value is None
-
-            use_tls (bool): Enable or disable TLS for this connection.  When
-                this value is set to True, TLS will be enabled on the
-                connection and when this value is set to False, TLS will be
-                disabled.  The default value is True
-
-            verify (bool): Enable or disable certificate verification.  When
-                this value is set to True, certificates from the server are
-                verified and when this value is set to False, certificate
-                verification is disabled.  The default value for is True
-
-            user (str): The username used to authenticate to the server.  The
-                default value is None
-
-            password (str): The password used to authenticate to the server.
-                The default value is None.
-
-            client_id (str): The client_id value to use when authenticating
-                to the server using OAuth.  The default value is None
-
-            client_secret (str): The client_secret value to use when
-                authenticating to the server using OAuth  The default value
-                is None
-
-            timeout (int): The request timeout for sending requests to the
-                server.
+        Raises:
+            None
         """
         logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
 
@@ -229,35 +209,26 @@ class ConnectionBase:
         self,
         host: str,
         port: int = 0,
-        base_path: Optional[str] = None,
+        base_path: str | None = None,
         use_tls: bool = True,
     ) -> str:
-        """
-        Join parts of the request to construct a valid URL
+        """Construct a valid base URL from individual components.
 
-        This function will take the request object and join the
-        individual parts together to construct a full URL.
+        Joins the host, port, base path, and protocol to create the full base
+        URL for API requests.
 
         Args:
-            host (str): The hostname or IP address of the API endpoint.  This
-                argument is required.
-
-            port (int): The port used to connect to the API.  If the value of
-                port is 0, the port will be auto determined based on the value
-                of use_tls.  When use_tls is True, the value of port will be
-                443 and when use_tls is False, the value of port will be 80.
-                The default value is 0
-
-            use_tls (bool): Enable or disable TLS support.  When the value is
-                set to True, TLS will be enabled on the connection and when
-                this value is False, TLS will be disabled.  The default value
-                is True
-
-            base_path (str): Base path to prepend when constructing the final
-                URL.   The default value is None
+            host: Hostname or IP address of the API endpoint.
+            port: Port for API connection. If 0, auto-determined based on use_tls
+                (443 for TLS, 80 for non-TLS). Defaults to 0.
+            base_path: Base path to prepend to the URL. Defaults to None.
+            use_tls: Enable TLS (https). Defaults to True.
 
         Returns:
-            A string that represents the full URL
+            str: The constructed base URL.
+
+        Raises:
+            None
         """
         logging.trace(self._make_base_url, modname=__name__, clsname=self.__class__)
 
@@ -276,32 +247,27 @@ class ConnectionBase:
         self,
         method: HTTPMethod,
         path: str,
-        json: Optional[Union[str, bytes, dict, list]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        json: Union[str, bytes, dict, list] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Request:
-        """
-        Create a new instance of httpx.Request
+        """Build an HTTP request object.
+
+        Creates an httpx.Request with the specified method, path, parameters,
+        and JSON body. Automatically sets Content-Type and Accept headers to
+        application/json when json data is provided.
 
         Args:
-            method (str): The HTTP method to invoke for this request.  This
-                is a required argument
-
-            path (str): The path to the resource.  This value is appended to
-                the base URL of the client to generate the full URI.  This
-                is a required argument.
-
-            params (dict): A dict object of key value pairs that will be used
-                to construct the URL query string.  The default value is
-                None
-
-            json (str, bytes, dict, list): The body to include in the request
-                as a JSON object.  If the value of json is list or dict, the
-                data will be converted to a JSON string.   When this argument
-                is set, the "Content-Type" and "Accept" headers will be set
-                to "application/json". The default value is None
+            method: HTTP method for the request.
+            path: Resource path appended to the base URL.
+            json: JSON body data. If dict or list, automatically serialized.
+                Defaults to None.
+            params: Query string parameters. Defaults to None.
 
         Returns:
-            A `httpx.Request` object that can be used to send to the server
+            httpx.Request: The constructed request object ready to send.
+
+        Raises:
+            None
         """
         logging.trace(self._build_request, modname=__name__, clsname=self.__class__)
 
@@ -386,23 +352,23 @@ class ConnectionBase:
 
     @abc.abstractmethod
     def __init_client__(
-        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
+        self, base_url: str | None = None, verify: bool = True, timeout: int = 30
     ) -> Union[httpx.Client, httpx.AsyncClient]:
-        """
-        Abstract method that will initialize the client
+        """Initialize the HTTP client.
+
+        Abstract method to be implemented by subclasses to create either a
+        synchronous or asynchronous HTTP client.
 
         Args:
-            base_url (str): The base URL used to prepend to every request. The
-                default value is None
-
-            verify (bool): Enable or disable certificate verification.  The
-                default value is True
-
-            timeout (int): Sets the connection timeout value for each sent
-                request in seconds.  The default value is 30
+            base_url: Base URL prepended to all requests. Defaults to None.
+            verify: Enable certificate verification. Defaults to True.
+            timeout: Connection timeout in seconds. Defaults to 30.
 
         Returns:
-            A valid httpx client object.
+            Union[httpx.Client, httpx.AsyncClient]: The initialized HTTP client.
+
+        Raises:
+            None
         """
 
 
@@ -414,27 +380,23 @@ class Connection(ConnectionBase):
         self._auth_lock = threading.Lock()
 
     def __init_client__(
-        self, base_url: Optional[str] = None, verify: bool = True, timeout: int = 30
+        self, base_url: str | None = None, verify: bool = True, timeout: int = 30
     ) -> httpx.Client:
-        """
-        Initialize the httpx.Client instance
+        """Initialize the synchronous HTTP client.
 
-        The `httpx.Client` instance provides the connection to the server
-        for sending requests and receiving responses.   This method will
-        initialize the client and return it to the calling function.
+        Creates an httpx.Client instance for making synchronous HTTP requests
+        to the server.
 
         Args:
-            base_url (str): The base url to use when crafting requests.  This
-                value will be prepended to all requests
-
-            verify (bool): Enable or disable the validation of certificates
-                when connecting to a server over TLS
-
-            timeout (int): Set the connection timeout value when sending
-                requests.  The default value is 30 seconds
+            base_url: Base URL prepended to all requests. Defaults to None.
+            verify: Enable certificate validation for TLS connections. Defaults to True.
+            timeout: Connection timeout in seconds. Defaults to 30.
 
         Returns:
-            An instance of `httpx.Client`
+            httpx.Client: The initialized synchronous HTTP client.
+
+        Raises:
+            None
         """
         logging.trace(self.__init_client__, modname=__name__, clsname=self.__class__)
         logging.info(f"Creating new client for {base_url}")
@@ -454,37 +416,27 @@ class Connection(ConnectionBase):
         self,
         method: HTTPMethod,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, dict, list] | None = None,
     ) -> Response:
-        """
-        Send will send the request to the API endpoint and return the response
+        """Send an HTTP request to the API endpoint.
 
-        If the request object provides a body value and the body value is
-        either a list or dict object, this method will jsonify the data and
-        automatically set the `Content-Type` and `Accept` headers to
-        `application/json`.
+        Automatically handles authentication on first request. Sets Content-Type
+        and Accept headers to application/json when JSON body is provided.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
-
-            json: (str, bytes, dict, list): The JSON payload to include in
-                the request when sent to the server.  The value must either be
-                a string representation of a JSON object or a dict or list
-                object that can be converted to a valid JSON string.  The
-                default value for json is None
+            method: HTTP method for the request.
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
+            json: JSON payload for request body. If dict or list, automatically
+                serialized. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response wrapped in a Response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
@@ -521,46 +473,36 @@ class Connection(ConnectionBase):
 
         return Response(res)
 
-    def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Response:
-        """
-        Send a HTTP GET request to the server and return the response.
+    def get(self, path: str, params: dict[str, Any] | None = None) -> Response:
+        """Send an HTTP GET request to the server.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self.get, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
-    def delete(self, path: str, params: Optional[Dict[str, Any]] = None) -> Response:
-        """
-        Send a HTTP DELETE request to the server and return the response.
+    def delete(self, path: str, params: dict[str, Any] | None = None) -> Response:
+        """Send an HTTP DELETE request to the server.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self.delete, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.DELETE, path=path, params=params)
@@ -568,32 +510,23 @@ class Connection(ConnectionBase):
     def post(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, list, dict]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, list, dict] | None = None,
     ) -> Response:
-        """
-        Send a HTTP POST request to the server and return the response.
+        """Send an HTTP POST request to the server.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
-
-            json: (str, bytes, dict, list): The JSON payload to include in
-                the request when sent to the server.  The value must either be
-                a string representation of a JSON object or a dict or list
-                object that can be converted to a valid JSON string.  The
-                default value for json is None
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
+            json: JSON payload for request body. If dict or list, automatically
+                serialized. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self.post, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
@@ -601,32 +534,23 @@ class Connection(ConnectionBase):
     def put(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, list, dict]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, list, dict] | None = None,
     ) -> Response:
-        """
-        Send a HTTP PUT request to the server and return the response.
+        """Send an HTTP PUT request to the server.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
-
-            json: (str, bytes, dict, list): The JSON payload to include in
-                the request when sent to the server.  The value must either be
-                a string representation of a JSON object or a dict or list
-                object that can be converted to a valid JSON string.  The
-                default value for json is None
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
+            json: JSON payload for request body. If dict or list, automatically
+                serialized. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self.put, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
@@ -634,32 +558,23 @@ class Connection(ConnectionBase):
     def patch(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, list, dict]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, list, dict] | None = None,
     ) -> Response:
-        """
-        Send a HTTP PATCH request to the server and return the response.
+        """Send an HTTP PATCH request to the server.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
-
-            json: (str, bytes, dict, list): The JSON payload to include in
-                the request when sent to the server.  The value must either be
-                a string representation of a JSON object or a dict or list
-                object that can be converted to a valid JSON string.  The
-                default value for json is None
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
+            json: JSON payload for request body. If dict or list, automatically
+                serialized. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self.patch, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)
@@ -710,37 +625,27 @@ class AsyncConnection(ConnectionBase):
         self,
         method: HTTPMethod,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, dict, list] | None = None,
     ) -> Response:
-        """
-        Send will send the request to the API endpoint and return the response
+        """Send an asynchronous HTTP request to the API endpoint.
 
-        If the request object provides a body value and the body value is either
-        a list or dict object, this method will jsonify the data and
-        automatically set the `Content-Type` and `Accept` headers to
-        `application/json`.
+        Automatically handles authentication on first request. Sets Content-Type
+        and Accept headers to application/json when JSON body is provided.
 
         Args:
-            method (HTTPMethod): The HTTP method to call when sending this
-                request to the server.  This argument is required.
-
-            path (str): The URI path to use for this request.  This value
-                will be combined with the client's base_url to create the full
-                path to the resource.  This argument is required.
-
-            params (dict): The set of key value pairs as a dict object used
-                to construct the query string for the request.  The default
-                value of params is None
-
-            json: (str, bytes, dict, list): The JSON payload to include in
-                the request when sent to the server.  The value must either be
-                a string representation of a JSON object or a dict or list
-                object that can be converted to a valid JSON string.  The
-                default value for json is None
+            method: HTTP method for the request.
+            path: URI path combined with base_url to form the full resource URL.
+            params: Query string parameters. Defaults to None.
+            json: JSON payload for request body. If dict or list, automatically
+                serialized. Defaults to None.
 
         Returns:
-            A `Response` object
+            Response: The HTTP response wrapped in a Response object.
+
+        Raises:
+            RequestError: Network or connection errors occurred.
+            HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
         logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
 
@@ -777,7 +682,7 @@ class AsyncConnection(ConnectionBase):
 
         return Response(res)
 
-    async def get(self, path: str, params: Optional[Dict[str, Any]] = None) -> Response:
+    async def get(self, path: str, params: dict[str, Any] | None = None) -> Response:
         """
         Send a HTTP GET request to the server and return the response.
 
@@ -800,7 +705,7 @@ class AsyncConnection(ConnectionBase):
         return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
     async def delete(
-        self, path: str, params: Optional[Dict[str, Any]] = None
+        self, path: str, params: dict[str, Any] | None = None
     ) -> Response:
         """
         Send a HTTP DELETE request to the server and return the response.
@@ -826,8 +731,8 @@ class AsyncConnection(ConnectionBase):
     async def post(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, dict, list] | None = None,
     ) -> Response:
         """
         Send a HTTP POST request to the server and return the response.
@@ -861,8 +766,8 @@ class AsyncConnection(ConnectionBase):
     async def put(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, dict, list] | None = None,
     ) -> Response:
         """
         Send a HTTP PUT request to the server and return the response.
@@ -896,8 +801,8 @@ class AsyncConnection(ConnectionBase):
     async def patch(
         self,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
-        json: Optional[Union[str, bytes, dict, list]] = None,
+        params: dict[str, Any] | None = None,
+        json: Union[str, bytes, dict, list] | None = None,
     ) -> Response:
         """
         Send a HTTP PATCH request to the server and return the response.

@@ -1219,19 +1219,19 @@ def test_validate_request_args_valid_inputs():
 
 
 def test_connection_delete_uses_http_method_value():
-    """Test that Connection.delete uses HTTPMethod.DELETE.value."""
+    """Test that Connection.delete uses HTTPMethod.DELETE enum."""
     conn = Connection("example.com")
     conn._send_request = Mock(return_value=Mock(spec=Response))
 
     params = {"key": "value"}
     conn.delete("/api/test", params=params)
 
-    # Verify that _send_request was called with HTTPMethod.DELETE.value
-    # (string "DELETE")
+    # Verify that _send_request was called with HTTPMethod.DELETE enum
+    # (consistent with other HTTP methods)
     conn._send_request.assert_called_once()
     call_args = conn._send_request.call_args
-    # The delete method passes HTTPMethod.DELETE.value which is a string
-    assert call_args.args[0] == "DELETE" or isinstance(call_args.args[0], str)
+    # The delete method passes HTTPMethod.DELETE enum
+    assert call_args.args[0] == HTTPMethod.DELETE
 
 
 def test_connection_initialization_sets_authenticated_false():

@@ -563,7 +563,7 @@ class Connection(ConnectionBase):
             A `Response` object
         """
         logging.trace(self.delete, modname=__name__, clsname=self.__class__)
-        return self._send_request(HTTPMethod.DELETE.value, path=path, params=params)
+        return self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
     def post(
         self,

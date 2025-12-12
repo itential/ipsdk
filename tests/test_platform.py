@@ -12,16 +12,16 @@ from ipsdk import exceptions
 from ipsdk.connection import AsyncConnection
 from ipsdk.connection import Connection
 from ipsdk.http import Response
+from ipsdk.platform import _BASICAUTH_PATH
+from ipsdk.platform import _OAUTH_HEADERS
+from ipsdk.platform import _OAUTH_PATH
 from ipsdk.platform import AsyncAuthMixin
 from ipsdk.platform import AsyncPlatformType
 from ipsdk.platform import AuthMixin
 from ipsdk.platform import Platform
 from ipsdk.platform import PlatformType
 from ipsdk.platform import _make_basicauth_body
-from ipsdk.platform import _make_basicauth_path
 from ipsdk.platform import _make_oauth_body
-from ipsdk.platform import _make_oauth_headers
-from ipsdk.platform import _make_oauth_path
 from ipsdk.platform import platform_factory
 
 # --------- Factory Tests ---------
@@ -84,14 +84,13 @@ def test_platform_factory_oauth_only():
 
 
 def test_make_oauth_headers():
-    """Test _make_oauth_headers utility function."""
-    headers = _make_oauth_headers()
-    assert headers == {"Content-Type": "application/x-www-form-urlencoded"}
+    """Test _OAUTH_HEADERS constant."""
+    assert _OAUTH_HEADERS == {"Content-Type": "application/x-www-form-urlencoded"}
 
 
 def test_make_oauth_path():
-    """Test _make_oauth_path utility function."""
-    assert _make_oauth_path() == "/oauth/token"
+    """Test _OAUTH_PATH constant."""
+    assert _OAUTH_PATH == "/oauth/token"
 
 
 def test_make_oauth_body():
@@ -124,8 +123,8 @@ def test_make_basicauth_body():
 
 
 def test_make_basicauth_path():
-    """Test _make_basicauth_path utility function."""
-    assert _make_basicauth_path() == "/login"
+    """Test _BASICAUTH_PATH constant."""
+    assert _BASICAUTH_PATH == "/login"
 
 
 # --------- Sync AuthMixin Tests ---------
@@ -162,7 +161,7 @@ def test_authenticate_oauth_success():
 
 
 def test_authenticate_user_success():
-    """Test AuthMixin.authenticate_user successful authentication."""
+    """Test AuthMixin.authenticate_basicauth successful authentication."""
     mixin = AuthMixin()
     mixin.user = "testuser"
     mixin.password = "testpass"
@@ -173,7 +172,7 @@ def test_authenticate_user_success():
     mock_response.raise_for_status.return_value = None
     mixin.client.post.return_value = mock_response
 
-    mixin.authenticate_user()
+    mixin.authenticate_basicauth()
 
     mixin.client.post.assert_called_once_with(
         "/login", json={"user": {"username": "testuser", "password": "testpass"}}
@@ -469,7 +468,7 @@ def test_authenticate_oauth_non_dict_response():
 
 
 def test_authenticate_oauth_http_status_error():
-    """Test authenticate_oauth raises TypeError due to source bug on HTTP error."""
+    """Test authenticate_oauth raises HTTPStatusError on HTTP error."""
     mixin = AuthMixin()
     mixin.client_id = "test_id"
     mixin.client_secret = "test_secret"
@@ -482,19 +481,17 @@ def test_authenticate_oauth_http_status_error():
     http_exc = httpx.HTTPStatusError(
         "401 Unauthorized", request=mock_request, response=mock_response
     )
-    http_exc.message = "401 Unauthorized"
 
     mock_post_response = Mock()
     mock_post_response.raise_for_status.side_effect = http_exc
     mixin.client.post.return_value = mock_post_response
 
-    # Source has bug: passes exc.message but HTTPStatusError only takes exc
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.HTTPStatusError):
         mixin.authenticate_oauth()
 
 
 def test_authenticate_oauth_request_error():
-    """Test authenticate_oauth raises TypeError due to source bug on network error."""
+    """Test authenticate_oauth raises RequestError on network error."""
     mixin = AuthMixin()
     mixin.client_id = "test_id"
     mixin.client_secret = "test_secret"
@@ -503,17 +500,15 @@ def test_authenticate_oauth_request_error():
     # Mock RequestError
     mock_request = Mock()
     request_exc = httpx.RequestError("Network error", request=mock_request)
-    request_exc.message = "Network error"
 
     mixin.client.post.side_effect = request_exc
 
-    # Source has bug: passes exc.message but RequestError only takes exc
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.RequestError):
         mixin.authenticate_oauth()
 
 
 def test_authenticate_user_http_status_error():
-    """Test authenticate_user raises TypeError due to source bug on HTTP error."""
+    """Test authenticate_basicauth raises HTTPStatusError on HTTP error."""
     mixin = AuthMixin()
     mixin.user = "testuser"
     mixin.password = "testpass"
@@ -526,19 +521,17 @@ def test_authenticate_user_http_status_error():
     http_exc = httpx.HTTPStatusError(
         "403 Forbidden", request=mock_request, response=mock_response
     )
-    http_exc.message = "403 Forbidden"
 
     mock_post_response = Mock()
     mock_post_response.raise_for_status.side_effect = http_exc
     mixin.client.post.return_value = mock_post_response
 
-    # Source has bug: passes exc.message but HTTPStatusError only takes exc
-    with pytest.raises(TypeError):
-        mixin.authenticate_user()
+    with pytest.raises(exceptions.HTTPStatusError):
+        mixin.authenticate_basicauth()
 
 
 def test_authenticate_user_request_error():
-    """Test authenticate_user raises TypeError due to source bug on network error."""
+    """Test authenticate_basicauth raises RequestError on network error."""
     mixin = AuthMixin()
     mixin.user = "testuser"
     mixin.password = "testpass"
@@ -547,13 +540,11 @@ def test_authenticate_user_request_error():
     # Mock RequestError
     mock_request = Mock()
     request_exc = httpx.RequestError("Connection timeout", request=mock_request)
-    request_exc.message = "Connection timeout"
 
     mixin.client.post.side_effect = request_exc
 
-    # Source has bug: passes exc.message but RequestError only takes exc
-    with pytest.raises(TypeError):
-        mixin.authenticate_user()
+    with pytest.raises(exceptions.RequestError):
+        mixin.authenticate_basicauth()
 
 
 def test_authenticate_no_credentials_error():
@@ -634,7 +625,7 @@ async def test_async_authenticate_oauth_success():
 
 @pytest.mark.asyncio
 async def test_async_authenticate_oauth_http_status_error():
-    """Test async authenticate_oauth raises TypeError due to source bug."""
+    """Test async authenticate_oauth raises HTTPStatusError on HTTP error."""
     mixin = AsyncAuthMixin()
     mixin.client_id = "test_id"
     mixin.client_secret = "test_secret"
@@ -647,20 +638,18 @@ async def test_async_authenticate_oauth_http_status_error():
     http_exc = httpx.HTTPStatusError(
         "401 Unauthorized", request=mock_request, response=mock_response
     )
-    http_exc.message = "401 Unauthorized"
 
     mock_post_response = Mock()
     mock_post_response.raise_for_status.side_effect = http_exc
     mixin.client.post.return_value = mock_post_response
 
-    # Source has bug: passes exc.message but HTTPStatusError only takes exc
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.HTTPStatusError):
         await mixin.authenticate_oauth()
 
 
 @pytest.mark.asyncio
 async def test_async_authenticate_oauth_request_error():
-    """Test async authenticate_oauth raises TypeError due to bug."""
+    """Test async authenticate_oauth raises RequestError on network error."""
     mixin = AsyncAuthMixin()
     mixin.client_id = "test_id"
     mixin.client_secret = "test_secret"
@@ -669,18 +658,16 @@ async def test_async_authenticate_oauth_request_error():
     # Mock RequestError
     mock_request = Mock()
     request_exc = httpx.RequestError("Network failure", request=mock_request)
-    request_exc.message = "Network failure"
 
     mixin.client.post.side_effect = request_exc
 
-    # Source has bug: passes exc.message but RequestError only takes exc
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.RequestError):
         await mixin.authenticate_oauth()
 
 
 @pytest.mark.asyncio
 async def test_async_authenticate_basicauth_http_status_error():
-    """Test async authenticate_basicauth raises TypeError due to bug."""
+    """Test async authenticate_basicauth raises HTTPStatusError on HTTP error."""
     mixin = AsyncAuthMixin()
     mixin.user = "testuser"
     mixin.password = "testpass"
@@ -693,20 +680,18 @@ async def test_async_authenticate_basicauth_http_status_error():
     http_exc = httpx.HTTPStatusError(
         "403 Forbidden", request=mock_request, response=mock_response
     )
-    http_exc.message = "403 Forbidden"
 
     mock_post_response = Mock()
     mock_post_response.raise_for_status.side_effect = http_exc
     mixin.client.post.return_value = mock_post_response
 
-    # Source has bug: passes exc.message but HTTPStatusError only takes exc
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.HTTPStatusError):
         await mixin.authenticate_basicauth()
 
 
 @pytest.mark.asyncio
 async def test_async_authenticate_basicauth_request_error():
-    """Test async authenticate_basicauth raises TypeError due to bug."""
+    """Test async authenticate_basicauth raises RequestError on network error."""
     mixin = AsyncAuthMixin()
     mixin.user = "testuser"
     mixin.password = "testpass"
@@ -715,12 +700,10 @@ async def test_async_authenticate_basicauth_request_error():
     # Mock RequestError
     mock_request = Mock()
     request_exc = httpx.RequestError("Connection failed", request=mock_request)
-    request_exc.message = "Connection failed"
 
     mixin.client.post.side_effect = request_exc
 
-    # Source has bug: passes exc.message but RequestError only takes exc
-    with pytest.raises(TypeError):
+    with pytest.raises(exceptions.RequestError):
         await mixin.authenticate_basicauth()
 
 
@@ -753,11 +736,16 @@ async def test_async_authenticate_oauth_path():
     # Mock successful response
     mock_response = Mock()
     mock_response.status_code = 200
+    mock_response.text = '{"access_token": "test_token_123"}'
     mock_response.raise_for_status = Mock()
     mixin.client.post.return_value = mock_response
 
-    await mixin.authenticate()
+    with patch(
+        "ipsdk.jsonutils.loads", return_value={"access_token": "test_token_123"}
+    ):
+        await mixin.authenticate()
 
+    assert mixin.token == "test_token_123"
     # Verify OAuth was called
     mixin.client.post.assert_awaited_once_with(
         "/oauth/token",
@@ -780,7 +768,7 @@ def test_platform_mixin_inheritance():
     # Should have AuthMixin methods
     assert hasattr(platform, "authenticate")
     assert hasattr(platform, "authenticate_oauth")
-    assert hasattr(platform, "authenticate_user")
+    assert hasattr(platform, "authenticate_basicauth")
 
     # Should have Connection methods
     assert hasattr(platform, "get")

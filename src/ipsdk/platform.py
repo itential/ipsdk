@@ -230,6 +230,7 @@ from . import jsonutils
 from . import logging
 
 
+@logging.trace
 def _make_oauth_headers() -> dict[str, str]:
     """
     Create HTTP headers for OAuth token request.
@@ -247,10 +248,10 @@ def _make_oauth_headers() -> dict[str, str]:
     Raises:
         None
     """
-    logging.trace(_make_oauth_headers, modname=__name__)
     return {"Content-Type": "application/x-www-form-urlencoded"}
 
 
+@logging.trace
 def _make_oauth_path() -> str:
     """
     Get the URL path for OAuth token endpoint.
@@ -267,10 +268,10 @@ def _make_oauth_path() -> str:
     Raises:
         None
     """
-    logging.trace(_make_oauth_path, modname=__name__)
     return "/oauth/token"
 
 
+@logging.trace
 def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
     """
     Create request body for OAuth client credentials authentication.
@@ -289,7 +290,6 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
     Raises:
         None
     """
-    logging.trace(_make_oauth_body, modname=__name__)
     return {
         "grant_type": "client_credentials",
         "client_id": client_id,
@@ -297,6 +297,7 @@ def _make_oauth_body(client_id: str, client_secret: str) -> dict[str, str]:
     }
 
 
+@logging.trace
 def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
     """
     Create request body for basic username/password authentication.
@@ -315,7 +316,6 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
     Raises:
         None
     """
-    logging.trace(_make_basicauth_body, modname=__name__)
     return {
         "user": {
             "username": user,
@@ -324,6 +324,7 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
     }
 
 
+@logging.trace
 def _make_basicauth_path() -> str:
     """
     Get the URL path for basic authentication endpoint.
@@ -340,7 +341,6 @@ def _make_basicauth_path() -> str:
     Raises:
         None
     """
-    logging.trace(_make_basicauth_path, modname=__name__)
     return "/login"
 
 
@@ -357,11 +357,11 @@ class AuthMixin:
     client: httpx.Client
     token: str | None
 
+    @logging.trace
     def authenticate(self) -> None:
         """
         Provides the authentication function for authenticating to the server
         """
-        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         if self.client_id is not None and self.client_secret is not None:
             self.authenticate_oauth()
         elif self.user is not None and self.password is not None:
@@ -375,11 +375,11 @@ class AuthMixin:
 
         logging.info("client connection successfully authenticated")
 
+    @logging.trace
     def authenticate_user(self) -> None:
         """
         Performs authentication for basic authorization
         """
-        logging.trace(self.authenticate_user, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform basic authentication")
 
         if self.user is None or self.password is None:
@@ -401,11 +401,11 @@ class AuthMixin:
             logging.exception(exc.message, exc)
             raise exceptions.RequestError(exc.message, exc)
 
+    @logging.trace
     def authenticate_oauth(self) -> None:
         """
         Performs authentication for OAuth client credentials
         """
-        logging.trace(self.authenticate_oauth, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform oauth authentication")
 
         if self.client_id is None or self.client_secret is None:
@@ -451,11 +451,11 @@ class AsyncAuthMixin:
     client: httpx.AsyncClient
     token: str | None
 
+    @logging.trace
     async def authenticate(self) -> None:
         """
         Provides the authentication function for authenticating to the server
         """
-        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         if self.client_id is not None and self.client_secret is not None:
             await self.authenticate_oauth()
 
@@ -471,13 +471,11 @@ class AsyncAuthMixin:
 
         logging.info("client connection successfully authenticated")
 
+    @logging.trace
     async def authenticate_basicauth(self) -> None:
         """
         Performs authentication for basic authorization
         """
-        logging.trace(
-            self.authenticate_basicauth, modname=__name__, clsname=self.__class__
-        )
         logging.info("Attempting to perform basic authentication")
 
         if self.user is None or self.password is None:
@@ -499,11 +497,11 @@ class AsyncAuthMixin:
             logging.exception(exc.message, exc)
             raise exceptions.RequestError(exc.message, exc)
 
+    @logging.trace
     async def authenticate_oauth(self) -> None:
         """
         Performs authentication for OAuth client credentials
         """
-        logging.trace(self.authenticate_oauth, modname=__name__, clsname=self.__class__)
         logging.info("Attempting to perform oauth authentication")
 
         if self.client_id is None or self.client_secret is None:
@@ -536,6 +534,7 @@ PlatformType = Platform
 AsyncPlatformType = AsyncPlatform
 
 
+@logging.trace
 def platform_factory(
     host: str = "localhost",
     port: int = 0,
@@ -595,8 +594,6 @@ def platform_factory(
     Returns:
         Platform: An initialized Platform connection instance.
     """
-    logging.trace(platform_factory, modname=__name__)
-
     factory = AsyncPlatform if want_async is True else Platform
     return factory(
         host=host,

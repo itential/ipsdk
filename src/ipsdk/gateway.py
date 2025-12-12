@@ -159,6 +159,7 @@ from . import exceptions
 from . import logging
 
 
+@logging.trace
 def _make_path() -> str:
     """
     Utility function that returns the login url
@@ -166,10 +167,10 @@ def _make_path() -> str:
     Returns:
         A string that provides the login url
     """
-    logging.trace(_make_path, modname=__name__)
     return "/login"
 
 
+@logging.trace
 def _make_body(user: str, password: str) -> dict[str, str]:
     """
     Utility function to make the authentication body used to authenticate to
@@ -183,10 +184,10 @@ def _make_body(user: str, password: str) -> dict[str, str]:
         A dict object that can be used to send in the body of the
             authentication request
     """
-    logging.trace(_make_body, modname=__name__)
     return {"username": user, "password": password}
 
 
+@logging.trace
 def _make_headers() -> dict[str, str]:
     """
     Utility function that returns a dict object of headers
@@ -194,7 +195,6 @@ def _make_headers() -> dict[str, str]:
     Returns:
         A dict object that can be passed to a request to set the headers
     """
-    logging.trace(_make_headers, modname=__name__)
     return {
         "Content-Type": "application/json",
         "Accept": "application/json",
@@ -211,11 +211,11 @@ class AuthMixin:
     password: str | None
     client: httpx.Client
 
+    @logging.trace
     def authenticate(self) -> None:
         """
         Provides the authentication function for authenticating to the server
         """
-        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         if self.user is None or self.password is None:
             msg = "Username and password are required for Gateway authentication"
             raise exceptions.IpsdkError(msg)
@@ -247,11 +247,11 @@ class AsyncAuthMixin:
     password: str | None
     client: httpx.AsyncClient
 
+    @logging.trace
     async def authenticate(self) -> None:
         """
         Provides the authentication function for authenticating to the server
         """
-        logging.trace(self.authenticate, modname=__name__, clsname=self.__class__)
         if self.user is None or self.password is None:
             msg = "Username and password are required for Gateway authentication"
             raise exceptions.IpsdkError(msg)
@@ -281,6 +281,7 @@ GatewayType = Gateway
 AsyncGatewayType = AsyncGateway
 
 
+@logging.trace
 def gateway_factory(
     host: str = "localhost",
     port: int = 0,
@@ -328,8 +329,6 @@ def gateway_factory(
     Returns:
         An initialized connection instance
     """
-    logging.trace(gateway_factory, modname=__name__)
-
     factory = AsyncGateway if want_async is True else Gateway
     return factory(
         host=host,

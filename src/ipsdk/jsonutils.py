@@ -112,6 +112,7 @@ from . import exceptions
 from . import logging
 
 
+@logging.trace
 def loads(s: str) -> Union[dict, list]:
     """Convert a JSON formatted string to a dict or list object
 
@@ -121,7 +122,6 @@ def loads(s: str) -> Union[dict, list]:
     Returns:
         A dict or list object
     """
-    logging.trace(loads, modname=__name__)
     try:
         return json.loads(s)
     except json.JSONDecodeError as exc:
@@ -134,6 +134,7 @@ def loads(s: str) -> Union[dict, list]:
         raise exceptions.SerializationError(msg)
 
 
+@logging.trace
 def dumps(o: Union[dict, list]) -> str:
     """Convert a dict or list to a JSON string
 
@@ -143,7 +144,6 @@ def dumps(o: Union[dict, list]) -> str:
     Returns:
         A JSON string representation
     """
-    logging.trace(dumps, modname=__name__)
     try:
         return json.dumps(o)
     except (TypeError, ValueError) as exc:

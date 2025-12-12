@@ -2,6 +2,7 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 import json
+import time
 
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
@@ -1539,3 +1540,303 @@ async def test_async_connection_http_methods_delegate_to_send_request():
     conn._send_request.assert_called_with(
         HTTPMethod.PATCH, path="/test", params=None, json={"d": "4"}
     )
+
+
+# --------- Reauthentication Tests ---------
+
+
+def test_connection_ttl_defaults_to_zero():
+    """Test that ttl defaults to 0 (disabled)."""
+    with patch.object(ConnectionBase, "__init_client__") as mock_init:
+        mock_init.return_value = Mock(headers={})
+        conn = ConnectionBase("example.com")
+        assert conn.ttl == 0
+
+
+def test_connection_ttl_can_be_set():
+    """Test that ttl can be set during initialization."""
+    with patch.object(ConnectionBase, "__init_client__") as mock_init:
+        mock_init.return_value = Mock(headers={})
+        conn = ConnectionBase("example.com", ttl=1800)
+        assert conn.ttl == 1800
+
+
+def test_needs_reauthentication_returns_false_when_disabled():
+    """Test that _needs_reauthentication returns False when ttl is 0."""
+    with patch.object(ConnectionBase, "__init_client__") as mock_init:
+        mock_init.return_value = Mock(headers={})
+        conn = ConnectionBase("example.com", ttl=0)
+        conn._auth_timestamp = 1000.0
+        assert conn._needs_reauthentication() is False
+
+
+def test_needs_reauthentication_returns_false_when_no_auth_yet():
+    """Test that _needs_reauthentication returns False when no auth has occurred."""
+    with patch.object(ConnectionBase, "__init_client__") as mock_init:
+        mock_init.return_value = Mock(headers={})
+        conn = ConnectionBase("example.com", ttl=1800)
+        conn._auth_timestamp = None
+        assert conn._needs_reauthentication() is False
+
+
+def test_needs_reauthentication_returns_true_when_timeout_exceeded():
+    """Test that _needs_reauthentication returns True when timeout has passed."""
+    with patch.object(ConnectionBase, "__init_client__") as mock_init:
+        mock_init.return_value = Mock(headers={})
+        conn = ConnectionBase("example.com", ttl=10)
+
+        # Set timestamp to 15 seconds ago
+        conn._auth_timestamp = time.time() - 15
+        assert conn._needs_reauthentication() is True
+
+
+def test_needs_reauthentication_returns_false_when_timeout_not_exceeded():
+    """Test that _needs_reauthentication returns False when timeout has not passed."""
+    with patch.object(ConnectionBase, "__init_client__") as mock_init:
+        mock_init.return_value = Mock(headers={})
+        conn = ConnectionBase("example.com", ttl=10)
+
+        # Set timestamp to 5 seconds ago
+        conn._auth_timestamp = time.time() - 5
+        assert conn._needs_reauthentication() is False
+
+
+def test_connection_forces_reauthentication_when_ttl_exceeded():
+    """Test that Connection reauthenticates when TTL has expired during a request."""
+
+    class TestConnection(Connection):
+        def authenticate(self) -> None:
+            self.token = "test-token"
+
+    with patch.object(TestConnection, "__init_client__") as mock_init:
+        mock_client = Mock(spec=httpx.Client)
+        mock_init.return_value = mock_client
+        mock_client.headers = {}
+
+        conn = TestConnection("example.com", ttl=10)
+
+        # First request - authenticate normally
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.content = b'{"success": true}'
+        mock_client.send.return_value = mock_response
+
+        response = conn.get("/test")
+        assert response is not None
+        assert conn.authenticated is True
+
+        # Simulate TTL expiration by setting timestamp to 15 seconds ago
+        conn._auth_timestamp = time.time() - 15
+
+        # Second request - should reauthenticate
+        response = conn.get("/test")
+        assert response is not None
+        assert conn.authenticated is True
+        # Token should be refreshed
+        assert conn.token == "test-token"
+
+
+@pytest.mark.asyncio
+async def test_async_connection_forces_reauthentication_when_ttl_exceeded():
+    """Test AsyncConnection reauthenticates when TTL has expired during request."""
+
+    class TestAsyncConnection(AsyncConnection):
+        async def authenticate(self) -> None:
+            self.token = "test-token-async"
+
+    with patch.object(TestAsyncConnection, "__init_client__") as mock_init:
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_init.return_value = mock_client
+        mock_client.headers = {}
+
+        conn = TestAsyncConnection("example.com", ttl=10)
+
+        # First request - authenticate normally
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.content = b'{"success": true}'
+        mock_client.send.return_value = mock_response
+
+        response = await conn.get("/test")
+        assert response is not None
+        assert conn.authenticated is True
+
+        # Simulate TTL expiration by setting timestamp to 15 seconds ago
+        conn._auth_timestamp = time.time() - 15
+
+        # Second request - should reauthenticate
+        response = await conn.get("/test")
+        assert response is not None
+        assert conn.authenticated is True
+        # Token should be refreshed
+        assert conn.token == "test-token-async"
+
+
+def test_connection_reauthentication_resets_token():
+    """Test that reauthentication clears the old token before authenticating."""
+
+    class TestConnection(Connection):
+        def authenticate(self) -> None:
+            self.token = "new-token"
+
+    with patch.object(TestConnection, "__init_client__") as mock_init:
+        mock_client = Mock(spec=httpx.Client)
+        mock_init.return_value = mock_client
+        mock_client.headers = {}
+
+        conn = TestConnection("example.com", ttl=1)
+
+        # Set up a previous authentication
+        conn.authenticated = True
+        conn.token = "old-token"
+        conn._auth_timestamp = time.time() - 2  # Expired
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.content = b'{"success": true}'
+        mock_client.send.return_value = mock_response
+
+        # Make request - should reauthenticate
+        response = conn.get("/test")
+
+        assert response is not None
+        assert conn.token == "new-token"
+        assert conn.authenticated is True
+
+
+@pytest.mark.asyncio
+async def test_async_connection_reauthentication_resets_token():
+    """Test that async reauthentication clears the old token before authenticating."""
+
+    class TestAsyncConnection(AsyncConnection):
+        async def authenticate(self) -> None:
+            self.token = "new-token-async"
+
+    with patch.object(TestAsyncConnection, "__init_client__") as mock_init:
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_init.return_value = mock_client
+        mock_client.headers = {}
+
+        conn = TestAsyncConnection("example.com", ttl=1)
+
+        # Set up a previous authentication
+        conn.authenticated = True
+        conn.token = "old-token-async"
+        conn._auth_timestamp = time.time() - 2  # Expired
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.content = b'{"success": true}'
+        mock_client.send.return_value = mock_response
+
+        # Make request - should reauthenticate
+        response = await conn.get("/test")
+
+        assert response is not None
+        assert conn.token == "new-token-async"
+        assert conn.authenticated is True
+
+
+def test_connection_ttl_reauthentication_with_multiple_requests():
+    """Test that TTL reauthentication works correctly across multiple requests."""
+
+    class TestConnection(Connection):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.auth_count = 0
+
+        def authenticate(self) -> None:
+            self.auth_count += 1
+            self.token = f"token-{self.auth_count}"
+
+    with patch.object(TestConnection, "__init_client__") as mock_init:
+        mock_client = Mock(spec=httpx.Client)
+        mock_init.return_value = mock_client
+        mock_client.headers = {}
+
+        conn = TestConnection("example.com", ttl=5)
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.content = b'{"success": true}'
+        mock_client.send.return_value = mock_response
+
+        # First request - initial authentication
+        conn.get("/test1")
+        assert conn.auth_count == 1
+        assert conn.token == "token-1"
+
+        # Second request within TTL - no reauthentication
+        conn.get("/test2")
+        assert conn.auth_count == 1
+        assert conn.token == "token-1"
+
+        # Expire TTL
+        conn._auth_timestamp = time.time() - 6
+
+        # Third request - should reauthenticate
+        conn.get("/test3")
+        assert conn.auth_count == 2
+        assert conn.token == "token-2"
+
+        # Fourth request within new TTL - no reauthentication
+        conn.get("/test4")
+        assert conn.auth_count == 2
+        assert conn.token == "token-2"
+
+
+@pytest.mark.asyncio
+async def test_async_connection_ttl_reauthentication_with_multiple_requests():
+    """Test that async TTL reauthentication works correctly across multiple requests."""
+
+    class TestAsyncConnection(AsyncConnection):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.auth_count = 0
+
+        async def authenticate(self) -> None:
+            self.auth_count += 1
+            self.token = f"token-async-{self.auth_count}"
+
+    with patch.object(TestAsyncConnection, "__init_client__") as mock_init:
+        mock_client = AsyncMock(spec=httpx.AsyncClient)
+        mock_init.return_value = mock_client
+        mock_client.headers = {}
+
+        conn = TestAsyncConnection("example.com", ttl=5)
+
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.content = b'{"success": true}'
+        mock_client.send.return_value = mock_response
+
+        # First request - initial authentication
+        await conn.get("/test1")
+        assert conn.auth_count == 1
+        assert conn.token == "token-async-1"
+
+        # Second request within TTL - no reauthentication
+        await conn.get("/test2")
+        assert conn.auth_count == 1
+        assert conn.token == "token-async-1"
+
+        # Expire TTL
+        conn._auth_timestamp = time.time() - 6
+
+        # Third request - should reauthenticate
+        await conn.get("/test3")
+        assert conn.auth_count == 2
+        assert conn.token == "token-async-2"
+
+        # Fourth request within new TTL - no reauthentication
+        await conn.get("/test4")
+        assert conn.auth_count == 2
+        assert conn.token == "token-async-2"
+
+

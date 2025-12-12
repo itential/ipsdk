@@ -545,6 +545,7 @@ def platform_factory(
     client_id: str | None = None,
     client_secret: str | None = None,
     timeout: int = 30,
+    ttl: int = 0,
     want_async: bool = False,
 ) -> Any:
     """
@@ -587,6 +588,9 @@ def platform_factory(
         timeout (int): Configures the timeout value for requests sent to the server.
             The default value for timeout is `30`.
 
+        ttl (int): Time to live in seconds before forcing reauthentication. If 0,
+            reauthentication is disabled. The default value is `0`.
+
         want_async (bool): When set to True, the factory function will return
             an async connection object and when set to False the factory will
             return a connection object.
@@ -605,4 +609,5 @@ def platform_factory(
         client_id=client_id,
         client_secret=client_secret,
         timeout=timeout,
+        ttl=ttl,
     )

@@ -129,6 +129,7 @@ Direct instantiation (advanced)::
 import abc
 import asyncio
 import threading
+import time
 import urllib.parse
 
 from typing import Any
@@ -158,6 +159,7 @@ class ConnectionBase:
         client_id: str | None = None,
         client_secret: str | None = None,
         timeout: int = 30,
+        ttl: int = 0,
     ) -> None:
         """Initialize the base connection class.
 
@@ -178,6 +180,8 @@ class ConnectionBase:
             client_id: Client ID for OAuth authentication. Defaults to None.
             client_secret: Client secret for OAuth authentication. Defaults to None.
             timeout: Request timeout in seconds. Defaults to 30.
+            ttl: Time to live in seconds before forcing reauthentication. If 0,
+                reauthentication is disabled. Defaults to 0.
 
         Returns:
             None
@@ -195,6 +199,8 @@ class ConnectionBase:
 
         self.authenticated = False
         self._auth_lock: Any | None = None
+        self._auth_timestamp: float | None = None
+        self.ttl = ttl
 
         self.client = self.__init_client__(
             base_url=self._make_base_url(host, port, base_path, use_tls),
@@ -344,6 +350,39 @@ class ConnectionBase:
             msg = "path must be of type `str`"
             raise exceptions.IpsdkError(msg)
 
+    @logging.trace
+    def _needs_reauthentication(self) -> bool:
+        """Check if reauthentication is needed based on timeout.
+
+        Determines whether the connection needs to reauthenticate by checking
+        if the ttl (time to live) has been exceeded since the last authentication.
+        If ttl is 0 (disabled) or no authentication has occurred yet,
+        returns False.
+
+        Args:
+            None
+
+        Returns:
+            bool: True if reauthentication is needed, False otherwise.
+
+        Raises:
+            None
+        """
+        if self.ttl <= 0:
+            return False
+
+        if self._auth_timestamp is None:
+            return False
+
+        elapsed = time.time() - self._auth_timestamp
+        if elapsed >= self.ttl:
+            logging.info(
+                f"Auth TTL exceeded ({elapsed:.1f}s >= {self.ttl}s)"
+            )
+            return True
+
+        return False
+
     @abc.abstractmethod
     def __init_client__(
         self, base_url: str | None = None, verify: bool = True, timeout: int = 30
@@ -418,6 +457,7 @@ class Connection(ConnectionBase):
 
         Automatically handles authentication on first request. Sets Content-Type
         and Accept headers to application/json when JSON body is provided.
+        Supports automatic reauthentication based on ttl setting.
 
         Args:
             method: HTTP method for the request.
@@ -433,12 +473,19 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
+        # Check if reauthentication is needed due to timeout
+        if self._needs_reauthentication():
+            logging.info("Forcing reauthentication due to timeout")
+            self.authenticated = False
+            self.token = None
+
         if self.authenticated is False:
             assert self._auth_lock is not None
             with self._auth_lock:
                 if self.authenticated is False:
                     self.authenticate()
                     self.authenticated = True
+                    self._auth_timestamp = time.time()
 
         request = self._build_request(
             method=method,
@@ -628,6 +675,7 @@ class AsyncConnection(ConnectionBase):
 
         Automatically handles authentication on first request. Sets Content-Type
         and Accept headers to application/json when JSON body is provided.
+        Supports automatic reauthentication based on ttl setting.
 
         Args:
             method: HTTP method for the request.
@@ -643,12 +691,19 @@ class AsyncConnection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
+        # Check if reauthentication is needed due to timeout
+        if self._needs_reauthentication():
+            logging.info("Forcing reauthentication due to timeout")
+            self.authenticated = False
+            self.token = None
+
         if self.authenticated is False:
             assert self._auth_lock is not None
             async with self._auth_lock:
                 if self.authenticated is False:
                     await self.authenticate()
                     self.authenticated = True
+                    self._auth_timestamp = time.time()
 
         request = self._build_request(
             method=method,

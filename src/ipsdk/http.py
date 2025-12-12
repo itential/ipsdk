@@ -75,6 +75,7 @@ class Request:
         ValueError: If required parameters are missing or invalid
     """
 
+    @logging.trace
     def __init__(
         self,
         method: str,
@@ -83,7 +84,6 @@ class Request:
         headers: dict[str, str | None] | None = None,
         json: str | bytes | dict | (list | None) = None,
     ) -> None:
-        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         self.method = method
         self.path = path
         self.params = params or {}
@@ -100,6 +100,7 @@ class Request:
         """
         return self.path
 
+    @logging.trace
     def __repr__(self) -> str:
         """
         String representation of the request
@@ -107,7 +108,6 @@ class Request:
         Returns:
             str: A string representation of the request
         """
-        logging.trace(self.__repr__, modname=__name__, clsname=self.__class__)
         return f"Request(method='{self.method}', path='{self.path}')"
 
 
@@ -128,8 +128,8 @@ class Response:
         ValueError: If the httpx_response is None or invalid
     """
 
+    @logging.trace
     def __init__(self, httpx_response: httpx.Response) -> None:
-        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         if httpx_response is None:
             msg = "httpx_response cannot be None"
             raise ValueError(msg)
@@ -196,6 +196,7 @@ class Response:
         """
         return self._response.request
 
+    @logging.trace
     def json(self) -> dict[str, Any]:
         """
         Parse the response content as JSON
@@ -206,13 +207,13 @@ class Response:
         Raises:
             ValueError: If the response content is not valid JSON
         """
-        logging.trace(self.json, modname=__name__, clsname=self.__class__)
         try:
             return self._response.json()
         except Exception as exc:
             msg = f"Failed to parse response as JSON: {exc!s}"
             raise ValueError(msg)
 
+    @logging.trace
     def raise_for_status(self) -> None:
         """
         Raise an exception if the response status indicates an error
@@ -220,9 +221,9 @@ class Response:
         Raises:
             httpx.HTTPStatusError: If the response status code indicates an error
         """
-        logging.trace(self.raise_for_status, modname=__name__, clsname=self.__class__)
         self._response.raise_for_status()
 
+    @logging.trace
     def is_success(self) -> bool:
         """
         Check if the response indicates success (2xx status code)
@@ -230,11 +231,11 @@ class Response:
         Returns:
             bool: True if the status code is in the 2xx range, False otherwise
         """
-        logging.trace(self.is_success, modname=__name__, clsname=self.__class__)
         return (
             HTTPStatus.OK.value <= self.status_code < HTTPStatus.MULTIPLE_CHOICES.value
         )
 
+    @logging.trace
     def is_error(self) -> bool:
         """
         Check if the response indicates an error (4xx or 5xx status code)
@@ -242,9 +243,9 @@ class Response:
         Returns:
             bool: True if the status code indicates an error, False otherwise
         """
-        logging.trace(self.is_error, modname=__name__, clsname=self.__class__)
         return self.status_code >= HTTPStatus.BAD_REQUEST.value
 
+    @logging.trace
     def __repr__(self) -> str:
         """
         String representation of the response
@@ -252,5 +253,4 @@ class Response:
         Returns:
             str: A string representation of the response
         """
-        logging.trace(self.__repr__, modname=__name__, clsname=self.__class__)
         return f"Response(status_code={self.status_code}, url='{self.url}')"

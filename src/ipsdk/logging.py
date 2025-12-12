@@ -53,10 +53,14 @@ Example:
         # Enable TRACE level for detailed function tracing
         logging.set_level(logging.TRACE)
 
+        @logging.trace
         def process_data(data):
-            logging.trace(process_data)  # Logs "invoking process_data"
             # ... function implementation
             return result
+
+        # Calling process_data will log:
+        # "→ module.process_data" on entry
+        # "← module.process_data (1.23ms)" on exit
 
     Fatal errors that exit the application::
 
@@ -98,13 +102,18 @@ Example:
         logging.set_level(logging.NONE)
 """
 
+import inspect
 import logging
 import sys
+import time
 import traceback
 
 from functools import cache
 from functools import partial
+from functools import wraps
+from typing import Any
 from typing import Callable
+from typing import TypeVar
 
 from . import heuristics
 from . import metadata
@@ -125,7 +134,7 @@ logging.addLevelName(logging.TRACE, "TRACE")
 
 # Logging level constants that wrap stdlib logging module constants
 NOTSET = logging.NOTSET
-TRACE = logging.NOTSET
+TRACE = logging.TRACE
 DEBUG = logging.DEBUG
 INFO = logging.INFO
 WARNING = logging.WARNING
@@ -175,36 +184,73 @@ error = partial(log, logging.ERROR)
 critical = partial(log, logging.CRITICAL)
 
 
-def trace(
-    f: Callable,
-    modname: str | None = None,
-    clsname: str | None = None
-) -> None:
-    """Log a trace message for function invocation.
+T = TypeVar("T", bound=Callable[..., Any])
 
-    This function logs a trace-level message indicating that a function
-    is being invoked. Useful for detailed debugging and execution flow tracking.
+
+def trace(f: T) -> T:
+    """Decorator to automatically trace function invocations.
+
+    This decorator logs trace-level messages at function entry and exit,
+    automatically extracting module and qualified name information from
+    the function object. Useful for detailed debugging and execution flow
+    tracking.
+
+    The decorator works with both synchronous and asynchronous functions,
+    logging entry with '→' and exit with '←' symbols. Exit logs include
+    the execution time in milliseconds.
 
     Args:
-        f (Callable): The function being invoked
+        f (Callable): The function to wrap with tracing
 
     Returns:
-        None
+        Callable: The wrapped function with tracing enabled
 
     Raises:
         None
+
+    Example:
+        @trace
+        def process_data(data):
+            # Function implementation
+            return result
+
+        # Logs: "→ module.process_data" on entry
+        # Logs: "← module.process_data (1.23ms)" on exit
     """
-    msg = ""
+    func_name = f"{f.__module__}.{f.__qualname__}"
 
-    if modname is not None:
-        msg += f"{modname}."
+    if inspect.iscoroutinefunction(f):
+        @wraps(f)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            start_time = time.perf_counter()
+            log(logging.TRACE, f"→ {func_name}")
+            try:
+                result = await f(*args, **kwargs)
+            except Exception:
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+                log(logging.TRACE, f"← {func_name} (exception, {elapsed_ms:.2f}ms)")
+                raise
+            else:
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+                log(logging.TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
+                return result
+        return async_wrapper  # type: ignore[return-value]
 
-    if clsname is not None:
-        msg += f"{clsname.__name__}."
-
-    msg += f.__name__
-
-    log(logging.TRACE, msg)
+    @wraps(f)
+    def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+        start_time = time.perf_counter()
+        log(logging.TRACE, f"→ {func_name}")
+        try:
+            result = f(*args, **kwargs)
+        except Exception:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            log(logging.TRACE, f"← {func_name} (exception, {elapsed_ms:.2f}ms)")
+            raise
+        else:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000
+            log(logging.TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
+            return result
+    return sync_wrapper  # type: ignore[return-value]
 
 
 def exception(exc: Exception) -> None:

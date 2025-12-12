@@ -199,24 +199,28 @@ The SDK provides logging level constants that you can use instead of importing t
 ### Logging Features
 
 The SDK includes a comprehensive logging system:
-- Custom FATAL level (90) in addition to standard levels
-- Convenience functions: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
-- File logging with automatic directory creation
-- Console output control (stdout/stderr switching)
-- httpx/httpcore logging control via `propagate` parameter
-- Centralized configuration via `set_level()` and `configure_file_logging()`
+- **Function tracing decorator** (`@trace`) with automatic timing and entry/exit logging
+- **Custom logging levels**: TRACE (5), FATAL (90), and NONE (100) in addition to standard levels
+- **Convenience functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`, `trace()`
+- **File logging** with automatic directory creation and custom formatting
+- **Console output control** (stdout/stderr switching)
+- **httpx/httpcore logging control** via `propagate` parameter
+- **Centralized configuration** via `set_level()` and `configure_file_logging()`
+- **Sensitive data filtering** to automatically redact PII, API keys, passwords, and tokens
 
 ### Available Logging Levels
 
 The SDK provides the following logging level constants:
 
 - `ipsdk.logging.NOTSET` - No logging threshold (0)
+- `ipsdk.logging.TRACE` - Function tracing and detailed execution flow (5)
 - `ipsdk.logging.DEBUG` - Debug messages (10)
 - `ipsdk.logging.INFO` - Informational messages (20)
 - `ipsdk.logging.WARNING` - Warning messages (30)
 - `ipsdk.logging.ERROR` - Error messages (40)
 - `ipsdk.logging.CRITICAL` - Critical error messages (50)
 - `ipsdk.logging.FATAL` - Fatal error messages (90)
+- `ipsdk.logging.NONE` - Disable all logging (100)
 
 ### File Logging
 
@@ -267,6 +271,188 @@ You can specify custom format strings for file handlers:
 ```
 
 **Note:** File logging automatically creates parent directories if they don't exist.
+
+### Function Tracing with @trace Decorator
+
+The SDK provides a powerful `@trace` decorator for debugging and performance monitoring. When applied to functions or methods, it automatically logs entry/exit points with execution timing.
+
+#### Basic Usage
+
+```python
+from ipsdk import logging
+
+# Enable TRACE level to see trace output
+logging.set_level(logging.TRACE)
+
+@logging.trace
+def process_data(data):
+    # Your implementation
+    return result
+
+# When called, logs:
+# → module.process_data
+# ← module.process_data (0.15ms)
+```
+
+#### Features
+
+The `@trace` decorator provides:
+- **Automatic entry/exit logging** with `→` and `←` symbols
+- **Execution time measurement** in milliseconds (2 decimal precision)
+- **Module and class context** extracted automatically from function metadata
+- **Exception tracking** with timing when functions exit via exception
+- **Sync and async support** - works with both synchronous and asynchronous functions
+
+#### Decorator vs Manual Logging
+
+**Old Pattern (deprecated):**
+```python
+def my_method(self):
+    logging.trace(self.my_method, modname=__name__, clsname=self.__class__)
+    # implementation
+```
+
+**New Pattern (recommended):**
+```python
+@logging.trace
+def my_method(self):
+    # implementation
+```
+
+The decorator approach:
+- Eliminates repetitive code
+- Automatically extracts module and class names
+- Provides entry/exit visibility
+- Includes execution timing
+- Tracks exception exits
+
+#### Using with Classes
+
+The decorator works seamlessly with instance methods, class methods, and static methods:
+
+```python
+class DataProcessor:
+    @logging.trace
+    def process(self, data):
+        """Process data - traced automatically"""
+        return self._transform(data)
+
+    @logging.trace
+    def _transform(self, data):
+        """Private method - also traced"""
+        return data.upper()
+
+    @classmethod
+    @logging.trace
+    def from_config(cls, config):
+        """Class method - traced"""
+        return cls(config['param'])
+
+    @staticmethod
+    @logging.trace
+    def validate(data):
+        """Static method - traced"""
+        return len(data) > 0
+```
+
+#### Async Functions
+
+The decorator automatically handles async functions:
+
+```python
+@logging.trace
+async def fetch_data(url):
+    """Async function - timing includes await time"""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
+        return response.json()
+
+# Logs:
+# → module.fetch_data
+# ← module.fetch_data (245.67ms)
+```
+
+#### Exception Tracking
+
+When functions exit via exception, the decorator logs the exception exit with timing:
+
+```python
+@logging.trace
+def risky_operation():
+    raise ValueError("Something went wrong")
+
+# Logs:
+# → module.risky_operation
+# ← module.risky_operation (exception, 0.03ms)
+# (Exception propagates normally)
+```
+
+#### Output Format
+
+**Entry log format:**
+```
+→ module_name.ClassName.method_name
+```
+
+**Normal exit format:**
+```
+← module_name.ClassName.method_name (1.23ms)
+```
+
+**Exception exit format:**
+```
+← module_name.ClassName.method_name (exception, 1.23ms)
+```
+
+#### Performance Considerations
+
+- Uses `time.perf_counter()` for high-precision timing (sub-millisecond accuracy)
+- Minimal overhead: ~0.01-0.02ms per traced function call
+- Only logs when `TRACE` level is enabled
+- Safe to leave decorators in production code (no output when TRACE is disabled)
+
+#### Example: Debugging Performance Issues
+
+```python
+import time
+from ipsdk import logging
+
+logging.set_level(logging.TRACE)
+
+@logging.trace
+def slow_query():
+    time.sleep(0.5)  # Simulate slow database query
+    return "result"
+
+@logging.trace
+def fast_cache_lookup():
+    return "cached_result"
+
+@logging.trace
+def main():
+    slow_query()
+    fast_cache_lookup()
+    return "done"
+
+main()
+# Output:
+# → __main__.main
+# → __main__.slow_query
+# ← __main__.slow_query (500.12ms)
+# → __main__.fast_cache_lookup
+# ← __main__.fast_cache_lookup (0.01ms)
+# ← __main__.main (500.25ms)
+```
+
+This helps identify performance bottlenecks by showing exactly which functions are taking the most time.
+
+#### Best Practices
+
+1. **Use TRACE level in development** - Enable it for debugging, disable in production unless needed
+2. **Apply to key functions** - Focus on API calls, database queries, and complex logic
+3. **Leave decorators in place** - They're harmless when TRACE is disabled
+4. **Review timing data** - Use logs to identify slow operations during development
+5. **Combine with other logging** - Mix with `debug()`, `info()`, etc. for comprehensive visibility
 
 ## Documentation Standards
 

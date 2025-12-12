@@ -96,6 +96,7 @@ class IpsdkError(Exception):
         details (dict): Additional error details and context
     """
 
+    @logging.trace
     def __init__(self, message: str, exc: httpx.HTTPError | None = None) -> None:
         """
         Initialize the base SDK exception.
@@ -103,10 +104,10 @@ class IpsdkError(Exception):
         Args:
             message (str): Human-readable error message
         """
-        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         super().__init__(message)
         self._exc = exc
 
+    @logging.trace
     def __str__(self) -> str:
         """
         Return a string representation of the error.
@@ -114,7 +115,6 @@ class IpsdkError(Exception):
         Returns:
             A formatted error message including details if available
         """
-        logging.trace(self.__str__, modname=__name__, clsname=self.__class__)
         return self.args[0]
 
     @property
@@ -173,8 +173,8 @@ class RequestError(IpsdkError):
         ...     print(f"Failed request: {e.request.url}")
     """
 
+    @logging.trace
     def __init__(self, exc: httpx.HTTPError) -> None:
-        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         super().__init__(exc.args[0], exc)
 
 
@@ -224,8 +224,8 @@ class HTTPStatusError(IpsdkError):
         ...         print("Authentication failed")
     """
 
+    @logging.trace
     def __init__(self, exc: httpx.HTTPError) -> None:
-        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
         super().__init__(exc.args[0], exc)
 
 

@@ -145,6 +145,7 @@ from .http import Response
 class ConnectionBase:
     client: httpx.Client | httpx.AsyncClient
 
+    @logging.trace
     def __init__(
         self,
         host: str,
@@ -184,8 +185,6 @@ class ConnectionBase:
         Raises:
             None
         """
-        logging.trace(self.__init__, modname=__name__, clsname=self.__class__)
-
         self.user = user
         self.password = password
 
@@ -204,6 +203,7 @@ class ConnectionBase:
         )
         self.client.headers["User-Agent"] = f"ipsdk/{metadata.version}"
 
+    @logging.trace
     def _make_base_url(
         self,
         host: str,
@@ -229,8 +229,6 @@ class ConnectionBase:
         Raises:
             None
         """
-        logging.trace(self._make_base_url, modname=__name__, clsname=self.__class__)
-
         if port == 0:
             port = 443 if use_tls is True else 80
 
@@ -242,6 +240,7 @@ class ConnectionBase:
 
         return urllib.parse.urlunsplit((proto, host, base_path, None, None))
 
+    @logging.trace
     def _build_request(
         self,
         method: HTTPMethod,
@@ -268,8 +267,6 @@ class ConnectionBase:
         Raises:
             None
         """
-        logging.trace(self._build_request, modname=__name__, clsname=self.__class__)
-
         self._validate_request_args(method, path, params, json)
 
         headers = {}
@@ -302,6 +299,7 @@ class ConnectionBase:
             json=json,
         )
 
+    @logging.trace
     def _validate_request_args(
         self,
         method: HTTPMethod,
@@ -330,9 +328,6 @@ class ConnectionBase:
             IpsdkError: If method is not HTTPMethod type, params is not dict,
                 json is not dict/list, or path is not string
         """
-        logging.trace(
-            self._validate_request_args, modname=__name__, clsname=self.__class__
-        )
         if isinstance(method, HTTPMethod) is False:
             msg = "method must be of type `HTTPMethod`"
             raise exceptions.IpsdkError(msg)
@@ -378,6 +373,7 @@ class Connection(ConnectionBase):
         super().__init__(*args, **kwargs)
         self._auth_lock = threading.Lock()
 
+    @logging.trace
     def __init_client__(
         self, base_url: str | None = None, verify: bool = True, timeout: int = 30
     ) -> httpx.Client:
@@ -397,7 +393,6 @@ class Connection(ConnectionBase):
         Raises:
             None
         """
-        logging.trace(self.__init_client__, modname=__name__, clsname=self.__class__)
         logging.info(f"Creating new client for {base_url}")
         return httpx.Client(
             base_url=base_url or "",
@@ -411,6 +406,7 @@ class Connection(ConnectionBase):
         Abstract method for implementing authentication
         """
 
+    @logging.trace
     def _send_request(
         self,
         method: HTTPMethod,
@@ -437,8 +433,6 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
-
         if self.authenticated is False:
             assert self._auth_lock is not None
             with self._auth_lock:
@@ -472,6 +466,7 @@ class Connection(ConnectionBase):
 
         return Response(res)
 
+    @logging.trace
     def get(self, path: str, params: dict[str, Any | None] | None = None) -> Response:
         """Send an HTTP GET request to the server.
 
@@ -486,9 +481,9 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self.get, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.GET, path=path, params=params)
 
+    @logging.trace
     def delete(
         self, path: str, params: dict[str, Any | None] | None = None
     ) -> Response:
@@ -505,9 +500,9 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self.delete, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
+    @logging.trace
     def post(
         self,
         path: str,
@@ -529,9 +524,9 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self.post, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.POST, path=path, params=params, json=json)
 
+    @logging.trace
     def put(
         self,
         path: str,
@@ -553,9 +548,9 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self.put, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.PUT, path=path, params=params, json=json)
 
+    @logging.trace
     def patch(
         self,
         path: str,
@@ -577,7 +572,6 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self.patch, modname=__name__, clsname=self.__class__)
         return self._send_request(HTTPMethod.PATCH, path=path, params=params, json=json)
 
 
@@ -588,6 +582,7 @@ class AsyncConnection(ConnectionBase):
         super().__init__(*args, **kwargs)
         self._auth_lock = asyncio.Lock()
 
+    @logging.trace
     def __init_client__(
         self, base_url: str | None = None, verify: bool = True, timeout: int = 30
     ) -> httpx.AsyncClient:
@@ -610,7 +605,6 @@ class AsyncConnection(ConnectionBase):
         Returns:
             An instance of `httpx.AsyncClient`
         """
-        logging.trace(self.__init_client__, modname=__name__, clsname=self.__class__)
         logging.info(f"Creating new async client for {base_url}")
         return httpx.AsyncClient(
             base_url=base_url or "", verify=verify, timeout=timeout
@@ -622,6 +616,7 @@ class AsyncConnection(ConnectionBase):
         Abstract method for implementing authentication
         """
 
+    @logging.trace
     async def _send_request(
         self,
         method: HTTPMethod,
@@ -648,8 +643,6 @@ class AsyncConnection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        logging.trace(self._send_request, modname=__name__, clsname=self.__class__)
-
         if self.authenticated is False:
             assert self._auth_lock is not None
             async with self._auth_lock:
@@ -683,6 +676,7 @@ class AsyncConnection(ConnectionBase):
 
         return Response(res)
 
+    @logging.trace
     async def get(
         self, path: str, params: dict[str, Any | None] | None = None
     ) -> Response:
@@ -704,9 +698,9 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.get, modname=__name__, clsname=self.__class__)
         return await self._send_request(HTTPMethod.GET, path=path, params=params)
 
+    @logging.trace
     async def delete(
         self, path: str, params: dict[str, Any | None] | None = None
     ) -> Response:
@@ -728,9 +722,9 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.delete, modname=__name__, clsname=self.__class__)
         return await self._send_request(HTTPMethod.DELETE, path=path, params=params)
 
+    @logging.trace
     async def post(
         self,
         path: str,
@@ -761,11 +755,11 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.post, modname=__name__, clsname=self.__class__)
         return await self._send_request(
             HTTPMethod.POST, path=path, params=params, json=json
         )
 
+    @logging.trace
     async def put(
         self,
         path: str,
@@ -796,11 +790,11 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.put, modname=__name__, clsname=self.__class__)
         return await self._send_request(
             HTTPMethod.PUT, path=path, params=params, json=json
         )
 
+    @logging.trace
     async def patch(
         self,
         path: str,
@@ -831,7 +825,6 @@ class AsyncConnection(ConnectionBase):
         Returns:
             A `Response` object
         """
-        logging.trace(self.patch, modname=__name__, clsname=self.__class__)
         return await self._send_request(
             HTTPMethod.PATCH, path=path, params=params, json=json
         )

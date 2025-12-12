@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 
+import asyncio
+import contextlib
 import logging
 import sys
 
@@ -30,7 +32,7 @@ class TestLoggingConstants:
     def test_logging_constants_values(self):
         """Test that logging constants have correct values."""
         assert ipsdk_logging.NOTSET == logging.NOTSET
-        assert ipsdk_logging.TRACE == logging.NOTSET  # TRACE is aliased to NOTSET
+        assert ipsdk_logging.TRACE == 5  # TRACE is a custom level
         assert ipsdk_logging.DEBUG == logging.DEBUG
         assert ipsdk_logging.INFO == logging.INFO
         assert ipsdk_logging.WARNING == logging.WARNING
@@ -143,40 +145,72 @@ class TestTraceFunction:
     """Test the trace logging function."""
 
     def test_trace_function_with_callable(self):
-        """Test trace function logs function name."""
+        """Test trace decorator logs function entry and exit with timing."""
         with patch("ipsdk.logging.log") as mock_log:
 
+            @ipsdk_logging.trace
             def test_func():
-                pass
+                return "result"
 
-            ipsdk_logging.trace(test_func)
-            mock_log.assert_called_once_with(logging.TRACE, "test_func")
+            result = test_func()
+
+            assert result == "result"
+            assert mock_log.call_count == 2
+            # Check that entry and exit were logged with correct symbols
+            calls = mock_log.call_args_list
+            assert any("→" in str(call) and "test_func" in str(call) for call in calls)
+            assert any("←" in str(call) and "test_func" in str(call) for call in calls)
+            # Check that exit includes timing information in milliseconds
+            exit_calls = [call for call in calls if "←" in str(call)]
+            assert len(exit_calls) == 1
+            assert "ms)" in str(exit_calls[0])
 
     def test_trace_function_with_different_functions(self):
-        """Test trace function with different function types."""
+        """Test trace decorator with different function types."""
         with patch("ipsdk.logging.log") as mock_log:
 
+            @ipsdk_logging.trace
             def regular_func():
-                pass
+                return "regular"
 
             class TestClass:
+                @ipsdk_logging.trace
                 def method(self):
-                    pass
+                    return "method"
 
                 @staticmethod
+                @ipsdk_logging.trace
                 def static_method():
-                    pass
+                    return "static"
 
-            test_cases = [
-                (regular_func, "regular_func"),
-                (TestClass.method, "method"),
-                (TestClass.static_method, "static_method"),
-            ]
+            # Test regular function
+            result = regular_func()
+            assert result == "regular"
+            assert mock_log.call_count == 2
+            calls = mock_log.call_args_list
+            entry_found = any("→" in str(c) and "regular_func" in str(c) for c in calls)
+            exit_found = any("←" in str(c) and "regular_func" in str(c) for c in calls)
+            assert entry_found
+            assert exit_found
 
-            for func, expected_msg in test_cases:
-                mock_log.reset_mock()
-                ipsdk_logging.trace(func)
-                mock_log.assert_called_once_with(logging.TRACE, expected_msg)
+            # Test method
+            mock_log.reset_mock()
+            obj = TestClass()
+            result = obj.method()
+            assert result == "method"
+            assert mock_log.call_count == 2
+            calls = mock_log.call_args_list
+            assert any("→" in str(call) and "method" in str(call) for call in calls)
+            assert any("←" in str(call) and "method" in str(call) for call in calls)
+
+            # Test static method
+            mock_log.reset_mock()
+            result = TestClass.static_method()
+            assert result == "static"
+            assert mock_log.call_count == 2
+            calls = mock_log.call_args_list
+            assert any("→" in str(c) and "static_method" in str(c) for c in calls)
+            assert any("←" in str(c) and "static_method" in str(c) for c in calls)
 
 
 class TestExceptionFunction:
@@ -645,19 +679,60 @@ class TestIntegration:
         assert any("critical message" in msg for msg in messages)
 
     def test_trace_function_integration(self, caplog):
-        """Test trace function with actual logging."""
+        """Test trace decorator with actual logging."""
         logger = ipsdk_logging.get_logger()
         logger.setLevel(logging.TRACE)
         logger.propagate = True
 
+        @ipsdk_logging.trace
         def test_function():
             """Test function for tracing."""
+            return "traced"
 
         with caplog.at_level(logging.TRACE, logger=metadata.name):
-            ipsdk_logging.trace(test_function)
+            result = test_function()
 
+        assert result == "traced"
         messages = [record.getMessage() for record in caplog.records]
-        assert any("test_function" in msg for msg in messages)
+        assert any("→" in msg and "test_function" in msg for msg in messages)
+        assert any("←" in msg and "test_function" in msg for msg in messages)
+
+    def test_trace_async_function(self):
+        """Test trace decorator with async functions."""
+        with patch("ipsdk.logging.log") as mock_log:
+
+            @ipsdk_logging.trace
+            async def async_func():
+                return "async_result"
+
+            result = asyncio.run(async_func())
+
+            assert result == "async_result"
+            assert mock_log.call_count == 2
+            calls = mock_log.call_args_list
+            assert any("→" in str(call) and "async_func" in str(call) for call in calls)
+            assert any("←" in str(call) and "async_func" in str(call) for call in calls)
+
+    def test_trace_exception_handling(self):
+        """Test trace decorator logs exception exit with timing."""
+        with patch("ipsdk.logging.log") as mock_log:
+            test_error_msg = "test error"
+
+            @ipsdk_logging.trace
+            def error_func():
+                raise ValueError(test_error_msg)
+
+            with contextlib.suppress(ValueError):
+                error_func()
+
+            assert mock_log.call_count == 2
+            calls = mock_log.call_args_list
+            assert any("→" in str(call) and "error_func" in str(call) for call in calls)
+            # Check that exception exit includes both "exception" and timing
+            exit_calls = [call for call in calls if "←" in str(call)]
+            assert len(exit_calls) == 1
+            assert "exception" in str(exit_calls[0])
+            assert "ms)" in str(exit_calls[0])
 
 
 class TestFormatString:

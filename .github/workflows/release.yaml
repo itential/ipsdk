@@ -1,7 +1,7 @@
 # .github/workflows/release.yml
 # This workflow will create a new release and upload it to PyPI.  It will run
 # whenever a new tag is merged into the repository.  It builds the application
-# and pushes it to PyPI.
+# and pushes it to PyPI using trusted publisher (OIDC).
 ---
 name: Release new version
 
@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write  # Required for trusted publisher (OIDC)
 
 jobs:
   build:
@@ -30,19 +31,13 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Install tools
-        run: uv run pip install build twine
-
       - name: Build package
-        run: uv run python -m build
+        run: uv build
 
-      - name: Publish to PyPI or TestPyPI
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-            echo "Publishing to PyPI..."
-            twine upload dist/*
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          print-hash: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

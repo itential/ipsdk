@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-12-16
+
+### Added
+- Add support for connection ttl (#95)
+- Add thread-safe authentication locking to prevent race conditions (#84)
+
+### Changed
+- Migrate release workflow from twine to trusted publisher (#98)
+- Improve platform module code quality and documentation (#97)
+- Enhance thread safety in logging module (#94)
+- Implement decorator pattern for trace function with execution timing (#93)
+- Remove unused mock detection logic from exceptions module (#92)
+- Modernize and fix docstrings in connection.py (#91)
+- Modernize type annotations across all modules (#90)
+- Make all boolean comparisons explicit and consistent (#89)
+- Add caching to _get_loggers() function for improved performance (#88)
+- Replace assert statements with proper runtime validation (#87)
+- Remove circular import dependency in heuristics module (#86)
+
+### Fixed
+- Add missing token extraction in async OAuth authentication (#96)
+- Correct delete method to pass HTTPMethod enum instead of string value (#85)
+
+### Documentation
+- Update LICENSES.md with current dependency versions (#83)
+
 ## [0.6.0] - 2025-12-08
 
 ### Added

@@ -79,14 +79,14 @@ fallback-version = "0.0.0"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ipsdk"]
-# LICENSE and LICENSES.md are automatically included in wheel at dist-info/licenses/
+# LICENSE and NOTICE are automatically included in wheel at dist-info/licenses/
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/src",
     "/tests",
     "/LICENSE",
-    "/LICENSES.md",
+    "/NOTICE",
     "/README.md",
     "/pyproject.toml",
 ]

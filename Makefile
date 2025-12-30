@@ -2,10 +2,11 @@
 
 # Copyright 2025 Itential Inc. All Rights Reserved
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 .DEFAULT_GOAL := help
 
-.PHONY: test coverage clean lint format ruff-fix security tox \
+.PHONY: test coverage clean lint format ruff-fix security license license-fix tox \
 		tox-py310 tox-py311 tox-py312 tox-py313 tox-coverage tox-lint \
 		tox-format tox-security tox-premerge tox-list
 
@@ -17,6 +18,8 @@ help:
 	@echo "  clean           - Cleans the development environment"
 	@echo "  coverage        - Run test coverage report"
 	@echo "  format          - Format source files with ruff"
+	@echo "  license         - Check all Python files for proper license headers"
+	@echo "  license-fix     - Automatically add missing license headers to Python files"
 	@echo "  lint            - Run analysis on source files"
 	@echo "  premerge        - Run the premerge tests locally"
 	@echo "  ruff-fix        - Run ruff with --fix to auto-fix issues"
@@ -54,12 +57,22 @@ lint:
 	uv run ruff check src/ipsdk
 	uv run ruff check tests
 
-# The security target invokes bandit to run security analysis on the 
+# The security target invokes bandit to run security analysis on the
 # source code.  It scans for common security vulnerabilities.
 security:
 	uv run bandit -r src/ipsdk --configfile pyproject.toml
 
-# The clean target will remove build and dev artififacts that are not 
+# The license target verifies that all Python files contain the
+# proper license header.  This target is invoked in the premerge pipeline.
+license:
+	uv run python scripts/check_license_headers.py
+
+# The license-fix target automatically adds missing license headers to
+# all Python files in the project.
+license-fix:
+	uv run python scripts/check_license_headers.py --fix
+
+# The clean target will remove build and dev artififacts that are not
 # part of the application and get created by other targets.
 clean:
 	@rm -rf .pytest_cache coverage.* htmlcov dist build *.egg-info
@@ -77,7 +90,7 @@ ruff-fix:
 
 # The premerge target will run the permerge tests locally.  This is
 # the same target that is invoked in the permerge pipeline.
-premerge: clean lint security test
+premerge: clean lint security license test
 
 # The tox target will run tests across all supported Python versions
 # (3.10, 3.11, 3.12, 3.13) using tox with uv integration.

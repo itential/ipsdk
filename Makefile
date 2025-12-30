@@ -6,26 +6,35 @@
 .DEFAULT_GOAL := help
 
 .PHONY: test coverage clean lint format ruff-fix security tox \
-		tox-py310 tox-py311 tox-py312 tox-py313
+		tox-py310 tox-py311 tox-py312 tox-py313 tox-coverage tox-lint \
+		tox-format tox-security tox-premerge tox-list
 
 # The help target displays a help message that includes the avialable targets
 # in this `Makefile`.  It is the default target if `make` is run without any
 # parameters.
 help:
 	@echo "Available targets:"
-	@echo "  clean        - Cleans the development environment"
-	@echo "  coverage     - Run test coverage report"
-	@echo "  format       - Format source files with ruff"
-	@echo "  lint         - Run analysis on source files"
-	@echo "  premerge     - Run the permerge tests locallly"
-	@echo "  ruff-fix     - Run ruff with --fix to auto-fix issues"
-	@echo "  security     - Run security analysis using bandit"
-	@echo "  test         - Run test suite"
-	@echo "  tox          - Run tests across all Python versions (3.10-3.13)"
-	@echo "  tox-py310    - Run tests with Python 3.10"
-	@echo "  tox-py311    - Run tests with Python 3.11"
-	@echo "  tox-py312    - Run tests with Python 3.12"
-	@echo "  tox-py313    - Run tests with Python 3.13"
+	@echo "  clean           - Cleans the development environment"
+	@echo "  coverage        - Run test coverage report"
+	@echo "  format          - Format source files with ruff"
+	@echo "  lint            - Run analysis on source files"
+	@echo "  premerge        - Run the premerge tests locally"
+	@echo "  ruff-fix        - Run ruff with --fix to auto-fix issues"
+	@echo "  security        - Run security analysis using bandit"
+	@echo "  test            - Run test suite"
+	@echo ""
+	@echo "Tox targets:"
+	@echo "  tox            - Run tests across all Python versions (3.10-3.13)"
+	@echo "  tox-py310      - Run tests with Python 3.10"
+	@echo "  tox-py311      - Run tests with Python 3.11"
+	@echo "  tox-py312      - Run tests with Python 3.12"
+	@echo "  tox-py313      - Run tests with Python 3.13"
+	@echo "  tox-coverage   - Run tests with coverage report using tox"
+	@echo "  tox-lint       - Run linting checks using tox"
+	@echo "  tox-format     - Format code using tox"
+	@echo "  tox-security   - Run security analysis using tox"
+	@echo "  tox-premerge   - Run all premerge checks using tox"
+	@echo "  tox-list       - List all available tox environments"
 	@echo ""
 
 # The test target will invoke the unit tests using pytest.   This target
@@ -90,3 +99,27 @@ tox-py312:
 # The tox-py313 target will run tests specifically with Python 3.13
 tox-py313:
 	uv run tox -e py313
+
+# The tox-coverage target will run tests with coverage report using tox
+tox-coverage:
+	uv run tox -e coverage
+
+# The tox-lint target will run linting checks using tox
+tox-lint:
+	uv run tox -e lint
+
+# The tox-format target will format code using tox
+tox-format:
+	uv run tox -e format
+
+# The tox-security target will run security analysis using tox
+tox-security:
+	uv run tox -e security
+
+# The tox-premerge target will run all premerge checks using tox
+tox-premerge:
+	uv run tox -e premerge
+
+# The tox-list target will list all available tox environments
+tox-list:
+	uv run tox list

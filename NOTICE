@@ -33,25 +33,10 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - **Description**: Internationalized Domain Names in Applications (IDNA)
 - **PyPI**: https://pypi.org/project/idna/
 
-**sniffio (1.3.1)**
-- **License**: MIT License or Apache License 2.0
-- **Description**: Sniff out which async library your code is running under
-- **PyPI**: https://pypi.org/project/sniffio/
-
-**typing-extensions (4.15.0)**
-- **License**: Python Software Foundation License
-- **Description**: Backported and Experimental Type Hints for Python
-- **PyPI**: https://pypi.org/project/typing-extensions/
-
 **h11 (0.16.0)**
 - **License**: MIT
 - **Description**: A pure-Python, bring-your-own-I/O implementation of HTTP/1.1
 - **PyPI**: https://pypi.org/project/h11/
-
-**mdurl (0.1.2)**
-- **License**: MIT
-- **Description**: Markdown URL utilities
-- **PyPI**: https://pypi.org/project/mdurl/
 
 ## Development Dependencies
 
@@ -89,12 +74,12 @@ This document lists all third-party dependencies used in the Itential Python SDK
 
 ### Code Quality and Linting
 
-**ruff (0.14.8)**
+**ruff (0.14.9)**
 - **License**: MIT
 - **Description**: An extremely fast Python linter and code formatter
 - **PyPI**: https://pypi.org/project/ruff/
 
-**mypy (1.19.0)**
+**mypy (1.19.1)**
 - **License**: MIT
 - **Description**: Optional static typing for Python
 - **PyPI**: https://pypi.org/project/mypy/
@@ -113,7 +98,7 @@ This document lists all third-party dependencies used in the Itential Python SDK
 
 ### Development Tools
 
-**pre-commit (4.5.0)**
+**pre-commit (4.5.1)**
 - **License**: MIT
 - **Description**: A framework for managing and maintaining multi-language pre-commit hooks
 - **PyPI**: https://pypi.org/project/pre-commit/
@@ -165,7 +150,12 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - **Description**: A lil' TOML parser for Python
 - **PyPI**: https://pypi.org/project/tomli/
 
-**cachetools (6.2.2)**
+**typing-extensions (4.15.0)**
+- **License**: Python Software Foundation License
+- **Description**: Backported and Experimental Type Hints for Python
+- **PyPI**: https://pypi.org/project/typing-extensions/
+
+**cachetools (6.2.4)**
 - **License**: MIT
 - **Description**: Extensible memoizing collections and decorators
 - **PyPI**: https://pypi.org/project/cachetools/
@@ -215,7 +205,7 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - **Description**: Distribution utilities for Python
 - **PyPI**: https://pypi.org/project/distlib/
 
-**filelock (3.20.0)**
+**filelock (3.20.1)**
 - **License**: The Unlicense (Unlicense)
 - **Description**: A platform independent file lock
 - **PyPI**: https://pypi.org/project/filelock/
@@ -225,7 +215,7 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - **Description**: A small Python module for determining appropriate platform-specific dirs
 - **PyPI**: https://pypi.org/project/platformdirs/
 
-**librt (0.7.3)**
+**librt (0.7.4)**
 - **License**: MIT AND PSF-2.0
 - **Description**: Mypyc runtime library with C implementations of Python standard library classes
 - **PyPI**: https://pypi.org/project/librt/
@@ -260,9 +250,9 @@ This document lists all third-party dependencies used in the Itential Python SDK
 ## License Categories Summary
 
 ### MIT Licensed (Most Permissive)
-- anyio, sniffio, h11, mdurl, pytest, pytest-cov, ruff, mypy, mypy-extensions
+- anyio, h11, pytest, pytest-cov, ruff, mypy, mypy-extensions
 - pre-commit, build, pyproject-hooks, pyproject-api, pluggy, iniconfig, cfgv, identify
-- virtualenv, platformdirs, rich, markdown-it-py, pyyaml, tox, tox-uv, tomli, cachetools
+- virtualenv, platformdirs, rich, markdown-it-py, pyyaml, tox, tox-uv, tomli, cachetools, mdurl
 
 ### BSD Licensed
 - httpx (BSD-3-Clause), httpcore (BSD-3-Clause), idna (BSD-3-Clause)
@@ -284,7 +274,7 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - chardet
 
 ### Dual Licensed (MIT or Apache 2.0)
-- sniffio (MIT or Apache 2.0), exceptiongroup (MIT or Apache 2.0)
+- exceptiongroup (MIT or Apache 2.0)
 
 ### Multiple Licenses
 - librt (MIT AND PSF-2.0)
@@ -306,7 +296,7 @@ We gratefully acknowledge the contributions of all open source projects that mak
 
 ## License Information Updates
 
-This file was last updated on: 2025-12-10
+This file was last updated on: 2025-12-22
 
 For the most current license information, please check the individual project pages linked above. License information is subject to change with new versions of dependencies.
 

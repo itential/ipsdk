@@ -549,6 +549,32 @@ def test_authenticate_user_request_error():
         mixin.authenticate_basicauth()
 
 
+def test_authenticate_basicauth_missing_credentials():
+    """Test authenticate_basicauth raises IpsdkError when user or password is None."""
+    mixin = AuthMixin()
+    mixin.user = None
+    mixin.password = None
+    mixin.client = Mock()
+
+    with pytest.raises(exceptions.IpsdkError) as exc_info:
+        mixin.authenticate_basicauth()
+
+    assert "Username and password are required" in str(exc_info.value)
+
+
+def test_authenticate_oauth_missing_credentials():
+    """Test authenticate_oauth raises IpsdkError with missing credentials."""
+    mixin = AuthMixin()
+    mixin.client_id = None
+    mixin.client_secret = None
+    mixin.client = Mock()
+
+    with pytest.raises(exceptions.IpsdkError) as exc_info:
+        mixin.authenticate_oauth()
+
+    assert "Client ID and client secret are required" in str(exc_info.value)
+
+
 def test_authenticate_no_credentials_error():
     """Test authenticate raises IpsdkError when no credentials provided."""
     mixin = AuthMixin()
@@ -753,6 +779,34 @@ async def test_async_authenticate_basicauth_request_error():
 
     with pytest.raises(exceptions.RequestError):
         await mixin.authenticate_basicauth()
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_basicauth_missing_credentials():
+    """Test async authenticate_basicauth raises IpsdkError with missing creds."""
+    mixin = AsyncAuthMixin()
+    mixin.user = None
+    mixin.password = None
+    mixin.client = AsyncMock()
+
+    with pytest.raises(exceptions.IpsdkError) as exc_info:
+        await mixin.authenticate_basicauth()
+
+    assert "Username and password are required" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_async_authenticate_oauth_missing_credentials():
+    """Test async authenticate_oauth raises IpsdkError with missing credentials."""
+    mixin = AsyncAuthMixin()
+    mixin.client_id = None
+    mixin.client_secret = None
+    mixin.client = AsyncMock()
+
+    with pytest.raises(exceptions.IpsdkError) as exc_info:
+        await mixin.authenticate_oauth()
+
+    assert "Client ID and client secret are required" in str(exc_info.value)
 
 
 @pytest.mark.asyncio

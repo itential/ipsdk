@@ -11,6 +11,8 @@ import sys
 from unittest.mock import Mock
 from unittest.mock import patch
 
+import pytest
+
 from ipsdk import heuristics
 from ipsdk import logging as ipsdk_logging
 from ipsdk import metadata
@@ -399,6 +401,15 @@ class TestSetLevel:
             ipsdk_logging.set_level("NONE")
 
             mock_logger.setLevel.assert_called_once_with(ipsdk_logging.NONE)
+
+    def test_set_level_with_invalid_string_raises_type_error(self):
+        """Test set_level with invalid string raises TypeError."""
+        with patch("ipsdk.logging.get_logger") as mock_get_logger:
+            mock_logger = Mock()
+            mock_get_logger.return_value = mock_logger
+
+            with pytest.raises(TypeError, match="Invalid level string: INVALID"):
+                ipsdk_logging.set_level("INVALID")
 
 
 class TestSensitiveDataFiltering:

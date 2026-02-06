@@ -6,20 +6,26 @@ We provide security updates for the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.4.x   | :white_check_mark: |
-| 0.3.x   | :white_check_mark: |
-| < 0.3   | :x:                |
+| 0.7.x   | :white_check_mark: |
+| 0.6.x   | :white_check_mark: |
+| < 0.6   | :x:                |
 
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in the Itential Python SDK, please report it responsibly:
 
 1. **Do not** create a public GitHub issue
-2. Email security details to the maintainers
-3. Include steps to reproduce the vulnerability
-4. Provide any relevant technical details
+2. Report the vulnerability using one of these methods:
+   - **Preferred**: Use [GitHub Security Advisories](https://github.com/itential/ipsdk/security/advisories/new) to report privately
+   - **Alternative**: Email security details to the maintainers at security@itential.com
+3. Include the following information:
+   - Description of the vulnerability
+   - Steps to reproduce the issue
+   - Affected versions
+   - Potential impact assessment
+   - Any suggested fixes or mitigations
 
-We will respond to security reports within 48 hours and provide regular updates on our progress.
+We will respond to security reports within 48 hours and provide regular updates on our progress. Once a fix is available, we will coordinate disclosure timing with you.
 
 ## Security Best Practices
 

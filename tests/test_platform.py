@@ -18,10 +18,9 @@ from ipsdk.platform import _BASICAUTH_PATH
 from ipsdk.platform import _OAUTH_HEADERS
 from ipsdk.platform import _OAUTH_PATH
 from ipsdk.platform import AsyncAuthMixin
-from ipsdk.platform import AsyncPlatformType
+from ipsdk.platform import AsyncPlatform
 from ipsdk.platform import AuthMixin
 from ipsdk.platform import Platform
-from ipsdk.platform import PlatformType
 from ipsdk.platform import _make_basicauth_body
 from ipsdk.platform import _make_oauth_body
 from ipsdk.platform import platform_factory
@@ -328,11 +327,11 @@ def test_platform_oauth_token_handling():
 
 
 def test_platform_type_aliases():
-    """Test that platform type aliases are correctly defined."""
+    """Test that platform classes are correctly defined."""
 
-    # Verify type aliases exist
-    assert PlatformType is not None
-    assert AsyncPlatformType is not None
+    # Verify platform classes exist
+    assert Platform is not None
+    assert AsyncPlatform is not None
 
 
 def test_platform_factory_with_all_parameters():

@@ -77,6 +77,8 @@ class Request:
         ValueError: If required parameters are missing or invalid
     """
 
+    __slots__ = ("headers", "json", "method", "params", "path")
+
     @logging.trace
     def __init__(
         self,
@@ -84,7 +86,7 @@ class Request:
         path: str,
         params: dict[str, Any | None] | None = None,
         headers: dict[str, str | None] | None = None,
-        json: str | bytes | dict | (list | None) = None,
+        json: str | bytes | dict | list | None = None,
     ) -> None:
         self.method = method
         self.path = path
@@ -129,6 +131,8 @@ class Response:
     Raises:
         ValueError: If the httpx_response is None or invalid
     """
+
+    __slots__ = ("_response",)
 
     @logging.trace
     def __init__(self, httpx_response: httpx.Response) -> None:

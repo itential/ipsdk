@@ -60,16 +60,16 @@ class TestIpsdkError:
     def test_request_property_without_exception(self):
         """Test request property when no httpx exception was provided."""
         exc = exceptions.IpsdkError("Test error")
-        # Accessing request without an httpx exception will raise AttributeError
-        with pytest.raises(AttributeError):
-            _ = exc.request
+        # Accessing request without an httpx exception now returns None
+        # (safer than AttributeError)
+        assert exc.request is None
 
     def test_response_property_without_exception(self):
         """Test response property when no httpx exception was provided."""
         exc = exceptions.IpsdkError("Test error")
-        # Accessing response without an httpx exception will raise AttributeError
-        with pytest.raises(AttributeError):
-            _ = exc.response
+        # Accessing response without an httpx exception now returns None
+        # (safer than AttributeError)
+        assert exc.response is None
 
 
 class TestRequestError:

@@ -104,6 +104,7 @@ Example:
         logging.set_level(logging.NONE)
 """
 
+import gc
 import inspect
 import logging
 import sys
@@ -148,8 +149,11 @@ NONE = logging.NONE
 logging.getLogger(metadata.name).setLevel(NONE)
 
 # Thread-safe configuration for sensitive data filtering
-_filtering_lock = threading.RLock()
+_filtering_lock = threading.Lock()
 _sensitive_data_filtering_enabled = False
+
+# Thread-safe logger cache access
+_logger_cache_lock = threading.Lock()
 
 
 def log(lvl: int, msg: str) -> None:
@@ -313,9 +317,8 @@ def _get_loggers() -> set[logging.Logger]:
     dependencies (ipsdk, FastMCP). Results are cached to improve performance
     on subsequent calls.
 
-    This function is thread-safe. It creates a snapshot of logger names before
-    iteration to prevent issues if the logger dictionary is modified by other
-    threads during iteration.
+    This function is thread-safe. It uses a lock to protect logger dictionary
+    access and creates a snapshot to prevent race conditions during iteration.
 
     Note:
         The cached result may not immediately reflect loggers created after
@@ -325,13 +328,19 @@ def _get_loggers() -> set[logging.Logger]:
     Returns:
         set[logging.Logger]: Set of logger instances for the application and dependencies.
     """
-    loggers = set()
-    # Create a snapshot of logger names to prevent race conditions during iteration
-    logger_names = list(logging.Logger.manager.loggerDict.keys())
-    for name in logger_names:
-        if name.startswith((metadata.name, "httpx")):
-            loggers.add(logging.getLogger(name))
-    return loggers
+    with _logger_cache_lock:
+        loggers = set()
+        # Create a copy of the logger dictionary for thread safety
+        logger_dict_copy = logging.Logger.manager.loggerDict.copy()
+
+        for name in logger_dict_copy:
+            # Verify logger still exists and matches our namespace
+            if (
+                name.startswith((metadata.name, "httpx"))
+                and name in logging.Logger.manager.loggerDict
+            ):
+                loggers.add(logging.getLogger(name))
+        return loggers
 
 
 def get_logger() -> logging.Logger:
@@ -381,7 +390,7 @@ def set_level(lvl: int | str, *, propagate: bool = False) -> None:
     logger.log(logging.INFO, f"{metadata.name} version {metadata.version}")
     logger.log(logging.INFO, f"Logging level set to {lvl}")
 
-    if propagate is True:
+    if propagate:
         # Clear cache to ensure we get all current loggers including httpx
         _get_loggers.cache_clear()
         for logger in _get_loggers():
@@ -543,6 +552,10 @@ def initialize() -> None:
         function while other threads are actively logging may result in lost
         log messages or exceptions.
 
+        This function should only be called once during application startup.
+        Repeated calls may cause memory leaks if loggers are created between
+        invocations.
+
     Returns:
         None
 
@@ -565,3 +578,6 @@ def initialize() -> None:
         logger.addHandler(stream_handler)
         logger.setLevel(NONE)
         logger.propagate = False
+
+    # Force garbage collection of closed handlers to prevent memory leaks
+    gc.collect()

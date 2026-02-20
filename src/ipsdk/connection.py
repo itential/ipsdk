@@ -146,6 +146,20 @@ from .http import Response
 
 
 class ConnectionBase:
+    __slots__ = (
+        "_auth_lock",
+        "_auth_timestamp",
+        "_ttl_enabled",
+        "authenticated",
+        "client",
+        "client_id",
+        "client_secret",
+        "password",
+        "token",
+        "ttl",
+        "user",
+    )
+
     client: httpx.Client | httpx.AsyncClient
 
     @logging.trace
@@ -203,6 +217,7 @@ class ConnectionBase:
         self._auth_lock: Any | None = None
         self._auth_timestamp: float | None = None
         self.ttl = ttl
+        self._ttl_enabled = ttl > 0  # Cache this check for performance
 
         self.client = self.__init_client__(
             base_url=self._make_base_url(host, port, base_path, use_tls),
@@ -238,13 +253,13 @@ class ConnectionBase:
             None
         """
         if port == 0:
-            port = 443 if use_tls is True else 80
+            port = 443 if use_tls else 80
 
         if port not in (None, 80, 443):
             host = f"{host}:{port}"
 
         base_path = "" if base_path is None else base_path
-        proto = "https" if use_tls is True else "http"
+        proto = "https" if use_tls else "http"
 
         return urllib.parse.urlunsplit((proto, host, base_path, None, None))
 
@@ -313,7 +328,7 @@ class ConnectionBase:
         method: HTTPMethod,
         path: str,
         params: dict[str, Any | None] | None = None,
-        json: str | bytes | dict | (list | None) = None,
+        json: str | bytes | dict | list | None = None,
     ) -> None:
         """
         Validate request arguments to ensure they have correct types.
@@ -336,19 +351,19 @@ class ConnectionBase:
             IpsdkError: If method is not HTTPMethod type, params is not dict,
                 json is not dict/list, or path is not string
         """
-        if isinstance(method, HTTPMethod) is False:
+        if not isinstance(method, HTTPMethod):
             msg = "method must be of type `HTTPMethod`"
             raise exceptions.IpsdkError(msg)
 
-        if all((params is not None, isinstance(params, dict) is False)):
+        if params is not None and not isinstance(params, dict):
             msg = "params must be of type `dict`"
             raise exceptions.IpsdkError(msg)
 
-        if all((json is not None, isinstance(json, (list, dict)) is False)):
+        if json is not None and not isinstance(json, (list, dict)):
             msg = "json must be of type `dict` or `list`"
             raise exceptions.IpsdkError(msg)
 
-        if isinstance(path, str) is False:
+        if not isinstance(path, str):
             msg = "path must be of type `str`"
             raise exceptions.IpsdkError(msg)
 
@@ -475,19 +490,25 @@ class Connection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        # Check if reauthentication is needed due to timeout
-        if self._needs_reauthentication():
-            logging.info("Forcing reauthentication due to timeout")
-            self.authenticated = False
-            self.token = None
+        # Check authentication status and handle TTL-based reauthentication
+        if self.authenticated is False or self._ttl_enabled:
+            if self._auth_lock is None:
+                msg = "Authentication lock not initialized"
+                raise exceptions.IpsdkError(msg)
 
-        if self.authenticated is False:
-            assert self._auth_lock is not None
             with self._auth_lock:
-                if self.authenticated is False:
-                    self.authenticate()
-                    self.authenticated = True
-                    self._auth_timestamp = time.time()
+                # Double-check pattern with TTL check inside lock
+                # to prevent race conditions
+                if self.authenticated is False or self._needs_reauthentication():
+                    if self._needs_reauthentication():
+                        logging.info("Forcing reauthentication due to timeout")
+                        self.authenticated = False
+                        self.token = None
+
+                    if self.authenticated is False:
+                        self.authenticate()
+                        self.authenticated = True
+                        self._auth_timestamp = time.time()
 
         request = self._build_request(
             method=method,
@@ -693,19 +714,25 @@ class AsyncConnection(ConnectionBase):
             RequestError: Network or connection errors occurred.
             HTTPStatusError: Server returned an HTTP error status (4xx, 5xx).
         """
-        # Check if reauthentication is needed due to timeout
-        if self._needs_reauthentication():
-            logging.info("Forcing reauthentication due to timeout")
-            self.authenticated = False
-            self.token = None
+        # Check authentication status and handle TTL-based reauthentication
+        if self.authenticated is False or self._ttl_enabled:
+            if self._auth_lock is None:
+                msg = "Authentication lock not initialized"
+                raise exceptions.IpsdkError(msg)
 
-        if self.authenticated is False:
-            assert self._auth_lock is not None
             async with self._auth_lock:
-                if self.authenticated is False:
-                    await self.authenticate()
-                    self.authenticated = True
-                    self._auth_timestamp = time.time()
+                # Double-check pattern with TTL check inside lock
+                # to prevent race conditions
+                if self.authenticated is False or self._needs_reauthentication():
+                    if self._needs_reauthentication():
+                        logging.info("Forcing reauthentication due to timeout")
+                        self.authenticated = False
+                        self.token = None
+
+                    if self.authenticated is False:
+                        await self.authenticate()
+                        self.authenticated = True
+                        self._auth_timestamp = time.time()
 
         request = self._build_request(
             method=method,

@@ -110,8 +110,8 @@ class Scanner:
                     r"(?i)\b(?:api[_-]?key|apikey)\s*[=:]\s*[\"']?"
                     r"([a-zA-Z0-9_\-]{16,})[\"']?"
                 ),
-                "bearer_token": r"(?i)\bbearer\s+([a-zA-Z0-9_\-\.]{20,})",
-                "jwt_token": (
+                "bearer_token": r"(?i)\bbearer\s+([a-zA-Z0-9_\-\.]{20,})",  # nosec B105
+                "jwt_token": (  # nosec B105
                     r"\b(eyJ[a-zA-Z0-9_\-]+\.eyJ[a-zA-Z0-9_\-]+"
                     r"\.[a-zA-Z0-9_\-]+)\b"
                 ),
@@ -119,11 +119,11 @@ class Scanner:
                     r"(?i)\b(?:access[_-]?token|accesstoken)\s*[=:]\s*[\"']?"
                     r"([a-zA-Z0-9_\-]{20,})[\"']?"
                 ),
-                "password": (
+                "password": (  # nosec B105
                     r"(?i)\b(?:password|passwd|pwd)\s*[=:]\s*[\"']?"
                     r"([^\s\"']{6,})[\"']?"
                 ),
-                "secret": (
+                "secret": (  # nosec B105
                     r"(?i)\b(?:secret|client_secret)\s*[=:]\s*[\"']?"
                     r"([a-zA-Z0-9_\-]{16,})[\"']?"
                 ),

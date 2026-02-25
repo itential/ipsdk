@@ -128,6 +128,8 @@ class IpsdkError(Exception):
             The httpx.Request object associated with this error, or None if
             no httpx exception was provided during initialization.
         """
+        if self._exc is None:
+            return None
         return self._exc.request
 
     @property
@@ -140,7 +142,9 @@ class IpsdkError(Exception):
             no httpx exception was provided or if the error occurred before
             receiving a response.
         """
-        return self._exc.response
+        if self._exc is None:
+            return None
+        return getattr(self._exc, "response", None)
 
 
 class RequestError(IpsdkError):

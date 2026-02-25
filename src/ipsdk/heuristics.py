@@ -35,6 +35,8 @@ class Scanner:
 
     _instance: Scanner | None = None
     _initialized: bool = False
+    _default_patterns: dict[str, Pattern] | None = None
+    _default_redactions: dict[str, Callable[[str], str]] | None = None
 
     def __new__(cls, _custom_patterns: dict[str, str | None] | None = None) -> Scanner:
         """Create or return the singleton instance.
@@ -73,10 +75,7 @@ class Scanner:
         """
         # Only initialize once due to Singleton pattern
         if not self._initialized:
-            self._patterns: dict[str, Pattern] = {}
-            self._redaction_functions: dict[str, Callable[[str], str]] = {}
-
-            # Initialize default patterns
+            # Initialize default patterns (copies from class-level cache)
             self._init_default_patterns()
 
             # Add custom patterns if provided
@@ -91,7 +90,8 @@ class Scanner:
         """Initialize default sensitive data patterns.
 
         Sets up regex patterns for common sensitive data types including API keys,
-        passwords, tokens, credit card numbers, and other PII.
+        passwords, tokens, credit card numbers, and other PII. Patterns are compiled
+        once at class level and reused across all instances for performance.
 
         Returns:
             None
@@ -99,52 +99,61 @@ class Scanner:
         Raises:
             None
         """
-        # API Keys and tokens (various formats)
-        self.add_pattern(
-            "api_key",
-            r"(?i)\b(?:api[_-]?key|apikey)\s*[=:]\s*[\"']?([a-zA-Z0-9_\-]{16,})[\"']?",
-        )
-        self.add_pattern("bearer_token", r"(?i)\bbearer\s+([a-zA-Z0-9_\-\.]{20,})")
-        self.add_pattern(
-            "jwt_token",
-            r"\b(eyJ[a-zA-Z0-9_\-]+\.eyJ[a-zA-Z0-9_\-]+\.[a-zA-Z0-9_\-]+)\b",
-        )
-        self.add_pattern(
-            "access_token",
-            r"(?i)\b(?:access[_-]?token|accesstoken)\s*[=:]\s*[\"']?([a-zA-Z0-9_\-]{20,})[\"']?",
-        )
+        # Only compile patterns once at class level
+        if Scanner._default_patterns is None:
+            Scanner._default_patterns = {}
+            Scanner._default_redactions = {}
 
-        # Password patterns
-        self.add_pattern(
-            "password",
-            r"(?i)\b(?:password|passwd|pwd)\s*[=:]\s*[\"']?([^\s\"']{6,})[\"']?",
-        )
-        self.add_pattern(
-            "secret",
-            r"(?i)\b(?:secret|client_secret)\s*[=:]\s*[\"']?([a-zA-Z0-9_\-]{16,})[\"']?",
-        )
+            # Compile all default patterns once
+            patterns_to_compile = {
+                "api_key": (
+                    r"(?i)\b(?:api[_-]?key|apikey)\s*[=:]\s*[\"']?"
+                    r"([a-zA-Z0-9_\-]{16,})[\"']?"
+                ),
+                "bearer_token": r"(?i)\bbearer\s+([a-zA-Z0-9_\-\.]{20,})",
+                "jwt_token": (
+                    r"\b(eyJ[a-zA-Z0-9_\-]+\.eyJ[a-zA-Z0-9_\-]+"
+                    r"\.[a-zA-Z0-9_\-]+)\b"
+                ),
+                "access_token": (
+                    r"(?i)\b(?:access[_-]?token|accesstoken)\s*[=:]\s*[\"']?"
+                    r"([a-zA-Z0-9_\-]{20,})[\"']?"
+                ),
+                "password": (
+                    r"(?i)\b(?:password|passwd|pwd)\s*[=:]\s*[\"']?"
+                    r"([^\s\"']{6,})[\"']?"
+                ),
+                "secret": (
+                    r"(?i)\b(?:secret|client_secret)\s*[=:]\s*[\"']?"
+                    r"([a-zA-Z0-9_\-]{16,})[\"']?"
+                ),
+                "auth_url": r"https?://[a-zA-Z0-9_\-]+:[a-zA-Z0-9_\-]+@[^\s]+",
+                "email_in_auth": (
+                    r"(?i)(?:username|user|email)\s*[=:]\s*[\"']?"
+                    r"([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})[\"']?"
+                ),
+                "db_connection": (
+                    r"(?i)\b(?:mongodb|mysql|postgresql|postgres)://"
+                    r"[^\s]+:[^\s]+@[^\s]+"
+                ),
+                "private_key": (
+                    r"-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]*?"
+                    r"-----END (?:RSA )?PRIVATE KEY-----"
+                ),
+            }
 
-        # URLs with authentication (check before email patterns)
-        self.add_pattern("auth_url", r"https?://[a-zA-Z0-9_\-]+:[a-zA-Z0-9_\-]+@[^\s]+")
+            for name, pattern_str in patterns_to_compile.items():
+                compiled_pattern = re.compile(pattern_str)
+                Scanner._default_patterns[name] = compiled_pattern
+                # Use default argument to capture current value of name
+                # (avoid late-binding closure issue)
+                Scanner._default_redactions[name] = (
+                    lambda _, n=name: f"[REDACTED_{n.upper()}]"
+                )
 
-        # Basic email pattern (when used in sensitive contexts)
-        self.add_pattern(
-            "email_in_auth",
-            r"(?i)(?:username|user|email)\s*[=:]\s*[\"']?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})[\"']?",
-        )
-
-        # Database connection strings
-        self.add_pattern(
-            "db_connection",
-            r"(?i)\b(?:mongodb|mysql|postgresql|postgres)://[^\s]+:[^\s]+@[^\s]+",
-        )
-
-        # Private keys (basic detection)
-        self.add_pattern(
-            "private_key",
-            r"-----BEGIN (?:RSA )?PRIVATE KEY-----[\s\S]*?"
-            r"-----END (?:RSA )?PRIVATE KEY-----",
-        )
+        # Copy pre-compiled patterns to instance
+        self._patterns = Scanner._default_patterns.copy()
+        self._redaction_functions = Scanner._default_redactions.copy()
 
     def add_pattern(
         self,

@@ -152,6 +152,7 @@ Error handling::
         print(f"Network error: {e}")
 """
 
+from typing import TYPE_CHECKING
 from typing import Any
 
 import httpx
@@ -275,12 +276,21 @@ class AsyncAuthMixin:
             raise exceptions.RequestError(exc)
 
 
-Gateway = type("Gateway", (AuthMixin, connection.Connection), {})
-AsyncGateway = type("AsyncGateway", (AsyncAuthMixin, connection.AsyncConnection), {})
+# Define dynamically created classes for runtime and type checking
+if TYPE_CHECKING:
+    # For type checkers: provide explicit class definitions
+    class Gateway(AuthMixin, connection.Connection):
+        """Synchronous Gateway client with authentication."""
 
-# Type aliases for mypy
-GatewayType = Gateway
-AsyncGatewayType = AsyncGateway
+    class AsyncGateway(AsyncAuthMixin, connection.AsyncConnection):
+        """Asynchronous Gateway client with authentication."""
+
+else:
+    # For runtime: use dynamic type creation for flexibility
+    Gateway = type("Gateway", (AuthMixin, connection.Connection), {})
+    AsyncGateway = type(
+        "AsyncGateway", (AsyncAuthMixin, connection.AsyncConnection), {}
+    )
 
 
 @logging.trace
@@ -335,7 +345,7 @@ def gateway_factory(
     Returns:
         An initialized connection instance
     """
-    factory = AsyncGateway if want_async is True else Gateway
+    factory = AsyncGateway if want_async else Gateway
     return factory(
         host=host,
         port=port,

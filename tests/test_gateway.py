@@ -12,10 +12,9 @@ import pytest
 from ipsdk import exceptions
 from ipsdk.connection import AsyncConnection
 from ipsdk.gateway import AsyncAuthMixin
-from ipsdk.gateway import AsyncGatewayType
+from ipsdk.gateway import AsyncGateway
 from ipsdk.gateway import AuthMixin
 from ipsdk.gateway import Gateway
-from ipsdk.gateway import GatewayType
 from ipsdk.gateway import _make_body
 from ipsdk.gateway import _make_headers
 from ipsdk.gateway import _make_path
@@ -219,11 +218,11 @@ def test_gateway_factory_async_with_all_parameters():
 
 
 def test_gateway_type_aliases():
-    """Test that gateway type aliases are correctly defined."""
+    """Test that gateway classes are correctly defined."""
 
-    # Verify type aliases exist and are not None
-    assert GatewayType is not None
-    assert AsyncGatewayType is not None
+    # Verify gateway classes exist and are not None
+    assert Gateway is not None
+    assert AsyncGateway is not None
 
 
 def test_make_body_empty_strings():

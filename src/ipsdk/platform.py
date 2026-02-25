@@ -222,6 +222,8 @@ Working with responses::
         print(f"Request failed with status {response.status_code}")
 """
 
+from typing import TYPE_CHECKING
+
 import httpx
 
 from . import connection
@@ -592,13 +594,21 @@ class AsyncAuthMixin:
             raise exceptions.RequestError(exc)
 
 
-# Define type aliases for the dynamically created classes
-Platform = type("Platform", (AuthMixin, connection.Connection), {})
-AsyncPlatform = type("AsyncPlatform", (AsyncAuthMixin, connection.AsyncConnection), {})
+# Define dynamically created classes for runtime and type checking
+if TYPE_CHECKING:
+    # For type checkers: provide explicit class definitions
+    class Platform(AuthMixin, connection.Connection):
+        """Synchronous Platform client with authentication."""
 
-# Type aliases for mypy
-PlatformType = Platform
-AsyncPlatformType = AsyncPlatform
+    class AsyncPlatform(AsyncAuthMixin, connection.AsyncConnection):
+        """Asynchronous Platform client with authentication."""
+
+else:
+    # For runtime: use dynamic type creation for flexibility
+    Platform = type("Platform", (AuthMixin, connection.Connection), {})
+    AsyncPlatform = type(
+        "AsyncPlatform", (AsyncAuthMixin, connection.AsyncConnection), {}
+    )
 
 
 @logging.trace

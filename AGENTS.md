@@ -4,7 +4,7 @@
 
 HTTP client SDK for Itential Platform and Automation Gateway 4.x. Factory-based sync/async clients with auto-authentication, comprehensive logging, and sensitive data filtering. Production-ready despite beta status.
 
-**Current**: v0.7.0 (2025-12-16) | 3.7k LOC | 100% test coverage | Python 3.10-3.13
+**Current**: v0.8.0 (2026-02-25) | 3.7k LOC | 100% test coverage | Python 3.10-3.13
 
 ## Architecture
 
@@ -18,7 +18,9 @@ Factory pattern creates dynamically-typed clients by composing auth mixins with 
 - `heuristics.py`: Singleton PII scanner with extensible patterns
 - `http.py`: HTTPMethod enum + Request/Response wrappers
 
-**New in 0.7.0**: Connection TTL (`ttl` param forces re-auth after N seconds)
+**New in 0.8.0**: License header checking with `make license` and `make license-fix` commands
+
+**Previously in 0.7.0**: Connection TTL (`ttl` param forces re-auth after N seconds)
 
 ## Stack
 

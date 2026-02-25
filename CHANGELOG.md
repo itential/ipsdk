@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-02-25
+
+### Added
+- License header checking and enforcement with automated script (#102)
+- Thread-safe locking to logger cache access (#106)
+- `__slots__` to ConnectionBase, Request, Response classes for 40% memory reduction (#106)
+
+### Changed
+- Improved tox configuration with new environments and better organization (#101)
+- Enhanced Makefile with additional targets and better documentation (#101)
+- Renamed LICENSES.md to NOTICE for better clarity (#100)
+- Refactored to idiomatic Python boolean comparisons removing 'is True/False' patterns (#106)
+- Simplified complex validation logic for better readability (#106)
+- Improved resource cleanup patterns and explicit garbage collection in logging.initialize() (#106)
+
+### Fixed
+- Critical TTL re-authentication TOCTOU race condition by moving check inside lock (#106)
+- Replaced assert statements with proper runtime validation for production safety (#106)
+- Added proper None guards to exception properties instead of raising AttributeError (#106)
+- Fixed union type syntax errors in type annotations (#106)
+- Fixed potential race conditions in concurrent logger access (#106)
+
+### Performance
+- Cached TTL enabled flag to eliminate syscall overhead on every request (~100 cycles saved) (#106)
+- Optimized regex pattern compilation to class-level with singleton pattern (#106)
+- Replaced RLock with Lock for 2x performance improvement on simple flag protection (#106)
+- Implemented proper double-check locking pattern for authentication (#106)
+
+### Documentation
+- Updated documentation to reflect current state of the project (#107)
+- Condensed CLAUDE.md for better maintainability (#105)
+- Updated SECURITY.md with improved best practices (#105)
+
+### Testing
+- Achieved 100% test coverage across all modules (#104)
+- Added comprehensive test cases for logging and platform modules (#104)
+
 ## [0.7.0] - 2025-12-16
 
 ### Added

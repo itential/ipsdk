@@ -4,13 +4,13 @@
 [![Python Versions](https://img.shields.io/pypi/pyversions/ipsdk.svg)](https://pypi.org/project/ipsdk/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Tests](https://github.com/itential/ipsdk/workflows/Run%20pre%20merge%20pipeline/badge.svg)](https://github.com/itential/ipsdk/actions)
-[![Coverage](https://img.shields.io/badge/coverage-95%25-green)](https://github.com/itential/ipsdk)
+[![Coverage](https://img.shields.io/badge/coverage-100%25-green)](https://github.com/itential/ipsdk)
 
 The Itential Python SDK provides a robust client implementation in Python for writing
 scripts and applications that can make API calls to Itential Platform or Itential
 Automation Gateway 4.x.
 
-**Status**: Beta - Active development with comprehensive test coverage (95%+)
+**Status**: Beta - Active development with comprehensive test coverage (100%)
 
 ## Features
 
@@ -19,11 +19,10 @@ Automation Gateway 4.x.
   - OAuth (client credentials) for Itential Platform
   - Basic authentication (username/password) for both Platform and Gateway
 - **Sync and Async Support**: Both synchronous and asynchronous HTTP clients via `want_async` parameter
-- **Comprehensive Logging**: Custom logging system with multiple levels (including FATAL), file and console handlers, and httpx integration control
-- **Flexible Configuration**: Customizable connection settings including TLS, certificate verification, timeouts, and proxy support
-- **Type Safety**: Full type hints with mypy support for enhanced development experience
+- **Comprehensive Logging**: Custom logging system with multiple levels (including TRACE and FATAL) and httpx integration control
+- **Flexible Configuration**: Customizable connection settings including TLS, certificate verification, and timeouts
+- **Type Safety**: Full type hints for enhanced development experience
 - **HTTP Methods**: Support for GET, POST, PUT, DELETE, and PATCH operations with automatic JSON handling
-- **Request/Response Wrappers**: Enhanced request and response objects with additional utilities beyond raw httpx
 
 ## Getting started
 
@@ -192,12 +191,6 @@ import ipsdk
 # Configure logging level
 ipsdk.logging.set_level(ipsdk.logging.DEBUG)
 
-# Enable file logging
-ipsdk.logging.configure_file_logging(
-    "/path/to/logfile.log",
-    level=ipsdk.logging.INFO
-)
-
 # Use convenience functions
 ipsdk.logging.info("Connected to platform")
 ipsdk.logging.debug("Request details: %s", request_data)
@@ -205,12 +198,11 @@ ipsdk.logging.error("API call failed")
 ```
 
 **Logging Features**:
-- **Multiple Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL, and custom FATAL (90) level
+- **Multiple Log Levels**: TRACE (5), DEBUG, INFO, WARNING, ERROR, CRITICAL, FATAL (90), and NONE (100)
 - **Convenience Functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
-- **File Logging**: Automatic directory creation and custom formatting support
-- **Console Control**: Switch between stdout/stderr output
+- **Function Tracing**: `@trace` decorator for automatic entry/exit logging with timing
+- **Sensitive Data Filtering**: Automatic redaction of PII, API keys, passwords, and tokens
 - **httpx Integration**: Optional control of httpx/httpcore logging via `propagate` parameter
-- **Handler Management**: Add/remove file handlers and customize console output
 
 For detailed logging documentation, see the logging module docstrings.
 

@@ -25,9 +25,6 @@ $ uv run pytest tests/test_<module>.py
 # Run tests with coverage
 $ uv run pytest --cov=src/ipsdk --cov-report=term --cov-report=html tests/
 $ make coverage
-
-# Run tests with coverage check (enforces 95% minimum coverage)
-$ make coverage-check
 ```
 
 ### Multi-Version Testing with Tox
@@ -86,35 +83,14 @@ $ uv run bandit -r src/ipsdk --configfile pyproject.toml
 $ make security
 ```
 
-### Pre-commit Hooks
-
-The project uses pre-commit hooks for automatic code quality checks:
-
-```bash
-# Install git hooks
-$ uv run pre-commit install
-
-# Run on all files
-$ uv run pre-commit run --all-files
-```
-
-Pre-commit hooks include:
-- Basic file checks (trailing whitespace, EOF fixer, YAML/TOML validation)
-- Ruff linting and formatting
-- MyPy type checking
-
 ## Build and Maintenance
 
 ```bash
 # Clean build artifacts
 $ make clean
 
-# Run premerge checks (clean, lint, security, and test with coverage check)
+# Run premerge checks (clean, lint, security, license check, and test)
 $ make premerge
-
-# Generate changelog (uses git-cliff with conventional commits)
-$ make changelog              # Generate full CHANGELOG.md
-$ make changelog-unreleased   # Show unreleased changes only
 ```
 
 ### Version Management
@@ -128,14 +104,13 @@ The project uses **dynamic versioning** from git tags:
 ## Development Workflow
 
 1. **Setup**: Run `uv sync` to install dependencies and create a virtual environment
-2. **Install hooks**: Run `uv run pre-commit install` to set up git hooks (optional but recommended)
-3. **Development**: Make your changes to the codebase
-4. **Format**: Run `make format` to auto-format code
-5. **Testing**: Run tests with `make test` or `uv run pytest tests`
-6. **Quality Checks**: Run `make lint` and `make security` to check code quality
-7. **Coverage**: Ensure test coverage meets 95% threshold with `make coverage-check`
-8. **Pre-merge**: Run `make premerge` before submitting changes (runs all checks)
-9. **Multi-version**: Optionally test across Python versions with `make tox`
+2. **Development**: Make your changes to the codebase
+3. **Format**: Run `make format` to auto-format code
+4. **Testing**: Run tests with `make test` or `uv run pytest tests`
+5. **Quality Checks**: Run `make lint` and `make security` to check code quality
+6. **Coverage**: Run `make coverage` to generate coverage report
+7. **Pre-merge**: Run `make premerge` before submitting changes (runs all checks)
+8. **Multi-version**: Optionally test across Python versions with `make tox`
 
 ## Additional Tools
 
@@ -149,8 +124,6 @@ The project uses the following development tools:
 - **bandit**: Security vulnerability scanner
 - **tox**: Multi-version Python testing (3.10, 3.11, 3.12, 3.13)
 - **tox-uv**: Tox integration with uv for fast environments
-- **pre-commit**: Git hooks for automated quality checks
-- **git-cliff**: Changelog generator using conventional commits
 - **q**: Debugging utility
 
 All tools are configured in `pyproject.toml` and can be run through `uv` or the provided Makefile targets.
@@ -168,14 +141,13 @@ The project uses comprehensive Ruff configuration with 30+ rule sets:
 ### Coverage Requirements
 
 The SDK enforces strict test coverage:
-- **Minimum coverage**: 95%
-- Coverage check runs in `make premerge` and CI/CD pipeline
-- Pipeline fails if coverage drops below threshold
+- **Current coverage**: 100%
+- Coverage report runs in `make premerge` and CI/CD pipeline
 - Generate HTML reports with `make coverage`
 
 ## Python Version Support
 
-The SDK officially supports Python >=3.8 and is tested on:
+The SDK officially supports Python >=3.10 and is tested on:
 - Python 3.10
 - Python 3.11
 - Python 3.12
@@ -201,11 +173,9 @@ The SDK provides logging level constants that you can use instead of importing t
 The SDK includes a comprehensive logging system:
 - **Function tracing decorator** (`@trace`) with automatic timing and entry/exit logging
 - **Custom logging levels**: TRACE (5), FATAL (90), and NONE (100) in addition to standard levels
-- **Convenience functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`, `trace()`
-- **File logging** with automatic directory creation and custom formatting
-- **Console output control** (stdout/stderr switching)
+- **Convenience functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
 - **httpx/httpcore logging control** via `propagate` parameter
-- **Centralized configuration** via `set_level()` and `configure_file_logging()`
+- **Centralized configuration** via `set_level()`
 - **Sensitive data filtering** to automatically redact PII, API keys, passwords, and tokens
 
 ### Available Logging Levels
@@ -221,56 +191,6 @@ The SDK provides the following logging level constants:
 - `ipsdk.logging.CRITICAL` - Critical error messages (50)
 - `ipsdk.logging.FATAL` - Fatal error messages (90)
 - `ipsdk.logging.NONE` - Disable all logging (100)
-
-### File Logging
-
-The SDK supports optional file logging in addition to console logging. You can configure file logging using several approaches:
-
-#### Quick Setup with `configure_file_logging`
-
-The easiest way to enable both console and file logging:
-
-```python
->>> import ipsdk
-
-# Enable both console and file logging
->>> ipsdk.logging.configure_file_logging("/path/to/app.log", level=ipsdk.logging.DEBUG)
-```
-
-#### Manual File Handler Management
-
-For more control, you can add and remove file handlers manually:
-
-```python
->>> import ipsdk
-
-# First set the console logging level
->>> ipsdk.logging.set_level(ipsdk.logging.INFO)
-
-# Add a file handler
->>> ipsdk.logging.add_file_handler("/path/to/app.log")
-
-# Add multiple file handlers with different levels
->>> ipsdk.logging.add_file_handler("/path/to/debug.log", level=ipsdk.logging.DEBUG)
->>> ipsdk.logging.add_file_handler("/path/to/errors.log", level=ipsdk.logging.ERROR)
-
-# Remove all file handlers when done
->>> ipsdk.logging.remove_file_handlers()
-```
-
-#### Custom Log Formatting
-
-You can specify custom format strings for file handlers:
-
-```python
->>> custom_format = "%(asctime)s [%(levelname)s] %(message)s"
->>> ipsdk.logging.add_file_handler("/path/to/app.log", format_string=custom_format)
-
-# Or with configure_file_logging
->>> ipsdk.logging.configure_file_logging("/path/to/app.log", format_string=custom_format)
-```
-
-**Note:** File logging automatically creates parent directories if they don't exist.
 
 ### Function Tracing with @trace Decorator
 

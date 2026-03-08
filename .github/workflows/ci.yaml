@@ -1,19 +1,73 @@
-# .github/workflows/ci.yaml
----
-name: Run CI pipeline
+# ---
+# Workflow: CI
+#
+# Runs on every push to devel and on all pull requests targeting devel.
+# Quality checks run once on the latest Python; the test suite runs in
+# parallel across Python 3.10–3.13 with coverage enforcement.
+#
+# Jobs: quality → test (matrix: 3.10, 3.11, 3.12, 3.13)
+# Secrets required: none
+# ---
+name: CI
 
 on:
+  push:
+    branches: [devel]
   pull_request:
-    branches:
-      - devel
+    branches: [devel]
+
+# Cancel in-progress runs when a new commit is pushed to the same branch/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
+
+  # -- quality
+  # Lint, format check, security scan, and license header validation.
+  # Version-agnostic — runs once instead of 4× inside the test matrix.
+  # Gates the matrix: no runners are allocated if quality fails.
+  quality:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint
+        run: make lint
+
+      - name: Check formatting
+        run: make format-check
+
+      - name: Security scan
+        run: make security
+
+      - name: License headers
+        run: make license
+
+  # -- test
+  # Full test suite with coverage across all supported Python versions.
+  # Depends on quality so matrix runners are not allocated for unlintable code.
+  # Runs tests once with coverage — avoids the double pytest run from
+  # calling make ci (which includes test) followed by a separate coverage step.
   test:
-    runs-on: ubuntu-latest
+    needs: quality
+    runs-on: ubuntu-24.04
     strategy:
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
-      fail-fast: false
 
     steps:
       - name: Checkout repository
@@ -26,12 +80,11 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
 
-      - name: Install the project
+      - name: Install dependencies
         run: uv sync --all-extras --dev
 
-      - name: Run the CI target
-        run: make ci
-
-      - name: Run coverage check with 95% threshold
-        run: uv run pytest --cov=ipsdk --cov-report=term --cov-fail-under=95 tests/
+      - name: Run tests with coverage
+        run: uv run pytest --cov=src/ipsdk --cov-report=term --cov-fail-under=95 tests/

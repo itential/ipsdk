@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 """Package metadata and version information for the Itential Python SDK.
 
 This module provides access to package metadata including the package name,

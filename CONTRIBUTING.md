@@ -117,8 +117,8 @@ uv run bandit -r src/ipsdk --configfile pyproject.toml
 # Run type checking
 uv run mypy src/ipsdk
 
-# Run all premerge checks (recommended before pushing)
-make premerge
+# Run all CI checks (recommended before pushing)
+make ci
 ```
 
 ### Testing Different Python Versions
@@ -295,7 +295,7 @@ uv run pytest --cov=src/ipsdk --cov-report=term tests
 ### Before Submitting
 
 1. Ensure all tests pass: `make test`
-2. Run the full premerge pipeline: `make premerge`
+2. Run the full CI pipeline: `make ci`
 3. Update documentation if needed
 4. Write descriptive commit messages
 

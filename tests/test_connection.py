@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 import json
 import time
 
@@ -1843,3 +1842,26 @@ async def test_async_connection_ttl_reauthentication_with_multiple_requests():
         assert conn.token == "token-async-2"
 
 
+def test_send_request_auth_lock_not_initialized():
+    """Test _send_request raises IpsdkError when auth lock is None."""
+    conn = Connection("example.com")
+    conn.authenticated = False
+    conn._auth_lock = None
+
+    with pytest.raises(
+        exceptions.IpsdkError, match="Authentication lock not initialized"
+    ):
+        conn._send_request(HTTPMethod.GET, "/api/test")
+
+
+@pytest.mark.asyncio
+async def test_async_send_request_auth_lock_not_initialized():
+    """Test async _send_request raises IpsdkError when auth lock is None."""
+    conn = AsyncConnection("example.com")
+    conn.authenticated = False
+    conn._auth_lock = None
+
+    with pytest.raises(
+        exceptions.IpsdkError, match="Authentication lock not initialized"
+    ):
+        await conn._send_request(HTTPMethod.GET, "/api/test")

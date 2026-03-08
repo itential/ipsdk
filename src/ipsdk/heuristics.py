@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 from __future__ import annotations
 
 """Heuristics scanner for filtering sensitive data from log messages.
@@ -148,8 +147,8 @@ class Scanner:
                 Scanner._default_patterns[name] = compiled_pattern
                 # Use default argument to capture current value of name
                 # (avoid late-binding closure issue)
-                Scanner._default_redactions[name] = (
-                    lambda _, n=name: f"[REDACTED_{n.upper()}]"
+                Scanner._default_redactions[name] = lambda _, n=name: (
+                    f"[REDACTED_{n.upper()}]"
                 )
 
         # Copy pre-compiled patterns to instance

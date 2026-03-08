@@ -89,8 +89,8 @@ $ make security
 # Clean build artifacts
 $ make clean
 
-# Run premerge checks (clean, lint, security, license check, and test)
-$ make premerge
+# Run CI checks (clean, lint, security, license check, and test)
+$ make ci
 ```
 
 ### Version Management
@@ -109,7 +109,7 @@ The project uses **dynamic versioning** from git tags:
 4. **Testing**: Run tests with `make test` or `uv run pytest tests`
 5. **Quality Checks**: Run `make lint` and `make security` to check code quality
 6. **Coverage**: Run `make coverage` to generate coverage report
-7. **Pre-merge**: Run `make premerge` before submitting changes (runs all checks)
+7. **CI**: Run `make ci` before submitting changes (runs all checks)
 8. **Multi-version**: Optionally test across Python versions with `make tox`
 
 ## Additional Tools
@@ -142,7 +142,7 @@ The project uses comprehensive Ruff configuration with 30+ rule sets:
 
 The SDK enforces strict test coverage:
 - **Current coverage**: 100%
-- Coverage report runs in `make premerge` and CI/CD pipeline
+- Coverage report runs in `make ci` and CI/CD pipeline
 - Generate HTML reports with `make coverage`
 
 ## Python Version Support

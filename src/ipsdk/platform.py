@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 from __future__ import annotations
 
 """Itential Platform client implementation for the SDK.
@@ -283,7 +282,6 @@ def _make_basicauth_body(user: str, password: str) -> dict[str, dict[str, str]]:
             "password": password,
         }
     }
-
 
 
 class AuthMixin:

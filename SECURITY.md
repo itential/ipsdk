@@ -161,7 +161,7 @@ uv run pre-commit install
 
 # Run security analysis
 make security
-make premerge  # Includes security checks
+make ci  # Includes security checks
 ```
 
 ### Async Security Considerations

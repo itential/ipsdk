@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
 from unittest.mock import patch

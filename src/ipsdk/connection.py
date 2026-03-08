@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 from __future__ import annotations
 
 """HTTP connection implementations for the Itential Python SDK.
@@ -394,9 +393,7 @@ class ConnectionBase:
 
         elapsed = time.time() - self._auth_timestamp
         if elapsed >= self.ttl:
-            logging.info(
-                f"Auth TTL exceeded ({elapsed:.1f}s >= {self.ttl}s)"
-            )
+            logging.info(f"Auth TTL exceeded ({elapsed:.1f}s >= {self.ttl}s)")
             return True
 
         return False

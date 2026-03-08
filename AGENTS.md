@@ -46,7 +46,7 @@ Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports
 - **httpx ≥ 0.28.1**: Only runtime dependency. Used for both sync (`httpx.Client`) and async (`httpx.AsyncClient`) HTTP.
 - **Build**: hatchling + uv-dynamic-versioning. Version derived from git tags → PEP440.
 - **Dev tools**: pytest + pytest-asyncio + pytest-cov, ruff (lint + format), bandit (security), tox + tox-uv (matrix), uv (package manager).
-- **No mypy in CI**: mypy is a dev dependency but is not run in the CI pipeline or `make premerge`. Static analysis is broken (see Known Issues).
+- **No mypy in CI**: mypy is a dev dependency but is not run in the CI pipeline or `make ci`. Static analysis is broken (see Known Issues).
 
 ## Development Commands
 
@@ -55,26 +55,32 @@ Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports
 uv sync --all-extras --dev
 
 # Daily workflow
-make test          # pytest tests -v -s
-make coverage      # pytest --cov (HTML report in htmlcov/)
-make lint          # ruff check src/ipsdk tests
-make format        # ruff format src/ipsdk tests
-make security      # bandit -r src/ipsdk
-make license       # Check GPL-3.0 headers (scripts/check_license_headers.py)
-make license-fix   # Auto-add missing headers
-make premerge      # clean + lint + security + license + test (run before every commit)
+make test              # pytest
+make coverage          # pytest --cov (100% required)
+make lint              # ruff check
+make format            # ruff format
+make security          # bandit security scan
+make license           # Check GPL headers
+make license-fix       # Add missing headers
+make ci                # Run all checks (use before commit)
 
 # Multi-version testing
-uv run tox                  # All versions (3.10–3.13) sequentially
-uv run tox -p auto          # Parallel
-uv run tox -e py310         # Specific version
-uv run tox -e coverage      # Coverage report (Python 3.13)
-uv run tox -e premerge      # lint + security + test (no license check in tox)
+uv run tox             # All versions sequentially
+uv run tox -p auto     # Parallel
+uv run tox -e py310    # Specific version
+uv run tox -e ci       # Full CI checks via tox
+
+# Tox environments
+tox -e coverage        # Coverage report
+tox -e lint            # Ruff check only
+tox -e format          # Ruff format only
+tox -e security        # Bandit scan only
+tox -e ci              # All checks
 ```
 
-**Note**: `make premerge` includes the license header check; `tox -e premerge` does not. Run `make premerge` locally before pushing.
+**Note**: `make ci` includes the license header check; `tox -e ci` does not. Run `make ci` locally before pushing.
 
-CI (`premerge.yaml`): runs `make premerge` then a separate coverage check with `--cov-fail-under=95`.
+CI (`ci.yaml`): runs `make ci` then a separate coverage check with `--cov-fail-under=95`.
 
 ## Code Standards
 
@@ -125,7 +131,7 @@ CI (`premerge.yaml`): runs `make premerge` then a separate coverage check with `
 ```bash
 uv sync --all-extras --dev
 make test        # Should pass all tests
-make premerge    # Should pass all checks
+make ci          # Should pass all checks
 ```
 
 **Read in this order**:
@@ -142,6 +148,19 @@ make premerge    # Should pass all checks
 - `logging.initialize()` is called on `import ipsdk`, resetting all handlers. If you configure logging before importing ipsdk, it will be wiped. Configure after import.
 - `Scanner` in `heuristics.py` is a singleton that only initializes patterns once. Call `Scanner.reset_singleton()` in tests that need a fresh scanner state.
 - Port 80 and 443 are not appended to the host URL (httpx compatibility); other ports are appended as `host:port`
+
+## Development Workflow
+
+**Adding features**:
+1. Read module docstrings first (100+ lines each, comprehensive)
+2. Write tests before code (TDD enforced by coverage)
+3. Run `make ci` before commit
+4. Update docstrings if changing signatures
+
+**Modifying auth**: Edit mixins in platform.py/gateway.py, NOT connection.py
+**Modifying HTTP**: Edit ConnectionBase/Connection/AsyncConnection together
+**Adding sensitive patterns**: Edit `heuristics.py` default patterns
+**Adding exceptions**: Inherit from IpsdkError, update hierarchy
 
 ## Testing
 
@@ -176,8 +195,14 @@ git push origin v0.9.0
 
 ## Key Files
 
-- `pyproject.toml`: Build config, ruff rules, bandit config
+- `pyproject.toml`: Build config, dependencies, ruff rules, bandit config
 - `Makefile`: All dev commands
-- `tox.ini`: 9 environments: py310–py313, coverage, lint, format, security, premerge
+- `tox.ini`: Multi-version testing, 9 environments: py310–py313, coverage, lint, format, security, ci
+- `CHANGELOG.md`: Detailed release history
 - `scripts/check_license_headers.py`: License header checker/fixer
-- `.github/workflows/premerge.yaml`: CI — matrix across 3.10–3.13, runs `make premerge` + coverage check
+- `.github/workflows/ci.yaml`: CI pipeline (lint, security, test matrix)
+
+## Contact
+
+Issues: https://github.com/itential/ipsdk/issues
+Docs: Module docstrings (comprehensive), README.md examples

@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 from __future__ import annotations
 
 r"""Comprehensive logging system for the Itential Python SDK.
@@ -234,6 +233,7 @@ def trace(f: T) -> T:
     func_name = f"{f.__module__}.{f.__qualname__}"
 
     if inspect.iscoroutinefunction(f):
+
         @wraps(f)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.perf_counter()
@@ -248,6 +248,7 @@ def trace(f: T) -> T:
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
                 log(logging.TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
                 return result
+
         return async_wrapper  # type: ignore[return-value]
 
     @wraps(f)
@@ -264,6 +265,7 @@ def trace(f: T) -> T:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
             log(logging.TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
             return result
+
     return sync_wrapper  # type: ignore[return-value]
 
 

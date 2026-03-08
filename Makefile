@@ -4,79 +4,79 @@
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+# ==============================================================================
+# ipsdk — HTTP client SDK for Itential Platform and Automation Gateway
+# ==============================================================================
+# Usage:
+#   make              Show available targets
+#   make test         Run unit tests
+#   make ci           Run all checks (use before committing)
+#
+# Dependencies: uv (https://github.com/astral-sh/uv)
+# ==============================================================================
+
+SHELL := bash
+.SHELLFLAGS := -eu -o pipefail -c
 .DEFAULT_GOAL := help
+.DELETE_ON_ERROR:
 
-.PHONY: test coverage clean lint format ruff-fix security license license-fix notice-check tox \
-		tox-py310 tox-py311 tox-py312 tox-py313 tox-coverage tox-lint \
-		tox-format tox-security tox-premerge tox-list
+# ------------------------------------------------------------------------------
+# Configuration
+# ------------------------------------------------------------------------------
 
-# The help target displays a help message that includes the avialable targets
-# in this `Makefile`.  It is the default target if `make` is run without any
-# parameters.
-help:
-	@echo "Available targets:"
-	@echo "  clean           - Cleans the development environment"
-	@echo "  coverage        - Run test coverage report"
-	@echo "  format          - Format source files with ruff"
-	@echo "  license         - Check all Python files for proper license headers"
-	@echo "  license-fix     - Automatically add missing license headers to Python files"
-	@echo "  lint            - Run analysis on source files"
-	@echo "  notice-check    - Verify NOTICE file lists all packages in uv.lock"
-	@echo "  premerge        - Run the premerge tests locally"
-	@echo "  ruff-fix        - Run ruff with --fix to auto-fix issues"
-	@echo "  security        - Run security analysis using bandit"
-	@echo "  test            - Run test suite"
-	@echo ""
-	@echo "Tox targets:"
-	@echo "  tox            - Run tests across all Python versions (3.10-3.13)"
-	@echo "  tox-py310      - Run tests with Python 3.10"
-	@echo "  tox-py311      - Run tests with Python 3.11"
-	@echo "  tox-py312      - Run tests with Python 3.12"
-	@echo "  tox-py313      - Run tests with Python 3.13"
-	@echo "  tox-coverage   - Run tests with coverage report using tox"
-	@echo "  tox-lint       - Run linting checks using tox"
-	@echo "  tox-format     - Format code using tox"
-	@echo "  tox-security   - Run security analysis using tox"
-	@echo "  tox-premerge   - Run all premerge checks using tox"
-	@echo "  tox-list       - List all available tox environments"
-	@echo ""
+UV      ?= uv
+SRC     := src/ipsdk
+TESTS   := tests
+SCRIPTS := scripts
 
-# The test target will invoke the unit tests using pytest.   This target
-# requires uv to be installed and the environment created.
-test:
-	uv run pytest tests -v -s
+# ------------------------------------------------------------------------------
+# Core
+# ------------------------------------------------------------------------------
 
-# The coverage target will invoke pytest with coverage support.  It will
-# display a summary of the unit test coverage as well as output the coverage
-# data report
-coverage:
-	uv run pytest --cov=src/ipsdk --cov-report=term --cov-report=html tests/
+.PHONY: test coverage build
 
-# The lint target invokes ruff to run the linter against both the library
-# and test code.   This target is invoked in the premerge pipeline.
-lint:
-	uv run ruff check src/ipsdk
-	uv run ruff check tests
+test: ## Run unit tests
+	$(UV) run pytest $(TESTS) -v
 
-# The security target invokes bandit to run security analysis on the
-# source code.  It scans for common security vulnerabilities.
-security:
-	uv run bandit -r src/ipsdk --configfile pyproject.toml
+coverage: ## Run tests with coverage report (enforces 100%)
+	$(UV) run pytest \
+		--cov=$(SRC) \
+		--cov-report=term-missing \
+		--cov-report=html \
+		--cov-fail-under=100 \
+		$(TESTS)/
 
-# The license target verifies that all Python files contain the
-# proper license header.  This target is invoked in the premerge pipeline.
-license:
-	uv run python scripts/check_license_headers.py
+build: ## Build distribution packages (wheel + sdist)
+	$(UV) build
 
-# The license-fix target automatically adds missing license headers to
-# all Python files in the project.
-license-fix:
-	uv run python scripts/check_license_headers.py --fix
+# ------------------------------------------------------------------------------
+# Quality checks
+# ------------------------------------------------------------------------------
 
-# The notice-check target verifies that all packages in uv.lock are
-# documented in the NOTICE file.  Run this after updating dependencies.
-# Package names are normalized (hyphens/dots are interchangeable in PyPI).
-notice-check:
+.PHONY: lint format format-check ruff-fix security license license-fix notice-check
+
+lint: ## Lint with ruff
+	$(UV) run ruff check $(SRC) $(TESTS)
+
+format: ## Format source files with ruff
+	$(UV) run ruff format $(SRC) $(TESTS)
+
+format-check: ## Check formatting without modifying files
+	$(UV) run ruff format --check $(SRC) $(TESTS)
+
+ruff-fix: ## Auto-fix ruff lint issues
+	$(UV) run ruff check --fix $(SRC) $(TESTS)
+
+security: ## Run bandit security analysis
+	$(UV) run bandit -r $(SRC) --configfile pyproject.toml
+
+license: ## Check all Python files for license headers
+	$(UV) run python $(SCRIPTS)/check_license_headers.py
+
+license-fix: ## Add missing license headers to Python files
+	$(UV) run python $(SCRIPTS)/check_license_headers.py --fix
+
+notice-check: ## Verify NOTICE file lists all packages in uv.lock
 	@echo "Packages in uv.lock not mentioned in NOTICE:"
 	@grep -E '^name = "' uv.lock | sed 's/name = "\(.*\)"/\1/' | \
 		grep -v '^ipsdk$$' | \
@@ -88,67 +88,74 @@ notice-check:
 		done
 	@echo "Done."
 
-# The clean target will remove build and dev artififacts that are not
-# part of the application and get created by other targets.
-clean:
-	@rm -rf .pytest_cache coverage.* htmlcov dist build *.egg-info
+# ------------------------------------------------------------------------------
+# CI
+# ------------------------------------------------------------------------------
+
+.PHONY: ci
+
+ci: clean lint format-check security license test ## Run all checks (required before committing)
+
+# ------------------------------------------------------------------------------
+# Tox (multi-version)
+# ------------------------------------------------------------------------------
+
+.PHONY: tox tox-py310 tox-py311 tox-py312 tox-py313
+.PHONY: tox-coverage tox-lint tox-format tox-security tox-ci tox-list
+
+tox: ## Run tests across all Python versions (3.10-3.13)
+	$(UV) run tox
+
+tox-py310: ## Run tests with Python 3.10
+	$(UV) run tox -e py310
+
+tox-py311: ## Run tests with Python 3.11
+	$(UV) run tox -e py311
+
+tox-py312: ## Run tests with Python 3.12
+	$(UV) run tox -e py312
+
+tox-py313: ## Run tests with Python 3.13
+	$(UV) run tox -e py313
+
+tox-coverage: ## Run coverage report via tox
+	$(UV) run tox -e coverage
+
+tox-lint: ## Run lint via tox
+	$(UV) run tox -e lint
+
+tox-format: ## Run format via tox
+	$(UV) run tox -e format
+
+tox-security: ## Run security scan via tox
+	$(UV) run tox -e security
+
+tox-ci: ## Run all CI checks via tox
+	$(UV) run tox -e ci
+
+tox-list: ## List all available tox environments
+	$(UV) run tox list
+
+# ------------------------------------------------------------------------------
+# Housekeeping
+# ------------------------------------------------------------------------------
+
+.PHONY: clean
+
+clean: ## Remove build artifacts and caches
+	@rm -rf .pytest_cache .ruff_cache coverage.* htmlcov dist build *.egg-info
 	@find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 
-# The format target will format source files using ruff
-format:
-	uv run ruff format src/ipsdk tests
+# ------------------------------------------------------------------------------
+# Help
+# ------------------------------------------------------------------------------
 
-# The ruff-fix target will run ruff with --fix to automatically fix
-# fixable issues in the source code
-ruff-fix:
-	uv run ruff check --fix src/ipsdk
-	uv run ruff check --fix tests
+.PHONY: help
 
-# The premerge target will run the permerge tests locally.  This is
-# the same target that is invoked in the permerge pipeline.
-premerge: clean lint security license test
-
-# The tox target will run tests across all supported Python versions
-# (3.10, 3.11, 3.12, 3.13) using tox with uv integration.
-tox:
-	uv run tox
-
-# The tox-py310 target will run tests specifically with Python 3.10
-tox-py310:
-	uv run tox -e py310
-
-# The tox-py311 target will run tests specifically with Python 3.11
-tox-py311:
-	uv run tox -e py311
-
-# The tox-py312 target will run tests specifically with Python 3.12
-tox-py312:
-	uv run tox -e py312
-
-# The tox-py313 target will run tests specifically with Python 3.13
-tox-py313:
-	uv run tox -e py313
-
-# The tox-coverage target will run tests with coverage report using tox
-tox-coverage:
-	uv run tox -e coverage
-
-# The tox-lint target will run linting checks using tox
-tox-lint:
-	uv run tox -e lint
-
-# The tox-format target will format code using tox
-tox-format:
-	uv run tox -e format
-
-# The tox-security target will run security analysis using tox
-tox-security:
-	uv run tox -e security
-
-# The tox-premerge target will run all premerge checks using tox
-tox-premerge:
-	uv run tox -e premerge
-
-# The tox-list target will list all available tox environments
-tox-list:
-	uv run tox list
+help: ## Show available targets
+	@echo "Usage: make <target>"
+	@echo ""
+	@grep -E '^[a-zA-Z_/-]+:.*##' $(MAKEFILE_LIST) \
+		| awk 'BEGIN {FS = ":.*##"}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' \
+		| sort
+	@echo ""

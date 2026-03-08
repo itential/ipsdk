@@ -1,6 +1,6 @@
-# .github/workflows/premerge.yml
+# .github/workflows/ci.yaml
 ---
-name: Run pre merge pipeline
+name: Run CI pipeline
 
 on:
   pull_request:
@@ -30,8 +30,8 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      - name: Run the premerge target
-        run: make premerge
+      - name: Run the CI target
+        run: make ci
 
       - name: Run coverage check with 95% threshold
         run: uv run pytest --cov=ipsdk --cov-report=term --cov-fail-under=95 tests/

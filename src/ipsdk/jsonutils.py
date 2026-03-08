@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 
-
 """JSON serialization and deserialization utilities for the Itential Python SDK.
 
 This module provides wrapper functions for JSON encoding and decoding operations

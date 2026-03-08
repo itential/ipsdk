@@ -6,212 +6,160 @@
 [![Tests](https://github.com/itential/ipsdk/workflows/Run%20pre%20merge%20pipeline/badge.svg)](https://github.com/itential/ipsdk/actions)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-green)](https://github.com/itential/ipsdk)
 
-The Itential Python SDK provides a robust client implementation in Python for writing
-scripts and applications that can make API calls to Itential Platform or Itential
-Automation Gateway 4.x.
+> Python SDK for making API calls to Itential Platform and Itential Automation Gateway 4.x.
 
-**Status**: Beta - Active development with comprehensive test coverage (100%)
-
-## Features
-
-- **Easy API Requests**: Automatic authentication on first API call with session management
-- **Multiple Authentication Methods**:
-  - OAuth (client credentials) for Itential Platform
-  - Basic authentication (username/password) for both Platform and Gateway
-- **Sync and Async Support**: Both synchronous and asynchronous HTTP clients via `want_async` parameter
-- **Comprehensive Logging**: Custom logging system with multiple levels (including TRACE and FATAL) and httpx integration control
-- **Flexible Configuration**: Customizable connection settings including TLS, certificate verification, and timeouts
-- **Type Safety**: Full type hints for enhanced development experience
-- **HTTP Methods**: Support for GET, POST, PUT, DELETE, and PATCH operations with automatic JSON handling
-
-## Getting started
-
-## Requirements
-
-- Python 3.10 or higher
-- httpx >= 0.28.1
-
-### Tested Python Versions
-
-| Python Version | Status | Notes |
-|----------------|--------|-------|
-| 3.10           | ✅ Tested | Minimum recommended version |
-| 3.11           | ✅ Tested | Full support |
-| 3.12           | ✅ Tested | Full support |
-| 3.13           | ✅ Tested | Latest stable release |
-| 3.14           | 🔄 Beta | Development/preview testing |
-
-The SDK is automatically tested against Python 3.10-3.13 in our CI pipeline to ensure compatibility across all supported versions.
+Provides sync and async HTTP clients with automatic authentication, session management, and sensitive data filtering. Single runtime dependency: [httpx](https://www.python-httpx.org/).
 
 ## Installation
 
-Install `ipsdk` using pip:
+```bash
+pip install ipsdk
+```
+
+Or with uv:
 
 ```bash
-$ pip install ipsdk
+uv add ipsdk
 ```
 
-Or using uv (recommended for development):
+Requires Python 3.10+.
 
-```bash
-$ uv add ipsdk
-```
+## Usage
 
-The `ipsdk` package provides factory functions for connecting to either
-Itential Platform or Itential Automation Gateway.
-
-The `platform_factory(...)` function creates a connection to Itential Platform
-The `gateway_factory(...)` function creates a connection to Itential Automation Gateway
-
-### Basic Authentication
-
-Use basic authentication with username and password:
+### Platform — basic auth
 
 ```python
->>> import ipsdk
->>> platform = ipsdk.platform_factory(
-...     host="platform.itential.dev",
-...     user="admin@pronghorn",
-...     password="your-password"
-... )
->>> res = platform.get("/health/server")
->>> res
-<Response [200 OK]>
->>> res.text
-'{"version":"15.8.10-2023.2.44","release":"2023.2.9"...`
+import ipsdk
+
+platform = ipsdk.platform_factory(
+    host="platform.itential.dev",
+    user="admin@pronghorn",
+    password="your-password"
+)
+
+res = platform.get("/health/server")
+print(res.json())
 ```
 
-### OAuth Authentication
-
-For Itential Platform, you can use OAuth with client credentials:
+### Platform — OAuth (client credentials)
 
 ```python
->>> import ipsdk
->>> platform = ipsdk.platform_factory(
-...     host="platform.itential.dev",
-...     client_id="your-client-id",
-...     client_secret="your-client-secret"
-... )
->>> res = platform.get("/adapters")
+import ipsdk
+
+platform = ipsdk.platform_factory(
+    host="platform.itential.dev",
+    client_id="your-client-id",
+    client_secret="your-client-secret"
+)
+
+res = platform.get("/adapters")
 ```
 
-### Gateway Connection
-
-Connecting to Itential Automation Gateway uses the same pattern:
+### Gateway
 
 ```python
->>> import ipsdk
->>> gateway = ipsdk.gateway_factory(
-...     host="gateway.itential.dev",
-...     user="admin@itential",
-...     password="your-password"
-... )
->>> res = gateway.get("/devices")
+import ipsdk
+
+gateway = ipsdk.gateway_factory(
+    host="gateway.itential.dev",
+    user="admin@itential",
+    password="your-password"
+)
+
+res = gateway.get("/devices")
 ```
 
-### Async Support
+### Async
 
-The SDK fully supports `asyncio` for asynchronous operations. Set `want_async=True`
-when creating the connection:
+Pass `want_async=True` to get an async client:
 
 ```python
 import asyncio
 import ipsdk
 
 async def main():
-    p = ipsdk.platform_factory(
+    platform = ipsdk.platform_factory(
         host="platform.itential.dev",
-        user="admin@pronghorn",
+        client_id="your-client-id",
+        client_secret="your-client-secret",
         want_async=True
     )
+    res = await platform.get("/adapters")
+    print(res.json())
 
-    res = await p.get("/adapters")
-
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
 ```
 
 ## HTTP Methods
 
-The connection object supports the following HTTP methods:
+All clients support `get`, `post`, `put`, `delete`, and `patch`.
 
-- `GET` - Sends a HTTP GET request to the server and returns the results
-- `POST` - Sends a HTTP POST request to the server and returns the results
-- `PUT` - Sends a HTTP PUT request to the server and returns the results
-- `DELETE` - Sends a HTTP DELETE request to the server and returns the results
-- `PATCH` - Sends a HTTP PATCH request to the server and returns the results
+| Argument | `get`    | `post`   | `put`    | `delete` | `patch`  |
+|----------|----------|----------|----------|----------|----------|
+| `path`   | required | required | required | required | required |
+| `params` | optional | optional | optional | optional | optional |
+| `json`   | —        | optional | optional | —        | optional |
 
-The following table shows the keyword arguments for each HTTP method:
+`path` is the relative URI appended to the base URL. `params` is a `dict` serialized to a query string. `json` accepts a `list` or `dict`; when provided, sets `Content-Type: application/json` automatically.
 
- | Keyword  | `GET`         | `POST`   | `PUT`    | `DELETE`      | `PATCH`  |
- |----------|---------------|----------|----------|---------------|----------|
- | `path`   | Required      | Required | Required | Required      | Required |
- | `params` | Optional      | Optional | Optional | Optional      | Optional |
- | `json`   | Not Supported | Optional | Optional | Not Supported | Optional |
-
-The `path` argument specifies the relative path of the URI.   This value is
-prepended to the base URL.  The base URL for Itential Platform is `<host>` and
-the base URL for Itential Automation Gateway is `<host>/api/v2.0`.
-
-The `params` argument accepts a `dict` object that is transformed into the URL
-query string.  For example, if `params={"foo": "bar"}` the resulting query
-string would be `?foo=bar`
-
-The `json` argument accepts the payload to send in the request as JSON. This
-argument accepts either a `list` or `dict` object. When specified, the data
-will automatically be converted to a JSON string and the `Content-Type` and
-`Accept` headers will be set to `application/json`.
+**Base URLs:**
+- Platform: `https://host:port`
+- Gateway: `https://host:port/api/v2.0`
 
 ## Configuration
 
-Both the `platform_factory` and `gateway_factory` functions support
-configuration using keyword arguments. The table below shows the keyword
-arguments for each function along with their default value.
-
- | Keyword         | `platform_factory` | `gateway_factory` |
- |-----------------|--------------------|-------------------|
- | `host`          | `localhost`        | `localhost`       |
- | `port`          | `0`                | `0`               |
- | `use_tls`       | `True`             | `True`            |
- | `verify`        | `True`             | `True`            |
- | `user`          | `admin`            | `admin@itential`  |
- | `password`      | `admin`            | `admin`           |
- | `client_id`     | `None`             | Not Supported     |
- | `client_secret` | `None`             | Not Supported     |
- | `timeout`       | `30`               | `30`              |
- | `want_async`    | `False`            | `False`           |
+| Parameter       | `platform_factory` | `gateway_factory` | Description                                      |
+|-----------------|--------------------|-------------------|--------------------------------------------------|
+| `host`          | `"localhost"`      | `"localhost"`     | Hostname or IP                                   |
+| `port`          | `0`                | `0`               | Port; `0` = auto (443 for TLS, 80 for plain HTTP)|
+| `use_tls`       | `True`             | `True`            | Use HTTPS                                        |
+| `verify`        | `True`             | `True`            | Verify TLS certificates                          |
+| `user`          | `"admin"`          | `"admin@itential"`| Username for basic auth                          |
+| `password`      | `"admin"`          | `"admin"`         | Password for basic auth                          |
+| `client_id`     | `None`             | —                 | OAuth client ID (Platform only)                  |
+| `client_secret` | `None`             | —                 | OAuth client secret (Platform only)              |
+| `timeout`       | `30`               | `30`              | Request timeout in seconds                       |
+| `ttl`           | `0`                | `0`               | Re-authenticate after N seconds; `0` = disabled  |
+| `want_async`    | `False`            | `False`           | Return an async client                           |
 
 ## Logging
-
-The SDK includes a comprehensive logging system accessible via `ipsdk.logging`:
 
 ```python
 import ipsdk
 
-# Configure logging level
 ipsdk.logging.set_level(ipsdk.logging.DEBUG)
-
-# Use convenience functions
 ipsdk.logging.info("Connected to platform")
-ipsdk.logging.debug("Request details: %s", request_data)
-ipsdk.logging.error("API call failed")
 ```
 
-**Logging Features**:
-- **Multiple Log Levels**: TRACE (5), DEBUG, INFO, WARNING, ERROR, CRITICAL, FATAL (90), and NONE (100)
-- **Convenience Functions**: `debug()`, `info()`, `warning()`, `error()`, `critical()`, `fatal()`, `exception()`
-- **Function Tracing**: `@trace` decorator for automatic entry/exit logging with timing
-- **Sensitive Data Filtering**: Automatic redaction of PII, API keys, passwords, and tokens
-- **httpx Integration**: Optional control of httpx/httpcore logging via `propagate` parameter
+Available levels: `TRACE` (5), `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`, `FATAL` (90), `NONE` (100).
 
-For detailed logging documentation, see the logging module docstrings.
+The `@ipsdk.logging.trace` decorator logs function entry/exit with timing. Sensitive data filtering (PII, passwords, tokens) is enabled by default and can be extended:
+
+```python
+ipsdk.logging.add_sensitive_data_pattern("ssn", r"\d{3}-\d{2}-\d{4}")
+```
 
 ## Development
 
-For development setup, testing, and contribution guidelines, see the [Development Guide](docs/development.md).
+```bash
+# Install dependencies
+uv sync
 
+# Run checks (lint, format, security, tests, license headers)
+make premerge
+
+# Individual targets
+make test        # pytest
+make coverage    # pytest --cov (100% required)
+make lint        # ruff check
+make format      # ruff format
+make security    # bandit scan
+make license     # check GPL headers
+
+# Test across Python 3.10–3.13
+uv run tox -p auto
+```
 
 ## License
 
-This project is licensed under the GPLv3 open source license.  See
-[license](LICENSE)
+GPL-3.0-or-later. See [LICENSE](LICENSE).

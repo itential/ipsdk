@@ -2,177 +2,182 @@
 
 ## What This Is
 
-HTTP client SDK for Itential Platform and Automation Gateway 4.x. Factory-based sync/async clients with auto-authentication, comprehensive logging, and sensitive data filtering. Production-ready despite beta status.
+HTTP client SDK for Itential Platform and Automation Gateway 4.x. Provides factory-based sync/async clients with lazy authentication, configurable TTL-based re-auth, comprehensive logging with PII redaction, and a custom exception hierarchy. The only runtime dependency is httpx.
 
-**Current**: v0.8.0 (2026-02-25) | 3.7k LOC | 100% test coverage | Python 3.10-3.13
+**Current**: v0.8.0 | Python 3.10–3.13 | GPL-3.0-or-later
 
 ## Architecture
 
-Factory pattern creates dynamically-typed clients by composing auth mixins with connection base classes at runtime using `type()`. Authentication is thread-locked and happens on first request. Supports OAuth (Platform) and basic auth (Platform/Gateway).
+Factory functions (`platform_factory`, `gateway_factory`) are the sole public entry points. They construct client objects by composing auth mixins with HTTP base classes at runtime using `type()`. At type-check time (via `TYPE_CHECKING`), explicit class definitions are used instead so mypy and IDEs see proper types.
 
-**Core modules**:
-- `connection.py`: Abstract base + sync/async HTTP clients using httpx
-- `platform.py`/`gateway.py`: Auth mixins that compose with ConnectionBase
-- `logging.py`: Custom TRACE/FATAL levels, sensitive data filtering, caching
-- `exceptions.py`: IpsdkError → RequestError/HTTPStatusError/SerializationError
-- `heuristics.py`: Singleton PII scanner with extensible patterns
-- `http.py`: HTTPMethod enum + Request/Response wrappers
+```
+platform_factory() → Platform (AuthMixin + Connection)
+                   → AsyncPlatform (AsyncAuthMixin + AsyncConnection)
 
-**New in 0.8.0**: License header checking with `make license` and `make license-fix` commands
+gateway_factory()  → Gateway (AuthMixin + Connection)
+                   → AsyncGateway (AsyncAuthMixin + AsyncConnection)
+```
 
-**Previously in 0.7.0**: Connection TTL (`ttl` param forces re-auth after N seconds)
+Authentication is lazy: the first `_send_request()` call acquires a `threading.Lock` (sync) or `asyncio.Lock` (async), checks `self.authenticated`, and calls `authenticate()` if needed. A double-checked locking pattern prevents races. TTL-based re-auth (`ttl > 0`) resets `authenticated=False` and clears the token after N seconds.
 
-## Stack
+**Module responsibilities**:
+- `connection.py`: `ConnectionBase` (abstract), `Connection` (sync), `AsyncConnection` (async). URL construction, request building, auth orchestration, error wrapping.
+- `platform.py`: `AuthMixin`/`AsyncAuthMixin` for Platform. OAuth client-credentials (`/oauth/token`) or basic auth (`/login`). Dynamic `Platform`/`AsyncPlatform` classes. `platform_factory()`.
+- `gateway.py`: `AuthMixin`/`AsyncAuthMixin` for Gateway. Basic auth only (`/login`). Sets `base_path="/api/v2.0"`. `gateway_factory()`.
+- `logging.py`: Wraps stdlib `logging`. Adds TRACE (5), FATAL (90), NONE (100) levels. `@trace` decorator logs function entry/exit with timing. Sensitive-data filtering via `heuristics`. Logger cached via `functools.cache`.
+- `heuristics.py`: Singleton `Scanner` with compiled regex patterns for API keys, bearer tokens, JWTs, passwords, secrets, etc. Redacts matches in log messages.
+- `exceptions.py`: `IpsdkError → RequestError / HTTPStatusError / SerializationError`. Wraps httpx exceptions and exposes `.request`/`.response` properties.
+- `http.py`: `HTTPMethod` enum (stdlib 3.11+ or fallback), `Request` and `Response` wrapper classes. `Response` wraps `httpx.Response` with `json()`, `is_success()`, `is_error()`.
+- `jsonutils.py`: Thin wrappers around `json.loads`/`json.dumps` that raise `SerializationError` on failure.
+- `metadata.py`: Package name, author, version (via `importlib.metadata`).
+- `__init__.py`: Public API: exports `platform_factory`, `gateway_factory`, `logging`, `__version__`. Calls `logging.initialize()` on import.
 
-**Build**: uv + hatchling + uv-dynamic-versioning (PEP440 from git tags)
-**Runtime**: httpx>=0.28.1 (only dependency)
-**Dev**: pytest + pytest-asyncio + ruff + mypy + bandit + tox + tox-uv
-**CI**: GitHub Actions, trusted publisher to PyPI, matrix Python 3.10-3.13
+**Key design decision**: `from __future__ import annotations` is used in most source files, placed *after* the copyright header and *before* the module docstring. This is non-standard placement but functional. Not all files include it (`__init__.py` and `jsonutils.py` omit it).
+
+**Base URL behavior**:
+- Platform: `https://host:port` (no prefix — callers pass full paths like `/api/v2.0/workflows`)
+- Gateway: `https://host:port/api/v2.0` (prefix baked in — callers pass resource paths like `/devices`)
+
+Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports 80 and 443 are not appended to the host string; non-standard ports are.
+
+## Tech Stack
+
+- **Python**: 3.10–3.13 (matrix tested)
+- **httpx ≥ 0.28.1**: Only runtime dependency. Used for both sync (`httpx.Client`) and async (`httpx.AsyncClient`) HTTP.
+- **Build**: hatchling + uv-dynamic-versioning. Version derived from git tags → PEP440.
+- **Dev tools**: pytest + pytest-asyncio + pytest-cov, ruff (lint + format), bandit (security), tox + tox-uv (matrix), uv (package manager).
+- **No mypy in CI**: mypy is a dev dependency but is not run in the CI pipeline or `make premerge`. Static analysis is broken (see Known Issues).
 
 ## Development Commands
 
 ```bash
+# Setup: requires uv
+uv sync --all-extras --dev
+
 # Daily workflow
-make test              # pytest
-make coverage          # pytest --cov (100% required)
-make lint              # ruff check
-make format            # ruff format
-make security          # bandit security scan
-make license           # Check GPL headers
-make license-fix       # Add missing headers
-make premerge          # Run all checks (use before commit)
+make test          # pytest tests -v -s
+make coverage      # pytest --cov (HTML report in htmlcov/)
+make lint          # ruff check src/ipsdk tests
+make format        # ruff format src/ipsdk tests
+make security      # bandit -r src/ipsdk
+make license       # Check GPL-3.0 headers (scripts/check_license_headers.py)
+make license-fix   # Auto-add missing headers
+make premerge      # clean + lint + security + license + test (run before every commit)
 
 # Multi-version testing
-uv run tox             # All versions sequentially
-uv run tox -p auto     # Parallel
-uv run tox -e py310    # Specific version
-uv run tox -e premerge # Full CI checks via tox
-
-# Tox environments
-tox -e coverage        # Coverage report
-tox -e lint            # Ruff check only
-tox -e format          # Ruff format only
-tox -e security        # Bandit scan only
-tox -e premerge        # All checks
+uv run tox                  # All versions (3.10–3.13) sequentially
+uv run tox -p auto          # Parallel
+uv run tox -e py310         # Specific version
+uv run tox -e coverage      # Coverage report (Python 3.13)
+uv run tox -e premerge      # lint + security + test (no license check in tox)
 ```
+
+**Note**: `make premerge` includes the license header check; `tox -e premerge` does not. Run `make premerge` locally before pushing.
+
+CI (`premerge.yaml`): runs `make premerge` then a separate coverage check with `--cov-fail-under=95`.
 
 ## Code Standards
 
 **Non-negotiable**:
-- 100% test coverage (enforced, currently at 100%)
-- GPL-3.0 license headers on all .py files (checked by `make license`)
-- Type hints everywhere: `str | None` not `Optional[str]`, `dict[str, Any]` not `Dict`
-- Thread safety: authentication uses `threading.Lock`, loggers are cached
-- Google-style docstrings with Args/Returns/Raises
-- No bare `except:`, no `assert` in production code (runtime validation with exceptions)
-- Line length 88 (Black-compatible), double quotes, single-line imports
+- GPL-3.0 header on every `.py` file (checked by `make license`)
+- 100% test coverage enforced locally; CI enforces 95% threshold
+- `str | None` not `Optional[str]`, `dict[str, Any]` not `Dict` (modern union syntax)
+- Google-style docstrings with Args/Returns/Raises on all public methods
+- No bare `except:`. Catch specific exceptions; bare `except Exception` only when re-raising
+- Line length 88, double quotes, single-line imports, one blank line between import groups
+- `__slots__` on classes with fixed attributes (`ConnectionBase`, `Request`, `Response`)
 
-**Patterns to follow**:
-- Factory functions for object creation, not direct instantiation
-- Mixin classes for auth, base classes for HTTP
-- Dynamic class creation via `type()` for Platform/AsyncPlatform variants
-- Early returns for validation
-- Specific exceptions over generic
-- `want_async` parameter switches sync/async (default sync)
+**Module organization within classes**:
+1. `__init__`, `__str__`, `__repr__` first
+2. Private methods (`_private`, `__internal`)
+3. Public methods
 
-**Module organization** (user's global preference):
-1. Dunder methods first (`__init__`, `__str__`, etc.)
-2. Private methods/functions (`_private` or `__internal`)
-3. Public methods/functions
+**Patterns**:
+- Factory functions create objects; don't instantiate connection classes directly
+- Auth mixins contain all auth logic; `ConnectionBase`/`Connection`/`AsyncConnection` are auth-agnostic
+- `@logging.trace` on every method/function for TRACE-level debugging
+- Early return for validation; raise `IpsdkError` with a descriptive message string
 
-## Current Issues
+**Authentication credential rules**:
+- Platform: provide `client_id`+`client_secret` for OAuth, OR `user`+`password` for basic auth. Defaults are `user="admin"`, `password="admin"` — OAuth is only used if `client_id` is explicitly provided.
+- Gateway: always basic auth. Defaults are `user="admin@itential"`, `password="admin"`. No OAuth support; `client_id`/`client_secret` are not accepted.
+- Never mix OAuth + basic auth params.
 
-**Type checking broken (22 mypy errors)**:
-- logging.py: Custom TRACE/NONE/FATAL levels not in stdlib logging
-- heuristics.py: Callable type hints and lambda inference
-- exceptions.py: Optional attribute access needs guards (lines 131, 143)
-- http.py: HTTPMethod import/redefinition conflicts
-- platform.py: Variable not valid as type for return annotations
+## Known Issues
 
-**Impact**: Type safety unenforced. Runtime works fine but static analysis fails.
+**mypy is broken (~22 errors)**:
+- `logging.py`: Custom `TRACE`/`NONE`/`FATAL` constants assigned to `logging` module (stdlib doesn't declare these attributes)
+- `heuristics.py`: Lambda type inference and `Callable` annotation mismatches
+- `http.py`: `HTTPMethod` import/redefinition conflict (stdlib vs. fallback enum)
+- `platform.py`: Return type annotation uses dynamic `type()` result
 
-**Fix strategy**: Add type stubs or mypy ignore comments for custom logging levels. Add proper None guards in exceptions.py.
+**Impact**: Mypy is not run in CI, so this doesn't block development. Runtime behavior is correct. Fix approach: add `# type: ignore[misc]` to custom level assignments in `logging.py`.
 
-**Missing**: `.pre-commit-config.yaml` (referenced in docs but doesn't exist)
+**`jsonutils.py` uses old Union syntax**: Uses `Union[dict, list]` (old style) instead of `dict | list` (modern). Inconsistent with the rest of the codebase.
 
-## What Not to Break
+**Missing `.pre-commit-config.yaml`**: `pre-commit` is listed as a dev dependency but the config file doesn't exist in the repo.
 
-**Public API surface** (pyproject.toml defines public exports):
-- `platform_factory(host, port=443, use_tls=True, verify=True, timeout=30, ttl=0, want_async=False, **auth)`
-- `gateway_factory(host, port=443, use_tls=True, verify=True, timeout=30, ttl=0, want_async=False, user=..., password=...)`
-- Auth kwargs: `client_id`+`client_secret` OR `user`+`password` (not mixed)
+**No mypy in CI**: Static analysis debt accumulates silently.
 
-**Thread safety requirements**:
-- Authentication must remain locked (prevents race conditions)
-- Logger caching must be thread-safe
-- Multiple client instances should not share state
+## New Developer Entry Points
 
-**Authentication flow**:
-- First request triggers auth via mixin `authenticate()` method
-- OAuth extracts bearer token, basic auth gets session cookies
-- TTL support: re-auth after `ttl` seconds if configured
+**Verify setup**:
+```bash
+uv sync --all-extras --dev
+make test        # Should pass all tests
+make premerge    # Should pass all checks
+```
 
-**Base paths**:
-- Platform: `https://host:port` (no prefix)
-- Gateway: `https://host:port/api/v2.0`
+**Read in this order**:
+1. `src/ipsdk/__init__.py` — public API surface
+2. `src/ipsdk/connection.py` — core HTTP machinery, auth flow, `_send_request`
+3. `src/ipsdk/platform.py` — auth mixins + factory pattern with `TYPE_CHECKING` trick
+4. `src/ipsdk/gateway.py` — simpler auth-only mixin variant
 
-## Development Workflow
-
-**Adding features**:
-1. Read module docstrings first (100+ lines each, comprehensive)
-2. Write tests before code (TDD enforced by coverage)
-3. Run `make premerge` before commit
-4. Update docstrings if changing signatures
-
-**Modifying auth**: Edit mixins in platform.py/gateway.py, NOT connection.py
-**Modifying HTTP**: Edit ConnectionBase/Connection/AsyncConnection together
-**Adding sensitive patterns**: Edit `heuristics.py` default patterns
-**Adding exceptions**: Inherit from IpsdkError, update hierarchy
+**Likely gotchas**:
+- `want_async=False` by default — easy to forget when you need async
+- Platform's `user="admin"` and `password="admin"` defaults mean if you don't pass `client_id`, it silently falls back to basic auth with those defaults
+- `gateway_factory` does not accept `client_id`/`client_secret` — Gateway is basic-auth only
+- The `HTTPMethod` compatibility shim in `http.py`: Python 3.10 gets the fallback enum, 3.11+ gets the stdlib one. They behave identically but are different types — don't compare them across versions
+- `logging.initialize()` is called on `import ipsdk`, resetting all handlers. If you configure logging before importing ipsdk, it will be wiped. Configure after import.
+- `Scanner` in `heuristics.py` is a singleton that only initializes patterns once. Call `Scanner.reset_singleton()` in tests that need a fresh scanner state.
+- Port 80 and 443 are not appended to the host URL (httpx compatibility); other ports are appended as `host:port`
 
 ## Testing
 
-**Organization**: tests/test_<module>.py mirrors src/ipsdk/<module>.py
-**Strategy**: Unit tests only, mock all httpx responses, no network calls
-**Coverage**: 755 lines tested, 0 missed, 100%
-**Async**: pytest-asyncio for async tests
-**Parallelism**: Python 3.10-3.13 via tox matrix
+**Organization**: `tests/test_<module>.py` mirrors `src/ipsdk/<module>.py`.
+
+**Strategy**: Unit tests only. All httpx calls are mocked — no network required. `pytest-asyncio` for async tests.
 
 **Key test files**:
-- test_logging.py: 38 test cases covering custom levels, filtering, threading
-- test_connection.py: Sync/async paths, auth triggers, error handling
-- test_platform.py: OAuth + basic auth flows
-- test_exceptions.py: Exception hierarchy and wrapping
+- `test_connection.py` — largest file; covers sync/async paths, TTL, auth triggers, error handling
+- `test_platform.py` — OAuth and basic auth flows, factory variants
+- `test_logging.py` — custom levels, filtering, thread safety, `@trace` decorator
+- `test_gateway.py` — Gateway basic auth, factory variants, error handling
+- `test_heuristics.py` — pattern matching, singleton behavior, redaction
+- `test_enums.py` — HTTPMethod and HTTPStatus enum behavior
+
+**Running specific tests**:
+```bash
+uv run pytest tests/test_connection.py -v -s -k "test_send_request"
+uv run pytest tests/ -v --cov=src/ipsdk --cov-report=term
+```
 
 ## Build & Release
 
-**Versioning**: Git tags → uv-dynamic-versioning → PEP440 version
-**Release process**:
-1. Update CHANGELOG.md
-2. Commit to devel branch
-3. Tag: `git tag v0.x.0 && git push origin v0.x.0`
-4. GitHub Actions auto-publishes to PyPI (trusted publisher, no twine)
-5. GitHub Release created automatically
+```bash
+# Version comes from git tags
+git tag v0.9.0
+git push origin v0.9.0
+# → GitHub Actions auto-publishes to PyPI (trusted publisher, no token/twine)
+```
 
-**Artifacts**: wheel + sdist with LICENSE and NOTICE in dist-info/licenses/
-
-## Common Pitfalls
-
-1. **Default is sync**: Must pass `want_async=True` for async clients
-2. **Auth credentials**: Don't mix OAuth + basic auth params
-3. **Base paths**: Gateway has `/api/v2.0` prefix, Platform doesn't
-4. **Custom logging levels**: TRACE/FATAL won't work with external loggers
-5. **Thread safety**: Don't share client instances across threads
-6. **TTL parameter**: Set `ttl=N` to force re-auth after N seconds (default 0 = disabled)
+**CHANGELOG.md must be updated before tagging.** Version is read from installed package metadata at runtime (`importlib.metadata`), not from a hardcoded string.
 
 ## Key Files
 
-- `pyproject.toml`: Build config, dependencies, extensive ruff rules (347 lines)
-- `Makefile`: All dev commands, well-documented (139 lines)
-- `tox.ini`: Multi-version testing, 8 environments (111 lines)
-- `CHANGELOG.md`: Detailed release history
-- `.github/workflows/premerge.yaml`: CI pipeline (lint, security, test matrix)
-
-## Contact
-
-Issues: https://github.com/itential/ipsdk/issues
-Docs: Module docstrings (comprehensive), README.md examples
+- `pyproject.toml`: Build config, ruff rules, bandit config
+- `Makefile`: All dev commands
+- `tox.ini`: 9 environments: py310–py313, coverage, lint, format, security, premerge
+- `scripts/check_license_headers.py`: License header checker/fixer
+- `.github/workflows/premerge.yaml`: CI — matrix across 3.10–3.13, runs `make premerge` + coverage check

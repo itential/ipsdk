@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-# Copyright (c) 2025 Itential, Inc
+# Copyright (C) Itential, Inc
 # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+
 """Check that all Python files have proper license headers.
 
-This script verifies that all .py files in src/ipsdk and tests directories
-contain the required copyright, license, and SPDX identifier headers.
+This script verifies that all .py files in src/ipsdk, tests, and scripts
+directories contain the required copyright, license, and SPDX identifier headers.
 
 Required headers:
-    # Copyright (c) 2025 Itential, Inc
+    # Copyright (C) Itential, Inc
     # GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)
     # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -25,15 +26,22 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import itertools
 import sys
 from pathlib import Path
 
 
 REQUIRED_HEADERS = [
-    "# Copyright (c) 2025 Itential, Inc",
+    "# Copyright (C) Itential, Inc",
     "# GNU General Public License v3.0+ (see LICENSE or https://www.gnu.org/licenses/gpl-3.0.txt)",
     "# SPDX-License-Identifier: GPL-3.0-or-later",
 ]
+
+_HEADER_PREFIXES = (
+    "# Copyright",
+    "# GNU General Public License",
+    "# SPDX-License-Identifier",
+)
 
 
 def check_file_header(file_path: Path) -> bool:
@@ -47,17 +55,12 @@ def check_file_header(file_path: Path) -> bool:
     """
     try:
         with open(file_path, encoding="utf-8") as f:
-            lines = [line.rstrip() for line in f.readlines()[:10]]
-    except Exception as e:
+            lines = {line.rstrip() for line in itertools.islice(f, 10)}
+    except OSError as e:
         print(f"Error reading {file_path}: {e}")
         return False
 
-    # Check if all required headers are present in the first few lines
-    for required_header in REQUIRED_HEADERS:
-        if required_header not in lines:
-            return False
-
-    return True
+    return all(header in lines for header in REQUIRED_HEADERS)
 
 
 def fix_file_header(file_path: Path) -> bool:
@@ -75,7 +78,7 @@ def fix_file_header(file_path: Path) -> bool:
     try:
         with open(file_path, encoding="utf-8") as f:
             content = f.read()
-    except Exception as e:
+    except OSError as e:
         print(f"Error reading {file_path}: {e}")
         return False
 
@@ -93,25 +96,14 @@ def fix_file_header(file_path: Path) -> bool:
     content_start = start_position
     for i in range(start_position, min(start_position + 10, len(lines))):
         line = lines[i].rstrip()
-        # Check if this line matches any of our header patterns
-        is_header_line = False
-        for header in REQUIRED_HEADERS:
-            if line == header or line.startswith("# Copyright") or \
-               line.startswith("# GNU General Public License") or \
-               line.startswith("# SPDX-License-Identifier"):
-                is_header_line = True
-                break
+        is_header_line = line.startswith(_HEADER_PREFIXES)
 
-        # Stop when we hit a non-header line (docstring, import, etc.)
-        if not is_header_line and line and not line.startswith("#"):
-            content_start = i
-            break
-        elif not is_header_line and not line:
-            # Empty line after headers
-            content_start = i
-            break
-        elif is_header_line:
+        if is_header_line:
             content_start = i + 1
+        elif not line or not line.startswith("#"):
+            # Empty line or non-comment line signals end of header block
+            content_start = i
+            break
 
     # Build the header to insert
     header_lines = [f"{header}\n" for header in REQUIRED_HEADERS]
@@ -124,7 +116,7 @@ def fix_file_header(file_path: Path) -> bool:
         with open(file_path, "w", encoding="utf-8") as f:
             f.writelines(new_lines)
         return True
-    except Exception as e:
+    except OSError as e:
         print(f"Error writing {file_path}: {e}")
         return False
 
@@ -158,15 +150,18 @@ def main() -> int:
     args = parser.parse_args()
 
     repo_root = Path(__file__).parent.parent
-    src_dir = repo_root / "src" / "ipsdk"
-    tests_dir = repo_root / "tests"
+    scan_dirs = [
+        repo_root / "src" / "ipsdk",
+        repo_root / "tests",
+        repo_root / "scripts",
+    ]
 
-    # Find all Python files
-    python_files: list[Path] = []
-    if src_dir.exists():
-        python_files.extend(find_python_files(src_dir))
-    if tests_dir.exists():
-        python_files.extend(find_python_files(tests_dir))
+    # Find all Python files across all scanned directories
+    python_files: list[Path] = sorted(
+        itertools.chain.from_iterable(
+            find_python_files(d) for d in scan_dirs if d.exists()
+        )
+    )
 
     if not python_files:
         print("No Python files found to check")

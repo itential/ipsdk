@@ -6,7 +6,7 @@
 
 .DEFAULT_GOAL := help
 
-.PHONY: test coverage clean lint format ruff-fix security license license-fix tox \
+.PHONY: test coverage clean lint format ruff-fix security license license-fix notice-check tox \
 		tox-py310 tox-py311 tox-py312 tox-py313 tox-coverage tox-lint \
 		tox-format tox-security tox-premerge tox-list
 
@@ -21,6 +21,7 @@ help:
 	@echo "  license         - Check all Python files for proper license headers"
 	@echo "  license-fix     - Automatically add missing license headers to Python files"
 	@echo "  lint            - Run analysis on source files"
+	@echo "  notice-check    - Verify NOTICE file lists all packages in uv.lock"
 	@echo "  premerge        - Run the premerge tests locally"
 	@echo "  ruff-fix        - Run ruff with --fix to auto-fix issues"
 	@echo "  security        - Run security analysis using bandit"
@@ -71,6 +72,21 @@ license:
 # all Python files in the project.
 license-fix:
 	uv run python scripts/check_license_headers.py --fix
+
+# The notice-check target verifies that all packages in uv.lock are
+# documented in the NOTICE file.  Run this after updating dependencies.
+# Package names are normalized (hyphens/dots are interchangeable in PyPI).
+notice-check:
+	@echo "Packages in uv.lock not mentioned in NOTICE:"
+	@grep -E '^name = "' uv.lock | sed 's/name = "\(.*\)"/\1/' | \
+		grep -v '^ipsdk$$' | \
+		while read pkg; do \
+			normalized=$$(echo "$$pkg" | tr '-' '.'); \
+			if ! grep -qi "$$pkg" NOTICE && ! grep -qi "$$normalized" NOTICE; then \
+				echo "  MISSING: $$pkg"; \
+			fi \
+		done
+	@echo "Done."
 
 # The clean target will remove build and dev artififacts that are not
 # part of the application and get created by other targets.

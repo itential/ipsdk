@@ -170,11 +170,6 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - **Description**: File identification library for Python
 - **PyPI**: https://pypi.org/project/identify/
 
-**chardet (5.2.0)**
-- **License**: LGPL-2.1
-- **Description**: Universal character encoding detector for Python
-- **PyPI**: https://pypi.org/project/chardet/
-
 **colorama (0.4.6)**
 - **License**: BSD-3-Clause
 - **Description**: Cross-platform colored terminal text
@@ -220,6 +215,21 @@ This document lists all third-party dependencies used in the Itential Python SDK
 - **Description**: Mypyc runtime library with C implementations of Python standard library classes
 - **PyPI**: https://pypi.org/project/librt/
 
+**importlib-metadata (8.7.1)**
+- **License**: Apache License 2.0
+- **Description**: Read metadata from Python packages
+- **PyPI**: https://pypi.org/project/importlib-metadata/
+
+**zipp (3.23.0)**
+- **License**: MIT
+- **Description**: Backport of pathlib-compatible object wrapper for zip files
+- **PyPI**: https://pypi.org/project/zipp/
+
+**tox-uv-bare (1.33.0)**
+- **License**: MIT
+- **Description**: Bare uv integration for tox (internal tox-uv component)
+- **PyPI**: https://pypi.org/project/tox-uv-bare/
+
 ### Bandit Dependencies
 
 **rich (14.3.3)**
@@ -257,14 +267,15 @@ This document lists all third-party dependencies used in the Itential Python SDK
 ### MIT Licensed (Most Permissive)
 - anyio, h11, pytest, pytest-cov, ruff, mypy, mypy-extensions
 - pre-commit, build, pyproject-hooks, pyproject-api, pluggy, iniconfig, cfgv, identify
-- virtualenv, platformdirs, rich, markdown-it-py, pyyaml, tox, tox-uv, tomli, cachetools, mdurl
+- virtualenv, platformdirs, rich, markdown-it-py, pyyaml, tox, tox-uv, tox-uv-bare, tomli
+- cachetools, mdurl, zipp
 
 ### BSD Licensed
 - httpx (BSD-3-Clause), httpcore (BSD-3-Clause), idna (BSD-3-Clause)
 - nodeenv (BSD License), pygments (BSD License), colorama (BSD-3-Clause)
 
 ### Apache License 2.0
-- pytest-asyncio, coverage, bandit, q, packaging (dual), stevedore
+- pytest-asyncio, coverage, bandit, q, packaging (dual), stevedore, importlib-metadata
 
 ### Mozilla Public License 2.0 (MPL 2.0)
 - certifi, pathspec
@@ -275,9 +286,6 @@ This document lists all third-party dependencies used in the Itential Python SDK
 ### The Unlicense
 - filelock
 
-### LGPL-2.1
-- chardet
-
 ### Dual Licensed (MIT or Apache 2.0)
 - exceptiongroup (MIT or Apache 2.0)
 
@@ -286,7 +294,7 @@ This document lists all third-party dependencies used in the Itential Python SDK
 
 ## Compatibility
 
-All dependencies are compatible with the GPL-3.0-or-later license used by the Itential Python SDK. The GPL-3.0-or-later license allows linking with libraries under more permissive licenses (MIT, BSD, Apache 2.0, etc.) without restriction. The GPL-3.0-or-later is also compatible with LGPL-2.1 licensed libraries like chardet.
+All dependencies are compatible with the GPL-3.0-or-later license used by the Itential Python SDK. The GPL-3.0-or-later license allows linking with libraries under more permissive licenses (MIT, BSD, Apache 2.0, etc.) without restriction. MPL-2.0 licensed files (certifi, pathspec) are compatible with GPL-3.0 when distributed unmodified.
 
 ## Acknowledgments
 
@@ -301,7 +309,7 @@ We gratefully acknowledge the contributions of all open source projects that mak
 
 ## License Information Updates
 
-This file was last updated on: 2026-02-25
+This file was last updated on: 2026-03-08
 
 For the most current license information, please check the individual project pages linked above. License information is subject to change with new versions of dependencies.
 

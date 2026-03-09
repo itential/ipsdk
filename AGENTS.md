@@ -4,7 +4,7 @@
 
 HTTP client SDK for Itential Platform and Automation Gateway 4.x. Provides factory-based sync/async clients with lazy authentication, configurable TTL-based re-auth, comprehensive logging with PII redaction, and a custom exception hierarchy. The only runtime dependency is httpx.
 
-**Current**: v0.8.0 | Python 3.10–3.13 | GPL-3.0-or-later
+**Current**: v0.8.0 | Python 3.10–3.14 | GPL-3.0-or-later
 
 ## Architecture
 
@@ -42,7 +42,7 @@ Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports
 
 ## Tech Stack
 
-- **Python**: 3.10–3.13 (matrix tested)
+- **Python**: 3.10–3.14 (matrix tested)
 - **httpx ≥ 0.28.1**: Only runtime dependency. Used for both sync (`httpx.Client`) and async (`httpx.AsyncClient`) HTTP.
 - **Build**: hatchling + uv-dynamic-versioning. Version derived from git tags → PEP440.
 - **Dev tools**: pytest + pytest-asyncio + pytest-cov, ruff (lint + format), bandit (security), tox + tox-uv (matrix), uv (package manager).
@@ -197,7 +197,7 @@ git push origin v0.9.0
 
 - `pyproject.toml`: Build config, dependencies, ruff rules, bandit config
 - `Makefile`: All dev commands
-- `tox.ini`: Multi-version testing, 9 environments: py310–py313, coverage, lint, format, security, ci
+- `tox.ini`: Multi-version testing, 10 environments: py310–py314, coverage, lint, format, security, ci
 - `CHANGELOG.md`: Detailed release history
 - `scripts/check_license_headers.py`: License header checker/fixer
 - `.github/workflows/ci.yaml`: CI pipeline (lint, security, test matrix)

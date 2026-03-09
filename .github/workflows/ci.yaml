@@ -3,9 +3,9 @@
 #
 # Runs on every push to devel and on all pull requests targeting devel.
 # Quality checks run once on the latest Python; the test suite runs in
-# parallel across Python 3.10–3.13 with coverage enforcement.
+# parallel across Python 3.10–3.14 with coverage enforcement.
 #
-# Jobs: quality → test (matrix: 3.10, 3.11, 3.12, 3.13)
+# Jobs: quality → test (matrix: 3.10, 3.11, 3.12, 3.13, 3.14)
 # Secrets required: none
 # ---
 name: CI
@@ -67,7 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - name: Checkout repository

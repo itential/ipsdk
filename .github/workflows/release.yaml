@@ -1,9 +1,14 @@
-# .github/workflows/release.yml
-# This workflow will create a new release and upload it to PyPI.  It will run
-# whenever a new tag is merged into the repository.  It builds the application
-# and pushes it to PyPI using trusted publisher (OIDC).
----
-name: Release new version
+# ---
+# Workflow: Release
+#
+# Triggers on version tags (v*.*.*). Builds the distribution packages and
+# publishes to PyPI via trusted publisher (OIDC — no static credentials),
+# then creates a GitHub Release with the built artifacts attached.
+#
+# Jobs: build-and-publish
+# Secrets required: none (uses OIDC trusted publisher configured on PyPI)
+# ---
+name: Release
 
 on:
   push:
@@ -11,25 +16,27 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
-  id-token: write  # Required for trusted publisher (OIDC)
+  contents: write   # Required to create a GitHub Release
+  id-token: write   # Required for PyPI trusted publisher (OIDC)
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+
+  # -- build-and-publish
+  # Builds wheel + sdist, publishes to PyPI via OIDC, then creates a
+  # GitHub Release with the dist artifacts attached.
+  build-and-publish:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v6
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          python-version: '3.11'
+          # Fetch full history so uv-dynamic-versioning can read git tags
+          fetch-depth: 0
 
-      - name: Install uv
+      - name: Install uv and Python
         uses: astral-sh/setup-uv@v7
-
-      - name: Install the project
-        run: uv sync --all-extras --dev
+        with:
+          python-version: "3.13"
 
       - name: Build package
         run: uv build

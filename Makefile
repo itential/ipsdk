@@ -94,7 +94,7 @@ notice-check: ## Verify NOTICE file lists all packages in uv.lock
 
 .PHONY: ci
 
-ci: clean lint format-check security license test ## Run all checks (required before committing)
+ci: clean lint format-check security license tox ## Run all checks (required before committing)
 
 # ------------------------------------------------------------------------------
 # Tox (multi-version)

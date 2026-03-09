@@ -156,7 +156,7 @@ make format      # ruff format
 make security    # bandit scan
 make license     # check GPL headers
 
-# Test across Python 3.10–3.13
+# Test across Python 3.10–3.14
 uv run tox -p auto
 ```
 

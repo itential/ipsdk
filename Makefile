@@ -100,10 +100,10 @@ ci: clean lint format-check security license test ## Run all checks (required be
 # Tox (multi-version)
 # ------------------------------------------------------------------------------
 
-.PHONY: tox tox-py310 tox-py311 tox-py312 tox-py313
+.PHONY: tox tox-py310 tox-py311 tox-py312 tox-py313 tox-py314
 .PHONY: tox-coverage tox-lint tox-format tox-security tox-ci tox-list
 
-tox: ## Run tests across all Python versions (3.10-3.13)
+tox: ## Run tests across all Python versions (3.10-3.14)
 	$(UV) run tox
 
 tox-py310: ## Run tests with Python 3.10
@@ -117,6 +117,9 @@ tox-py312: ## Run tests with Python 3.12
 
 tox-py313: ## Run tests with Python 3.13
 	$(UV) run tox -e py313
+
+tox-py314: ## Run tests with Python 3.14
+	$(UV) run tox -e py314
 
 tox-coverage: ## Run coverage report via tox
 	$(UV) run tox -e coverage

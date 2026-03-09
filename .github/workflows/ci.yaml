@@ -1,11 +1,11 @@
 # ---
 # Workflow: CI
 #
-# Runs on every push to devel and on all pull requests targeting devel.
-# Quality checks run once on the latest Python; the test suite runs in
-# parallel across Python 3.10–3.14 with coverage enforcement.
+# Runs on pull requests targeting devel, direct pushes to devel, and on
+# manual dispatch. Enforces the full `make ci` check suite and validates
+# the test matrix across all supported Python versions.
 #
-# Jobs: quality → test (matrix: 3.10, 3.11, 3.12, 3.13, 3.14)
+# Jobs: quality → test (matrix: 3.10–3.14)
 # Secrets required: none
 # ---
 name: CI
@@ -15,8 +15,9 @@ on:
     branches: [devel]
   pull_request:
     branches: [devel]
+  workflow_dispatch:
 
-# Cancel in-progress runs when a new commit is pushed to the same branch/PR
+# Cancel in-progress runs for the same branch on new pushes.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -27,19 +28,21 @@ permissions:
 jobs:
 
   # -- quality
-  # Lint, format check, security scan, and license header validation.
-  # Version-agnostic — runs once instead of 4× inside the test matrix.
-  # Gates the matrix: no runners are allocated if quality fails.
+  # Runs all non-test checks from `make ci`: lint, format, security, license.
+  # Executes once on Python 3.13 — these checks are Python-version-independent.
+  # The test matrix will not start until this job passes.
   quality:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install uv
+      - name: Install uv and Python 3.13
         uses: astral-sh/setup-uv@v7
         with:
+          python-version: "3.13"
           enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
         run: uv sync --all-extras --dev
@@ -57,10 +60,9 @@ jobs:
         run: make license
 
   # -- test
-  # Full test suite with coverage across all supported Python versions.
-  # Depends on quality so matrix runners are not allocated for unlintable code.
-  # Runs tests once with coverage — avoids the double pytest run from
-  # calling make ci (which includes test) followed by a separate coverage step.
+  # Runs the full test suite across all supported Python versions with coverage.
+  # Blocked on quality passing — no point running tests if linting/formatting is broken.
+  # The 95% threshold is the CI gate; 100% is enforced locally via `make coverage`.
   test:
     needs: quality
     runs-on: ubuntu-24.04
@@ -73,15 +75,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install uv
+      - name: Install uv and Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@v7
         with:
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
         run: uv sync --all-extras --dev

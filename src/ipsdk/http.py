@@ -217,7 +217,7 @@ class Response:
             return self._response.json()
         except Exception as exc:
             msg = f"Failed to parse response as JSON: {exc!s}"
-            raise ValueError(msg)
+            raise ValueError(msg) from exc
 
     @logging.trace
     def raise_for_status(self) -> None:

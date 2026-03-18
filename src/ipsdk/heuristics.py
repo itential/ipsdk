@@ -14,8 +14,11 @@ identifiable information (PII) from log messages before they are written.
 
 import re
 
-from typing import Callable
-from typing import Pattern
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from re import Pattern
 
 
 class Scanner:

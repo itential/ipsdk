@@ -108,14 +108,12 @@ Response parsing::
 
 import json
 
-from typing import Union
-
 from . import exceptions
 from . import logging
 
 
 @logging.trace
-def loads(s: str) -> Union[dict, list]:
+def loads(s: str) -> dict | list:
     """Convert a JSON formatted string to a dict or list object
 
     Args:
@@ -129,15 +127,15 @@ def loads(s: str) -> Union[dict, list]:
     except json.JSONDecodeError as exc:
         logging.exception(exc)
         msg = f"Failed to parse JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc
     except Exception as exc:
         logging.exception(exc)
         msg = f"Unexpected error parsing JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc
 
 
 @logging.trace
-def dumps(o: Union[dict, list]) -> str:
+def dumps(o: dict | list) -> str:
     """Convert a dict or list to a JSON string
 
     Args:
@@ -151,8 +149,8 @@ def dumps(o: Union[dict, list]) -> str:
     except (TypeError, ValueError) as exc:
         logging.exception(exc)
         msg = f"Failed to serialize object to JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc
     except Exception as exc:
         logging.exception(exc)
         msg = f"Unexpected error serializing JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc

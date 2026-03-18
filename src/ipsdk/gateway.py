@@ -233,11 +233,11 @@ class AuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc)
+            raise exceptions.HTTPStatusError(exc) from exc
 
         except httpx.RequestError as exc:
             logging.exception(exc)
-            raise exceptions.RequestError(exc)
+            raise exceptions.RequestError(exc) from exc
 
 
 class AsyncAuthMixin:
@@ -269,11 +269,11 @@ class AsyncAuthMixin:
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc)
+            raise exceptions.HTTPStatusError(exc) from exc
 
         except httpx.RequestError as exc:
             logging.exception(exc)
-            raise exceptions.RequestError(exc)
+            raise exceptions.RequestError(exc) from exc
 
 
 # Define dynamically created classes for runtime and type checking

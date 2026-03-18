@@ -6,12 +6,14 @@ Thank you for your interest in contributing to the Itential Python SDK! This gui
 
 - [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
+- [Contributor License Agreement](#contributor-license-agreement)
 - [Development Setup](#development-setup)
 - [Development Workflow](#development-workflow)
 - [Code Standards](#code-standards)
 - [Testing](#testing)
 - [Documentation](#documentation)
 - [Submitting Changes](#submitting-changes)
+- [Pull Request Labels](#pull-request-labels)
 - [Release Process](#release-process)
 
 ## Code of Conduct
@@ -38,6 +40,23 @@ This project adheres to a code of conduct that promotes a welcoming and inclusiv
    ```bash
    git remote add upstream https://github.com/itential/ipsdk.git
    ```
+
+## Contributor License Agreement
+
+**All contributors must sign a Contributor License Agreement (CLA) before their contributions can be merged.**
+
+The CLA ensures that:
+- You have the right to contribute the code
+- Itential has the necessary rights to use and distribute your contributions
+- The project remains legally compliant
+
+When you submit your first pull request, please comment with the following statement to sign the CLA:
+
+```
+I have read the CLA Document and I hereby sign the CLA
+```
+
+The full CLA text is available in [CLA.md](CLA.md).
 
 ## Development Setup
 
@@ -69,6 +88,8 @@ This will run linting, formatting, and security checks before each commit.
 - `main` - Main development branch
 - `feature/your-feature` - Feature branches
 - `fix/issue-description` - Bug fix branches
+- `chore/task-description` - Maintenance, CI, and dependency updates
+- `docs/topic` - Documentation-only changes
 - `security/security-improvement` - Security-related changes
 
 ### Creating a Feature Branch
@@ -334,6 +355,27 @@ Longer explanation if needed.
 - Reference related issues
 
 ```
+
+## Pull Request Labels
+
+This project uses Release Drafter to automatically generate release notes. Please apply appropriate labels to your pull requests:
+
+### Change Type Labels
+- `feature`, `enhancement` - New features and enhancements
+- `fix`, `bug`, `bugfix` - Bug fixes and corrections
+- `chore`, `dependencies`, `refactor` - Maintenance, dependency updates, and refactoring
+- `documentation`, `docs` - Documentation changes
+- `security` - Security fixes and improvements
+- `breaking`, `breaking-change` - Breaking changes that require a major version bump
+
+### Version Impact Labels
+- `major` - Breaking changes (increments major version)
+- `minor` - New features (increments minor version)
+- `patch` - Bug fixes and maintenance (increments patch version)
+
+### Special Labels
+- `skip-changelog` - Exclude from release notes
+- `duplicate`, `question`, `invalid`, `wontfix` - Issues that do not represent changes
 
 ## Release Process
 

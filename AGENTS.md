@@ -40,14 +40,6 @@ Authentication is lazy: the first `_send_request()` call acquires a `threading.L
 
 Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports 80 and 443 are not appended to the host string; non-standard ports are.
 
-## Tech Stack
-
-- **Python**: 3.10–3.14 (matrix tested)
-- **httpx ≥ 0.28.1**: Only runtime dependency. Used for both sync (`httpx.Client`) and async (`httpx.AsyncClient`) HTTP.
-- **Build**: hatchling + uv-dynamic-versioning. Version derived from git tags → PEP440.
-- **Dev tools**: pytest + pytest-asyncio + pytest-cov, ruff (lint + format), bandit (security), tox + tox-uv (matrix), uv (package manager).
-- **No mypy in CI**: mypy is a dev dependency but is not run in the CI pipeline or `make ci`. Static analysis is broken (see Known Issues).
-
 ## Development Commands
 
 ```bash
@@ -90,21 +82,17 @@ CI (`ci.yaml`): runs `make ci` then a separate coverage check with `--cov-fail-u
 - `str | None` not `Optional[str]`, `dict[str, Any]` not `Dict` (modern union syntax)
 - Google-style docstrings with Args/Returns/Raises on all public methods
 - No bare `except:`. Catch specific exceptions; bare `except Exception` only when re-raising
-- Line length 88, double quotes, single-line imports, one blank line between import groups
 - `__slots__` on classes with fixed attributes (`ConnectionBase`, `Request`, `Response`)
-
-**Module organization within classes**:
-1. `__init__`, `__str__`, `__repr__` first
-2. Private methods (`_private`, `__internal`)
-3. Public methods
+- `@logging.trace` on every method/function for TRACE-level debugging
+- Early return for validation; raise `IpsdkError` with a descriptive message string
 
 **Patterns**:
 - Factory functions create objects; don't instantiate connection classes directly
 - Auth mixins contain all auth logic; `ConnectionBase`/`Connection`/`AsyncConnection` are auth-agnostic
-- `@logging.trace` on every method/function for TRACE-level debugging
-- Early return for validation; raise `IpsdkError` with a descriptive message string
+- Modifying auth: edit mixins in `platform.py`/`gateway.py`, NOT `connection.py`
 
-**Authentication credential rules**:
+## Authentication Credential Rules
+
 - Platform: provide `client_id`+`client_secret` for OAuth, OR `user`+`password` for basic auth. Defaults are `user="admin"`, `password="admin"` — OAuth is only used if `client_id` is explicitly provided.
 - Gateway: always basic auth. Defaults are `user="admin@itential"`, `password="admin"`. No OAuth support; `client_id`/`client_secret` are not accepted.
 - Never mix OAuth + basic auth params.
@@ -119,48 +107,17 @@ CI (`ci.yaml`): runs `make ci` then a separate coverage check with `--cov-fail-u
 
 **Impact**: Mypy is not run in CI, so this doesn't block development. Runtime behavior is correct. Fix approach: add `# type: ignore[misc]` to custom level assignments in `logging.py`.
 
-**`jsonutils.py` uses old Union syntax**: Uses `Union[dict, list]` (old style) instead of `dict | list` (modern). Inconsistent with the rest of the codebase.
-
 **Missing `.pre-commit-config.yaml`**: `pre-commit` is listed as a dev dependency but the config file doesn't exist in the repo.
 
-**No mypy in CI**: Static analysis debt accumulates silently.
+## Gotchas
 
-## New Developer Entry Points
-
-**Verify setup**:
-```bash
-uv sync --all-extras --dev
-make test        # Should pass all tests
-make ci          # Should pass all checks
-```
-
-**Read in this order**:
-1. `src/ipsdk/__init__.py` — public API surface
-2. `src/ipsdk/connection.py` — core HTTP machinery, auth flow, `_send_request`
-3. `src/ipsdk/platform.py` — auth mixins + factory pattern with `TYPE_CHECKING` trick
-4. `src/ipsdk/gateway.py` — simpler auth-only mixin variant
-
-**Likely gotchas**:
 - `want_async=False` by default — easy to forget when you need async
 - Platform's `user="admin"` and `password="admin"` defaults mean if you don't pass `client_id`, it silently falls back to basic auth with those defaults
 - `gateway_factory` does not accept `client_id`/`client_secret` — Gateway is basic-auth only
-- The `HTTPMethod` compatibility shim in `http.py`: Python 3.10 gets the fallback enum, 3.11+ gets the stdlib one. They behave identically but are different types — don't compare them across versions
-- `logging.initialize()` is called on `import ipsdk`, resetting all handlers. If you configure logging before importing ipsdk, it will be wiped. Configure after import.
-- `Scanner` in `heuristics.py` is a singleton that only initializes patterns once. Call `Scanner.reset_singleton()` in tests that need a fresh scanner state.
+- `logging.initialize()` is called on `import ipsdk`, resetting all handlers. Configure logging **after** import.
+- `Scanner` in `heuristics.py` is a singleton. Call `Scanner.reset_singleton()` in tests that need a fresh scanner state.
 - Port 80 and 443 are not appended to the host URL (httpx compatibility); other ports are appended as `host:port`
-
-## Development Workflow
-
-**Adding features**:
-1. Read module docstrings first (100+ lines each, comprehensive)
-2. Write tests before code (TDD enforced by coverage)
-3. Run `make ci` before commit
-4. Update docstrings if changing signatures
-
-**Modifying auth**: Edit mixins in platform.py/gateway.py, NOT connection.py
-**Modifying HTTP**: Edit ConnectionBase/Connection/AsyncConnection together
-**Adding sensitive patterns**: Edit `heuristics.py` default patterns
-**Adding exceptions**: Inherit from IpsdkError, update hierarchy
+- The `HTTPMethod` compatibility shim in `http.py`: Python 3.10 gets the fallback enum, 3.11+ gets the stdlib one. They behave identically but are different types — don't compare them across versions
 
 ## Testing
 
@@ -168,15 +125,6 @@ make ci          # Should pass all checks
 
 **Strategy**: Unit tests only. All httpx calls are mocked — no network required. `pytest-asyncio` for async tests.
 
-**Key test files**:
-- `test_connection.py` — largest file; covers sync/async paths, TTL, auth triggers, error handling
-- `test_platform.py` — OAuth and basic auth flows, factory variants
-- `test_logging.py` — custom levels, filtering, thread safety, `@trace` decorator
-- `test_gateway.py` — Gateway basic auth, factory variants, error handling
-- `test_heuristics.py` — pattern matching, singleton behavior, redaction
-- `test_enums.py` — HTTPMethod and HTTPStatus enum behavior
-
-**Running specific tests**:
 ```bash
 uv run pytest tests/test_connection.py -v -s -k "test_send_request"
 uv run pytest tests/ -v --cov=src/ipsdk --cov-report=term
@@ -201,8 +149,3 @@ git push origin v0.9.0
 - `CHANGELOG.md`: Detailed release history
 - `scripts/check_license_headers.py`: License header checker/fixer
 - `.github/workflows/ci.yaml`: CI pipeline (lint, security, test matrix)
-
-## Contact
-
-Issues: https://github.com/itential/ipsdk/issues
-Docs: Module docstrings (comprehensive), README.md examples

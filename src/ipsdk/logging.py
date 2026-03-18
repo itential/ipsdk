@@ -112,11 +112,11 @@ import threading
 import time
 import traceback
 
+from collections.abc import Callable
 from functools import cache
 from functools import partial
 from functools import wraps
 from typing import Any
-from typing import Callable
 from typing import TypeVar
 
 from . import heuristics

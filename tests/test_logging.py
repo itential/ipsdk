@@ -263,9 +263,11 @@ class TestFatalFunction:
 
     def test_fatal_function_logs_and_exits(self):
         """Test that fatal function logs message and exits."""
-        with patch("ipsdk.logging.log") as mock_log, patch(
-            "builtins.print"
-        ) as mock_print, patch("sys.exit") as mock_exit:
+        with (
+            patch("ipsdk.logging.log") as mock_log,
+            patch("builtins.print") as mock_print,
+            patch("sys.exit") as mock_exit,
+        ):
             ipsdk_logging.fatal("fatal error")
 
             mock_log.assert_called_once_with(ipsdk_logging.FATAL, "fatal error")
@@ -277,9 +279,11 @@ class TestFatalFunction:
         messages = ["critical failure", "system error", "cannot continue"]
 
         for message in messages:
-            with patch("ipsdk.logging.log") as mock_log, patch(
-                "builtins.print"
-            ) as mock_print, patch("sys.exit") as mock_exit:
+            with (
+                patch("ipsdk.logging.log") as mock_log,
+                patch("builtins.print") as mock_print,
+                patch("sys.exit") as mock_exit,
+            ):
                 ipsdk_logging.fatal(message)
 
                 mock_log.assert_called_once_with(ipsdk_logging.FATAL, message)
@@ -356,9 +360,10 @@ class TestSetLevel:
 
     def test_set_level_with_propagate(self):
         """Test set_level with propagate parameter."""
-        with patch("ipsdk.logging.get_logger") as mock_get_logger, patch(
-            "ipsdk.logging._get_loggers"
-        ) as mock_get_loggers:
+        with (
+            patch("ipsdk.logging.get_logger") as mock_get_logger,
+            patch("ipsdk.logging._get_loggers") as mock_get_loggers,
+        ):
             mock_logger = Mock()
             mock_get_logger.return_value = mock_logger
 

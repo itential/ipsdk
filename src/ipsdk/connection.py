@@ -522,11 +522,11 @@ class Connection(ConnectionBase):
 
         except httpx.RequestError as exc:
             logging.exception(exc)
-            raise exceptions.RequestError(exc)
+            raise exceptions.RequestError(exc) from exc
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc)
+            raise exceptions.HTTPStatusError(exc) from exc
 
         except Exception as exc:
             logging.exception(exc)
@@ -746,11 +746,11 @@ class AsyncConnection(ConnectionBase):
 
         except httpx.RequestError as exc:
             logging.exception(exc)
-            raise exceptions.RequestError(exc)
+            raise exceptions.RequestError(exc) from exc
 
         except httpx.HTTPStatusError as exc:
             logging.exception(exc)
-            raise exceptions.HTTPStatusError(exc)
+            raise exceptions.HTTPStatusError(exc) from exc
 
         except Exception as exc:
             logging.exception(exc)

@@ -127,11 +127,11 @@ def loads(s: str) -> dict | list:
     except json.JSONDecodeError as exc:
         logging.exception(exc)
         msg = f"Failed to parse JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc
     except Exception as exc:
         logging.exception(exc)
         msg = f"Unexpected error parsing JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc
 
 
 @logging.trace
@@ -149,8 +149,8 @@ def dumps(o: dict | list) -> str:
     except (TypeError, ValueError) as exc:
         logging.exception(exc)
         msg = f"Failed to serialize object to JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc
     except Exception as exc:
         logging.exception(exc)
         msg = f"Unexpected error serializing JSON: {exc!s}"
-        raise exceptions.SerializationError(msg)
+        raise exceptions.SerializationError(msg) from exc

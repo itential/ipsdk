@@ -1,7 +1,7 @@
 # ---
 # Workflow: CI
 #
-# Runs on pull requests targeting devel, direct pushes to devel, and on
+# Runs on pull requests targeting main, direct pushes to main, and on
 # manual dispatch. Enforces the full `make ci` check suite and validates
 # the test matrix across all supported Python versions.
 #
@@ -13,9 +13,9 @@ name: CI
 
 on:
   push:
-    branches: [devel]
+    branches: [main]
   pull_request:
-    branches: [devel]
+    branches: [main]
   workflow_dispatch:
 
 # Cancel in-progress runs for the same branch on new pushes.

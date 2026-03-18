@@ -51,6 +51,7 @@ make test              # pytest
 make coverage          # pytest --cov (100% required)
 make lint              # ruff check
 make format            # ruff format
+make typecheck         # mypy static type checking
 make security          # bandit security scan
 make license           # Check GPL headers
 make license-fix       # Add missing headers
@@ -72,7 +73,7 @@ tox -e ci              # All checks
 
 **Note**: `make ci` includes the license header check; `tox -e ci` does not. Run `make ci` locally before pushing.
 
-CI (`ci.yaml`): runs `make ci` then a separate coverage check with `--cov-fail-under=95`.
+CI (`ci.yaml`): runs lint, format-check, typecheck, security, license, then a matrix test run with `--cov-fail-under=95`.
 
 ## Code Standards
 
@@ -98,14 +99,6 @@ CI (`ci.yaml`): runs `make ci` then a separate coverage check with `--cov-fail-u
 - Never mix OAuth + basic auth params.
 
 ## Known Issues
-
-**mypy is broken (~22 errors)**:
-- `logging.py`: Custom `TRACE`/`NONE`/`FATAL` constants assigned to `logging` module (stdlib doesn't declare these attributes)
-- `heuristics.py`: Lambda type inference and `Callable` annotation mismatches
-- `http.py`: `HTTPMethod` import/redefinition conflict (stdlib vs. fallback enum)
-- `platform.py`: Return type annotation uses dynamic `type()` result
-
-**Impact**: Mypy is not run in CI, so this doesn't block development. Runtime behavior is correct. Fix approach: add `# type: ignore[misc]` to custom level assignments in `logging.py`.
 
 **Missing `.pre-commit-config.yaml`**: `pre-commit` is listed as a dev dependency but the config file doesn't exist in the repo.
 

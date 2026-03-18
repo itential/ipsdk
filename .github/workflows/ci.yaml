@@ -6,6 +6,7 @@
 # the test matrix across all supported Python versions.
 #
 # Jobs: quality → test (matrix: 3.10–3.14)
+# quality: lint, format-check, typecheck, security, license
 # Secrets required: none
 # ---
 name: CI
@@ -28,7 +29,7 @@ permissions:
 jobs:
 
   # -- quality
-  # Runs all non-test checks from `make ci`: lint, format, security, license.
+  # Runs all non-test checks from `make ci`: lint, format, typecheck, security, license.
   # Executes once on Python 3.13 — these checks are Python-version-independent.
   # The test matrix will not start until this job passes.
   quality:
@@ -52,6 +53,9 @@ jobs:
 
       - name: Check formatting
         run: make format-check
+
+      - name: Type check
+        run: make typecheck
 
       - name: Security scan
         run: make security

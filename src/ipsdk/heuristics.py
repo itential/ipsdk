@@ -21,6 +21,10 @@ if TYPE_CHECKING:
     from re import Pattern
 
 
+def _make_redaction_func(name: str) -> Callable[[str], str]:
+    return lambda _: f"[REDACTED_{name.upper()}]"
+
+
 class Scanner:
     """Scanner for detecting and redacting sensitive data patterns in text.
 
@@ -84,7 +88,8 @@ class Scanner:
             # Add custom patterns if provided
             if custom_patterns is not None:
                 for name, pattern in custom_patterns.items():
-                    self.add_pattern(name, pattern)
+                    if pattern is not None:
+                        self.add_pattern(name, pattern)
 
             # Mark as initialized
             Scanner._initialized = True
@@ -148,13 +153,10 @@ class Scanner:
             for name, pattern_str in patterns_to_compile.items():
                 compiled_pattern = re.compile(pattern_str)
                 Scanner._default_patterns[name] = compiled_pattern
-                # Use default argument to capture current value of name
-                # (avoid late-binding closure issue)
-                Scanner._default_redactions[name] = lambda _, n=name: (
-                    f"[REDACTED_{n.upper()}]"
-                )
+                Scanner._default_redactions[name] = _make_redaction_func(name)
 
         # Copy pre-compiled patterns to instance
+        assert Scanner._default_redactions is not None
         self._patterns = Scanner._default_patterns.copy()
         self._redaction_functions = Scanner._default_redactions.copy()
 
@@ -162,14 +164,14 @@ class Scanner:
         self,
         name: str,
         pattern: str,
-        redaction_func: Callable[[str | None, str]] | None = None,
+        redaction_func: Callable[[str], str] | None = None,
     ) -> None:
         """Add a new sensitive data pattern to scan for.
 
         Args:
             name (str): Name of the pattern for identification.
             pattern (str): Regular expression pattern to match sensitive data.
-            redaction_func (Callable[[str | None, str]]): Custom function
+            redaction_func (Callable[[str], str]): Custom function
                 to redact matches. If None, uses default redaction with
                 pattern name.
 
@@ -239,10 +241,7 @@ class Scanner:
 
         for pattern_name, pattern in self._patterns.items():
             redaction_func = self._redaction_functions[pattern_name]
-            # Use lambda with default arg to capture current redaction_func
-            result = pattern.sub(
-                lambda match, func=redaction_func: func(match.group(0)), result
-            )
+            result = pattern.sub(lambda match: redaction_func(match.group(0)), result)  # noqa: B023
 
         return result
 

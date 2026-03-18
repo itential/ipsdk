@@ -53,7 +53,10 @@ build: ## Build distribution packages (wheel + sdist)
 # Quality checks
 # ------------------------------------------------------------------------------
 
-.PHONY: lint format format-check ruff-fix security license license-fix notice-check
+.PHONY: lint format format-check ruff-fix security typecheck license license-fix notice-check
+
+typecheck: ## Run mypy static type checking
+	$(UV) run mypy $(SRC)
 
 lint: ## Lint with ruff
 	$(UV) run ruff check $(SRC) $(TESTS)
@@ -94,7 +97,7 @@ notice-check: ## Verify NOTICE file lists all packages in uv.lock
 
 .PHONY: ci
 
-ci: clean lint format-check security license tox ## Run all checks (required before committing)
+ci: clean lint format-check typecheck security license tox ## Run all checks (required before committing)
 
 # ------------------------------------------------------------------------------
 # Tox (multi-version)

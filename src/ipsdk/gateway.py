@@ -279,10 +279,10 @@ class AsyncAuthMixin:
 # Define dynamically created classes for runtime and type checking
 if TYPE_CHECKING:
     # For type checkers: provide explicit class definitions
-    class Gateway(AuthMixin, connection.Connection):
+    class Gateway(AuthMixin, connection.Connection):  # type: ignore[misc]
         """Synchronous Gateway client with authentication."""
 
-    class AsyncGateway(AsyncAuthMixin, connection.AsyncConnection):
+    class AsyncGateway(AsyncAuthMixin, connection.AsyncConnection):  # type: ignore[misc]
         """Asynchronous Gateway client with authentication."""
 
 else:

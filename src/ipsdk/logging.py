@@ -124,26 +124,28 @@ from . import metadata
 
 logging_message_format = "%(asctime)s: [%(name)s] %(levelname)s: %(message)s"
 
-# Add the FATAL logging level
-logging.FATAL = 90  # type: ignore[misc]
-logging.addLevelName(logging.FATAL, "FATAL")
+# Custom logging level constants
+TRACE = 5
+FATAL = 90
+NONE = 100
 
-logging.NONE = logging.FATAL + 10
-logging.addLevelName(logging.NONE, "NONE")
+# Register custom levels on the stdlib logging module
+logging.FATAL = FATAL  # type: ignore[misc]
+logging.addLevelName(FATAL, "FATAL")
 
-logging.TRACE = 5
-logging.addLevelName(logging.TRACE, "TRACE")
+logging.NONE = NONE  # type: ignore[attr-defined]
+logging.addLevelName(NONE, "NONE")
+
+logging.TRACE = TRACE  # type: ignore[attr-defined]
+logging.addLevelName(TRACE, "TRACE")
 
 # Logging level constants that wrap stdlib logging module constants
 NOTSET = logging.NOTSET
-TRACE = logging.TRACE
 DEBUG = logging.DEBUG
 INFO = logging.INFO
 WARNING = logging.WARNING
 ERROR = logging.ERROR
 CRITICAL = logging.CRITICAL
-FATAL = logging.FATAL
-NONE = logging.NONE
 
 # Set initial log level to NONE (disabled)
 logging.getLogger(metadata.name).setLevel(NONE)
@@ -237,16 +239,16 @@ def trace(f: T) -> T:
         @wraps(f)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.perf_counter()
-            log(logging.TRACE, f"→ {func_name}")
+            log(TRACE, f"→ {func_name}")
             try:
                 result = await f(*args, **kwargs)
             except Exception:
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
-                log(logging.TRACE, f"← {func_name} (exception, {elapsed_ms:.2f}ms)")
+                log(TRACE, f"← {func_name} (exception, {elapsed_ms:.2f}ms)")
                 raise
             else:
                 elapsed_ms = (time.perf_counter() - start_time) * 1000
-                log(logging.TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
+                log(TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
                 return result
 
         return async_wrapper  # type: ignore[return-value]
@@ -254,16 +256,16 @@ def trace(f: T) -> T:
     @wraps(f)
     def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.perf_counter()
-        log(logging.TRACE, f"→ {func_name}")
+        log(TRACE, f"→ {func_name}")
         try:
             result = f(*args, **kwargs)
         except Exception:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            log(logging.TRACE, f"← {func_name} (exception, {elapsed_ms:.2f}ms)")
+            log(TRACE, f"← {func_name} (exception, {elapsed_ms:.2f}ms)")
             raise
         else:
             elapsed_ms = (time.perf_counter() - start_time) * 1000
-            log(logging.TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
+            log(TRACE, f"← {func_name} ({elapsed_ms:.2f}ms)")
             return result
 
     return sync_wrapper  # type: ignore[return-value]
@@ -307,7 +309,7 @@ def fatal(msg: str) -> None:
     Raises:
         SystemExit: Always raised with exit code 1 after logging the fatal error.
     """
-    log(logging.FATAL, msg)
+    log(FATAL, msg)
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(1)
 

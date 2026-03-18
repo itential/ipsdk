@@ -108,14 +108,12 @@ Response parsing::
 
 import json
 
-from typing import Union
-
 from . import exceptions
 from . import logging
 
 
 @logging.trace
-def loads(s: str) -> Union[dict, list]:
+def loads(s: str) -> dict | list:
     """Convert a JSON formatted string to a dict or list object
 
     Args:
@@ -137,7 +135,7 @@ def loads(s: str) -> Union[dict, list]:
 
 
 @logging.trace
-def dumps(o: Union[dict, list]) -> str:
+def dumps(o: dict | list) -> str:
     """Convert a dict or list to a JSON string
 
     Args:

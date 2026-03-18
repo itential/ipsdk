@@ -70,7 +70,7 @@ Example:
 
         if critical_error:
             logging.fatal("Critical failure, cannot continue")
-            # This will log at FATAL level, print to console, and exit with code 1
+            # Logs at FATAL level and raises SystemExit(1)
 
     Sensitive data filtering::
 
@@ -117,6 +117,7 @@ from functools import cache
 from functools import partial
 from functools import wraps
 from typing import Any
+from typing import NoReturn
 from typing import TypeVar
 
 from . import heuristics
@@ -293,25 +294,23 @@ def exception(exc: Exception) -> None:
     log(logging.ERROR, tb_text)
 
 
-def fatal(msg: str) -> None:
+def fatal(msg: str) -> NoReturn:
     """Log a fatal error and exit the application.
 
-    A fatal error will log the message using level 90 (FATAL) and print
-    an error message to stderr. It will then exit the application with
-    return code 1.
+    A fatal error logs the message at FATAL level (90) and raises
+    SystemExit(1). Equivalent to sys.exit(1) but explicit and testable.
 
     Args:
-        msg (str): The message to print.
+        msg (str): The message to log.
 
     Returns:
-        None
+        NoReturn
 
     Raises:
-        SystemExit: Always raised with exit code 1 after logging the fatal error.
+        SystemExit: Always raised with exit code 1 after logging.
     """
     log(FATAL, msg)
-    print(f"ERROR: {msg}", file=sys.stderr)
-    sys.exit(1)
+    raise SystemExit(1)
 
 
 @cache

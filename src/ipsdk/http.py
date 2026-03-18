@@ -23,12 +23,12 @@ if TYPE_CHECKING:
 
 # Import HTTPMethod from standard library (Python 3.11+) or define fallback
 try:
-    from http import HTTPMethod
+    from http import HTTPMethod  # type: ignore[attr-defined]
 except ImportError:
     # Python < 3.11: Define HTTPMethod enum for backward compatibility
     from enum import Enum
 
-    class HTTPMethod(Enum):
+    class HTTPMethod(Enum):  # type: ignore[no-redef]
         """Enumeration of HTTP methods.
 
         Includes all standard HTTP methods defined in RFC specifications.

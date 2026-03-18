@@ -596,10 +596,10 @@ class AsyncAuthMixin:
 # Define dynamically created classes for runtime and type checking
 if TYPE_CHECKING:
     # For type checkers: provide explicit class definitions
-    class Platform(AuthMixin, connection.Connection):
+    class Platform(AuthMixin, connection.Connection):  # type: ignore[misc]
         """Synchronous Platform client with authentication."""
 
-    class AsyncPlatform(AsyncAuthMixin, connection.AsyncConnection):
+    class AsyncPlatform(AsyncAuthMixin, connection.AsyncConnection):  # type: ignore[misc]
         """Asynchronous Platform client with authentication."""
 
 else:

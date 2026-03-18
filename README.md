@@ -24,6 +24,17 @@ uv add ipsdk
 
 Requires Python 3.10+.
 
+## Python Version Support
+
+| Version | Status  |
+|---------|---------|
+| 3.10    | Supported |
+| 3.11    | Supported |
+| 3.12    | Supported |
+| 3.13    | Supported |
+| 3.14    | Supported |
+| 3.15    | Beta    |
+
 ## Usage
 
 ### Platform — basic auth
@@ -156,7 +167,7 @@ make format      # ruff format
 make security    # bandit scan
 make license     # check GPL headers
 
-# Test across Python 3.10–3.14
+# Test across Python 3.10–3.15
 uv run tox -p auto
 ```
 

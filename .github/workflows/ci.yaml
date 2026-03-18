@@ -5,7 +5,7 @@
 # manual dispatch. Enforces the full `make ci` check suite and validates
 # the test matrix across all supported Python versions.
 #
-# Jobs: quality → test (matrix: 3.10–3.14)
+# Jobs: quality → test (matrix: 3.10–3.14, 3.15 beta)
 # quality: lint, format-check, typecheck, security, license
 # Secrets required: none
 # ---
@@ -73,7 +73,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+        include:
+          - python-version: "3.15"
+            beta: true
+    continue-on-error: ${{ matrix.beta == true }}
 
     steps:
       - name: Checkout repository

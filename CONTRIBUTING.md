@@ -66,7 +66,7 @@ This will run linting, formatting, and security checks before each commit.
 
 ### Branch Strategy
 
-- `devel` - Main development branch
+- `main` - Main development branch
 - `feature/your-feature` - Feature branches
 - `fix/issue-description` - Bug fix branches
 - `security/security-improvement` - Security-related changes
@@ -74,8 +74,8 @@ This will run linting, formatting, and security checks before each commit.
 ### Creating a Feature Branch
 
 ```bash
-git checkout devel
-git pull upstream devel
+git checkout main
+git pull upstream main
 git checkout -b feature/your-feature-name
 ```
 
@@ -306,7 +306,7 @@ uv run pytest --cov=src/ipsdk --cov-report=term tests
    git push origin feature/your-feature-name
    ```
 
-2. Create a pull request against the `devel` branch
+2. Create a pull request against the `main` branch
 
 3. Fill out the pull request template with:
    - Clear description of changes

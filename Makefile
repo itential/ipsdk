@@ -33,7 +33,11 @@ SCRIPTS := scripts
 # Core
 # ------------------------------------------------------------------------------
 
-.PHONY: test coverage build
+.PHONY: install test coverage build
+
+install: ## Install dev environment and pre-commit hooks
+	$(UV) sync --all-extras --dev
+	$(UV) run pre-commit install -f
 
 test: ## Run unit tests
 	$(UV) run pytest $(TESTS) -v

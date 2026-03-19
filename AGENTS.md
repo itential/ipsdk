@@ -45,6 +45,7 @@ Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports
 ```bash
 # Setup: requires uv
 uv sync --all-extras --dev
+make hooks             # Install pre-commit hooks (once after cloning)
 
 # Daily workflow
 make test              # pytest
@@ -97,10 +98,6 @@ CI (`ci.yaml`): runs lint, format-check, typecheck, security, license, then a ma
 - Platform: provide `client_id`+`client_secret` for OAuth, OR `user`+`password` for basic auth. Defaults are `user="admin"`, `password="admin"` — OAuth is only used if `client_id` is explicitly provided.
 - Gateway: always basic auth. Defaults are `user="admin@itential"`, `password="admin"`. No OAuth support; `client_id`/`client_secret` are not accepted.
 - Never mix OAuth + basic auth params.
-
-## Known Issues
-
-**Missing `.pre-commit-config.yaml`**: `pre-commit` is listed as a dev dependency but the config file doesn't exist in the repo.
 
 ## Gotchas
 

@@ -59,6 +59,7 @@ dev = [
     "coverage",
     "build",
     "bandit[toml]",
+    "pre-commit",
     "tox",
     "tox-uv",
 ]

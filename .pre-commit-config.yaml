@@ -3,27 +3,34 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.2
-    hooks:
-      - id: ruff
-        args: [--fix]
-        files: ^(src|tests)/
-      - id: ruff-format
-        files: ^(src|tests)/
-
   - repo: local
     hooks:
-      - id: license-headers
-        name: Check license headers
-        language: python
-        entry: python scripts/check_license_headers.py
-        files: \.py$
+      - id: lint
+        name: lint
+        language: system
+        entry: make lint
         pass_filenames: false
 
-      - id: bandit
-        name: bandit security scan
-        language: python
-        entry: python -m bandit -r src/ipsdk --configfile pyproject.toml
-        files: ^src/ipsdk/
+      - id: format-check
+        name: format-check
+        language: system
+        entry: make format-check
+        pass_filenames: false
+
+      - id: license-headers
+        name: license-headers
+        language: system
+        entry: make license
+        pass_filenames: false
+
+      - id: security
+        name: security
+        language: system
+        entry: make security
+        pass_filenames: false
+
+      - id: typecheck
+        name: typecheck
+        language: system
+        entry: make typecheck
         pass_filenames: false

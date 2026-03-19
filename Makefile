@@ -53,7 +53,7 @@ build: ## Build distribution packages (wheel + sdist)
 # Quality checks
 # ------------------------------------------------------------------------------
 
-.PHONY: lint format format-check ruff-fix security typecheck license license-fix notice-check
+.PHONY: hooks lint format format-check ruff-fix security typecheck license license-fix notice-check
 
 typecheck: ## Run mypy static type checking
 	$(UV) run mypy $(SRC)
@@ -78,6 +78,9 @@ license: ## Check all Python files for license headers
 
 license-fix: ## Add missing license headers to Python files
 	$(UV) run python $(SCRIPTS)/check_license_headers.py --fix
+
+hooks: ## Install pre-commit hooks (run once after cloning)
+	$(UV) run pre-commit install
 
 notice-check: ## Verify NOTICE file lists all packages in uv.lock
 	@echo "Packages in uv.lock not mentioned in NOTICE:"

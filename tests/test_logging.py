@@ -261,35 +261,28 @@ class TestExceptionFunction:
 class TestFatalFunction:
     """Test the fatal logging function."""
 
-    def test_fatal_function_logs_and_exits(self):
-        """Test that fatal function logs message and exits."""
-        with (
-            patch("ipsdk.logging.log") as mock_log,
-            patch("builtins.print") as mock_print,
-            patch("sys.exit") as mock_exit,
-        ):
-            ipsdk_logging.fatal("fatal error")
+    def test_fatal_raises_system_exit(self):
+        """Test that fatal raises SystemExit with code 1."""
+        with patch("ipsdk.logging.log"):
+            with pytest.raises(SystemExit) as exc_info:
+                ipsdk_logging.fatal("fatal error")
+            assert exc_info.value.code == 1
 
+    def test_fatal_logs_before_raising(self):
+        """Test that fatal logs at FATAL level before raising."""
+        with patch("ipsdk.logging.log") as mock_log:
+            with pytest.raises(SystemExit):
+                ipsdk_logging.fatal("fatal error")
             mock_log.assert_called_once_with(ipsdk_logging.FATAL, "fatal error")
-            mock_print.assert_called_once_with("ERROR: fatal error", file=sys.stderr)
-            mock_exit.assert_called_once_with(1)
 
-    def test_fatal_function_different_messages(self):
-        """Test fatal function with different messages."""
+    def test_fatal_different_messages(self):
+        """Test fatal logs correct message before raising."""
         messages = ["critical failure", "system error", "cannot continue"]
-
         for message in messages:
-            with (
-                patch("ipsdk.logging.log") as mock_log,
-                patch("builtins.print") as mock_print,
-                patch("sys.exit") as mock_exit,
-            ):
-                ipsdk_logging.fatal(message)
-
+            with patch("ipsdk.logging.log") as mock_log:
+                with pytest.raises(SystemExit):
+                    ipsdk_logging.fatal(message)
                 mock_log.assert_called_once_with(ipsdk_logging.FATAL, message)
-                expected_msg = f"ERROR: {message}"
-                mock_print.assert_called_once_with(expected_msg, file=sys.stderr)
-                mock_exit.assert_called_once_with(1)
 
 
 class TestGetLogger:

@@ -12,6 +12,7 @@ Python versions. HTTPStatus and HTTPMethod are re-exported or defined
 to ensure consistent behavior across all supported Python versions.
 """
 
+from datetime import datetime
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 from typing import Any
@@ -132,15 +133,23 @@ class Response:
         ValueError: If the httpx_response is None or invalid
     """
 
-    __slots__ = ("_response",)
+    __slots__ = ("_finished_at", "_response", "_started_at")
 
     @logging.trace
-    def __init__(self, httpx_response: httpx.Response) -> None:
+    def __init__(
+        self,
+        httpx_response: httpx.Response,
+        *,
+        started_at: str,
+        finished_at: str,
+    ) -> None:
         if httpx_response is None:
             msg = "httpx_response cannot be None"
             raise ValueError(msg)
 
         self._response = httpx_response
+        self._started_at = started_at
+        self._finished_at = finished_at
 
     @property
     def status_code(self) -> int:
@@ -201,6 +210,45 @@ class Response:
             httpx.Request: The original request that generated this response
         """
         return self._response.request
+
+    @property
+    def started_at(self) -> str:
+        """
+        Get the UTC ISO 8601 timestamp when the request was sent.
+
+        Returns:
+            str: ISO 8601 UTC timestamp of when the request was sent.
+        """
+        return self._started_at
+
+    @property
+    def finished_at(self) -> str:
+        """
+        Get the UTC ISO 8601 timestamp when the response was received.
+
+        Returns:
+            str: ISO 8601 UTC timestamp of when the response was received.
+        """
+        return self._finished_at
+
+    @property
+    def elapsed_ms(self) -> int:
+        """
+        Get the request duration in milliseconds.
+
+        Computed from the difference between finished_at and started_at.
+        Truncated to whole milliseconds (not rounded).
+
+        Returns:
+            int: Request duration in milliseconds.
+        """
+        return int(
+            (
+                datetime.fromisoformat(self._finished_at)
+                - datetime.fromisoformat(self._started_at)
+            ).total_seconds()
+            * 1000
+        )
 
     @logging.trace
     def json(self) -> dict[str, Any]:

@@ -134,6 +134,8 @@ import threading
 import time
 import urllib.parse
 
+from datetime import datetime
+from datetime import timezone
 from typing import Any
 
 import httpx
@@ -517,7 +519,9 @@ class Connection(ConnectionBase):
 
         try:
             logging.info(f"{method.value} {path}")
+            started_at = datetime.now(timezone.utc)
             res = self.client.send(request)
+            finished_at = datetime.now(timezone.utc)
             res.raise_for_status()
 
         except httpx.RequestError as exc:
@@ -532,7 +536,11 @@ class Connection(ConnectionBase):
             logging.exception(exc)
             raise
 
-        return Response(res)
+        return Response(
+            res,
+            started_at=started_at.isoformat(),
+            finished_at=finished_at.isoformat(),
+        )
 
     @logging.trace
     def get(self, path: str, params: dict[str, Any | None] | None = None) -> Response:
@@ -741,7 +749,9 @@ class AsyncConnection(ConnectionBase):
 
         try:
             logging.info(f"{method.value} {path}")
+            started_at = datetime.now(timezone.utc)
             res = await self.client.send(request)
+            finished_at = datetime.now(timezone.utc)
             res.raise_for_status()
 
         except httpx.RequestError as exc:
@@ -756,7 +766,11 @@ class AsyncConnection(ConnectionBase):
             logging.exception(exc)
             raise
 
-        return Response(res)
+        return Response(
+            res,
+            started_at=started_at.isoformat(),
+            finished_at=finished_at.isoformat(),
+        )
 
     @logging.trace
     async def get(

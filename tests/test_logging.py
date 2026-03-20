@@ -746,6 +746,28 @@ class TestIntegration:
             assert "exception" in str(exit_calls[0])
             assert "ms)" in str(exit_calls[0])
 
+    def test_trace_async_exception_handling(self):
+        """Test trace decorator logs exception exit for async functions."""
+        with patch("ipsdk.logging.log") as mock_log:
+
+            @ipsdk_logging.trace
+            async def async_error_func():
+                msg = "async error"
+                raise ValueError(msg)
+
+            with contextlib.suppress(ValueError):
+                asyncio.run(async_error_func())
+
+            assert mock_log.call_count == 2
+            calls = mock_log.call_args_list
+            assert any(
+                "→" in str(call) and "async_error_func" in str(call) for call in calls
+            )
+            exit_calls = [call for call in calls if "←" in str(call)]
+            assert len(exit_calls) == 1
+            assert "exception" in str(exit_calls[0])
+            assert "ms)" in str(exit_calls[0])
+
 
 class TestFormatString:
     """Test the logging message format string."""
@@ -758,3 +780,186 @@ class TestFormatString:
         assert "%(name)s" in ipsdk_logging.logging_message_format
         assert "%(levelname)s" in ipsdk_logging.logging_message_format
         assert "%(message)s" in ipsdk_logging.logging_message_format
+
+
+class TestGetLoggerNamed:
+    """Test named-logger behaviour of get_logger."""
+
+    def test_get_logger_no_args_returns_root(self):
+        """get_logger() returns the ipsdk root logger."""
+        logger = ipsdk_logging.get_logger()
+        assert isinstance(logger, logging.Logger)
+        assert logger.name == metadata.name
+
+    def test_get_logger_none_returns_root(self):
+        """get_logger(None) returns the ipsdk root logger."""
+        logger = ipsdk_logging.get_logger(None)
+        assert isinstance(logger, logging.Logger)
+        assert logger.name == metadata.name
+
+    def test_get_logger_name_returns_child(self):
+        """get_logger('mylib') returns logger named 'ipsdk.mylib'."""
+        logger = ipsdk_logging.get_logger("mylib")
+        assert isinstance(logger, logging.Logger)
+        assert logger.name == f"{metadata.name}.mylib"
+
+    def test_get_logger_name_same_instance(self):
+        """Calling get_logger with the same name twice returns the same object."""
+        l1 = ipsdk_logging.get_logger("samelib")
+        l2 = ipsdk_logging.get_logger("samelib")
+        assert l1 is l2
+
+    def test_get_logger_name_with_prefix_raises(self):
+        """get_logger raises ValueError if name starts with 'ipsdk.'."""
+        with pytest.raises(ValueError, match=r"must not include"):
+            ipsdk_logging.get_logger(f"{metadata.name}.something")
+
+    def test_get_logger_child_propagates_to_root(self):
+        """Child logger propagate flag is True so level flows from ipsdk root."""
+        child = ipsdk_logging.get_logger("proptest")
+        assert child.propagate is True
+
+
+class TestResetLogger:
+    """Test reset_logger behaviour."""
+
+    def test_reset_logger_removes_handlers_and_returns_true(self):
+        """reset_logger removes all handlers, closes them, returns True."""
+        target = logging.getLogger("ipsdk_test_reset_with_handlers")
+        mock_handler = Mock(spec=logging.StreamHandler)
+        # handlers list must be mutable so simulate properly
+        target.handlers = [mock_handler]
+        target.setLevel(logging.DEBUG)
+
+        result = ipsdk_logging.reset_logger("ipsdk_test_reset_with_handlers")
+
+        assert result is True
+        assert target.handlers == []
+        assert target.level == logging.NOTSET
+        assert target.propagate is True
+        mock_handler.close.assert_called_once()
+
+    def test_reset_logger_no_state_returns_false(self):
+        """reset_logger returns False when logger had no handlers and NOTSET level."""
+        name = "ipsdk_test_reset_clean_logger_xyz"
+        target = logging.getLogger(name)
+        # Ensure clean state
+        target.handlers = []
+        target.setLevel(logging.NOTSET)
+        target.propagate = True
+
+        result = ipsdk_logging.reset_logger(name)
+
+        assert result is False
+
+    def test_reset_logger_nondefault_level_returns_true(self):
+        """reset_logger returns True when only the level was non-default."""
+        name = "ipsdk_test_reset_level_only"
+        target = logging.getLogger(name)
+        target.handlers = []
+        target.setLevel(logging.WARNING)
+
+        result = ipsdk_logging.reset_logger(name)
+
+        assert result is True
+        assert target.level == logging.NOTSET
+
+    def test_reset_logger_sets_propagate_true(self):
+        """reset_logger always sets propagate=True."""
+        name = "ipsdk_test_reset_propagate"
+        target = logging.getLogger(name)
+        target.propagate = False
+        target.setLevel(logging.ERROR)
+
+        ipsdk_logging.reset_logger(name)
+
+        assert target.propagate is True
+
+
+class TestManagedLoggerRegistry:
+    """Test register_logger_prefix and its effect on _get_loggers."""
+
+    def setup_method(self):
+        """Clear the registry before each test to avoid cross-test pollution."""
+        ipsdk_logging._extra_logger_prefixes.clear()
+        ipsdk_logging._get_loggers.cache_clear()
+
+    def teardown_method(self):
+        """Restore clean registry state after each test."""
+        ipsdk_logging._extra_logger_prefixes.clear()
+        ipsdk_logging._get_loggers.cache_clear()
+
+    def test_register_prefix_adds_to_set(self):
+        """register_logger_prefix adds the prefix to _extra_logger_prefixes."""
+        ipsdk_logging.register_logger_prefix("myprefix")
+        assert "myprefix" in ipsdk_logging._extra_logger_prefixes
+
+    def test_register_prefix_idempotent(self):
+        """Registering the same prefix twice keeps it once."""
+        ipsdk_logging.register_logger_prefix("myprefix")
+        ipsdk_logging.register_logger_prefix("myprefix")
+        occurrences = sum(
+            1 for p in ipsdk_logging._extra_logger_prefixes if p == "myprefix"
+        )
+        assert occurrences == 1
+
+    def test_registered_prefix_discovered_by_get_loggers(self):
+        """Loggers matching a registered prefix appear in _get_loggers()."""
+        # Create a logger under the new prefix
+        logging.getLogger("registrytest.core")
+        ipsdk_logging.register_logger_prefix("registrytest")
+        ipsdk_logging._get_loggers.cache_clear()
+
+        names = {lg.name for lg in ipsdk_logging._get_loggers()}
+        assert "registrytest.core" in names
+
+    def test_unregistered_prefix_not_in_get_loggers(self):
+        """Loggers not matching any prefix are excluded from _get_loggers()."""
+        logging.getLogger("unregisteredlib.sub")
+        ipsdk_logging._get_loggers.cache_clear()
+
+        names = {lg.name for lg in ipsdk_logging._get_loggers()}
+        assert "unregisteredlib.sub" not in names
+
+    def test_set_level_loggers_param_sets_level(self):
+        """set_level with loggers= sets level on named loggers."""
+        with patch("ipsdk.logging.get_logger") as mock_get_logger:
+            mock_root = Mock()
+            mock_get_logger.return_value = mock_root
+
+            target = logging.getLogger("oneshot_set_level_lib")
+            target.setLevel(logging.NOTSET)
+
+            ipsdk_logging.set_level(logging.DEBUG, loggers=["oneshot_set_level_lib"])
+
+            assert target.level == logging.DEBUG
+
+    def test_set_level_loggers_param_not_persisted(self):
+        """set_level with loggers= does not persist names to _extra_logger_prefixes."""
+        with patch("ipsdk.logging.get_logger") as mock_get_logger:
+            mock_root = Mock()
+            mock_get_logger.return_value = mock_root
+
+            ipsdk_logging.set_level(logging.DEBUG, loggers=["oneshot_persist_check"])
+
+            assert "oneshot_persist_check" not in ipsdk_logging._extra_logger_prefixes
+
+    def test_initialize_loggers_param_reinitializes_logger(self):
+        """initialize with loggers= clears and sets up the named logger."""
+        target = logging.getLogger("oneshot_init_lib")
+        target.setLevel(logging.DEBUG)
+        # Add a dummy handler so we can confirm it's replaced
+        dummy = logging.StreamHandler(sys.stderr)
+        target.addHandler(dummy)
+
+        ipsdk_logging.initialize(loggers=["oneshot_init_lib"])
+
+        assert len(target.handlers) == 1
+        assert isinstance(target.handlers[0], logging.StreamHandler)
+        assert target.level == ipsdk_logging.NONE
+        assert target.propagate is False
+
+    def test_initialize_loggers_param_not_persisted(self):
+        """initialize with loggers= does not persist names to _extra_logger_prefixes."""
+        ipsdk_logging.initialize(loggers=["oneshot_init_persist_check"])
+        assert "oneshot_init_persist_check" not in ipsdk_logging._extra_logger_prefixes

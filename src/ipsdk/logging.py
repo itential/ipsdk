@@ -20,7 +20,9 @@ Features:
     - Configuration functions:
         - set_level() - Set logging level with optional httpx/httpcore control
         - initialize() - Reset and initialize logging handlers
-        - get_logger() - Get the main application logger
+        - get_logger() - Get the root ipsdk logger or a named child logger
+        - reset_logger() - Reset any named logger to a clean default state
+        - register_logger_prefix() - Add a prefix to the managed-logger registry
     - Sensitive data filtering:
         - enable_sensitive_data_filtering() - Enable PII/credential redaction
         - disable_sensitive_data_filtering() - Disable filtering
@@ -88,6 +90,23 @@ Example:
         # Log messages will automatically redact sensitive data
         logging.info("User credentials: api_key=secret123456789012345")
         # Output: "User credentials: [REDACTED_API_KEY]"
+
+    Named child loggers and dependency management::
+
+        from ipsdk import logging
+
+        # Get a named child logger for a sub-library
+        lib_logger = logging.get_logger("mylib")  # → "ipsdk.mylib"
+
+        # Register a third-party prefix so set_level manages it automatically
+        logging.register_logger_prefix("httpcore")
+        logging.set_level(logging.DEBUG)  # also sets httpcore to DEBUG
+
+        # Silence a noisy dependency without the registry
+        logging.reset_logger("boto3")
+
+        # One-shot level set for extra loggers without registering them
+        logging.set_level(logging.WARNING, loggers=["urllib3"])
 
     Controlling httpx/httpcore logging::
 
@@ -157,6 +176,9 @@ _sensitive_data_filtering_enabled = False
 
 # Thread-safe logger cache access
 _logger_cache_lock = threading.Lock()
+
+# Registry of extra logger prefixes managed alongside ipsdk.* and httpx
+_extra_logger_prefixes: set[str] = set()
 
 
 def log(lvl: int, msg: str) -> None:
@@ -334,35 +356,125 @@ def _get_loggers() -> set[logging.Logger]:
     """
     with _logger_cache_lock:
         loggers = set()
+        # Merge built-in prefixes with the configurable registry
+        prefixes = tuple({metadata.name, "httpx"} | _extra_logger_prefixes)
         # Create a copy of the logger dictionary for thread safety
         logger_dict_copy = logging.Logger.manager.loggerDict.copy()
 
         for name in logger_dict_copy:
             # Verify logger still exists and matches our namespace
-            if (
-                name.startswith((metadata.name, "httpx"))
-                and name in logging.Logger.manager.loggerDict
-            ):
+            if name.startswith(prefixes) and name in logging.Logger.manager.loggerDict:
                 loggers.add(logging.getLogger(name))
         return loggers
 
 
-def get_logger() -> logging.Logger:
-    """Get the main application logger.
+def register_logger_prefix(prefix: str) -> None:
+    """Register an extra logger prefix to be managed by ipsdk logging.
+
+    Adds the given prefix to the module-level registry so that loggers whose
+    names start with it are automatically included in `_get_loggers()` discovery
+    and therefore managed by `set_level()` and `initialize()`.
+
+    Registration is idempotent — registering the same prefix more than once has
+    no additional effect. Registration is expected at application startup, before
+    any active logging occurs.
+
+    This function is thread-safe.
 
     Args:
-        None
+        prefix (str): Logger name prefix to register (e.g. ``"httpcore"``,
+            ``"mylib"``).
 
     Returns:
-        logging.Logger: The logger instance for the ipsdk application.
+        None
 
     Raises:
         None
     """
+    with _logger_cache_lock:
+        _extra_logger_prefixes.add(prefix)
+    _get_loggers.cache_clear()
+
+
+def get_logger(name: str | None = None) -> logging.Logger:
+    """Get a logger from the ipsdk hierarchy.
+
+    With no arguments (or ``name=None``) returns the root ``ipsdk`` logger,
+    preserving existing behaviour.  When *name* is provided, returns a named
+    child logger registered as ``ipsdk.<name>``.  Child loggers propagate to
+    the root ``ipsdk`` logger by default, so a single ``set_level()`` call
+    applies to the whole hierarchy.
+
+    Args:
+        name (str | None): Short name for a child logger (e.g. ``"mylib"``).
+            Must not include the ``ipsdk.`` prefix — pass ``"mylib"``, not
+            ``"ipsdk.mylib"``.  Defaults to ``None`` (root logger).
+
+    Returns:
+        logging.Logger: The requested logger instance.
+
+    Raises:
+        ValueError: If *name* starts with ``"ipsdk."`` to prevent
+            double-prefixing (e.g. ``"ipsdk.ipsdk.mylib"``).
+    """
+    if name is not None:
+        prefix = metadata.name + "."
+        if name.startswith(prefix):
+            msg = (
+                f"Logger name must not include the '{metadata.name}.' prefix; "
+                f"got '{name}'. Pass the short name only, e.g. "
+                f"get_logger('{name[len(prefix) :]}')"
+            )
+            raise ValueError(msg)
+        return logging.getLogger(f"{metadata.name}.{name}")
     return logging.getLogger(metadata.name)
 
 
-def set_level(lvl: int | str, *, propagate: bool = False) -> None:
+def reset_logger(name: str) -> bool:
+    """Reset an arbitrary named logger to a clean, un-configured state.
+
+    Removes all handlers (closing each one), resets the log level to
+    ``NOTSET``, and sets ``propagate=True``.  This lets callers silence
+    third-party library loggers (e.g. ``"httpcore"``, ``"boto3"``) or clean
+    up ipsdk child loggers without manually reaching into stdlib internals.
+
+    Only the exact logger named *name* is affected — child loggers under that
+    name are not touched.  To reset a whole sub-tree call ``reset_logger``
+    for each logger name explicitly.
+
+    This function is NOT thread-safe with respect to concurrent log emission
+    from the target logger.  Call it at startup before active logging begins.
+
+    Args:
+        name (str): Exact name of the stdlib logger to reset (e.g.
+            ``"httpcore"``, ``"ipsdk.mylib"``).
+
+    Returns:
+        bool: ``True`` if the logger had at least one handler or a non-NOTSET
+            level before the reset; ``False`` if it was already in its default
+            state.
+
+    Raises:
+        None
+    """
+    logger = logging.getLogger(name)
+    had_state = bool(logger.handlers) or logger.level != logging.NOTSET
+    handlers = logger.handlers[:]
+    for handler in handlers:
+        logger.removeHandler(handler)
+        handler.close()
+    logger.setLevel(logging.NOTSET)
+    logger.propagate = True
+    gc.collect()
+    return had_state
+
+
+def set_level(
+    lvl: int | str,
+    *,
+    propagate: bool = False,
+    loggers: list[str] | None = None,
+) -> None:
     """Set logging level for all loggers in the current Python process.
 
     Args:
@@ -371,6 +483,11 @@ def set_level(lvl: int | str, *, propagate: bool = False) -> None:
             to disable all logging.
         propagate (bool): Setting this value to True will also turn on
             logging for httpx and httpcore. Defaults to False.
+        loggers (list[str] | None): Optional list of extra logger names (e.g.
+            ``["boto3", "urllib3"]``) whose level will be set to *lvl* in
+            addition to the normally managed set.  These names are NOT
+            persisted to the managed-logger registry — they apply only for
+            this call. Defaults to ``None``.
 
     Returns:
         None
@@ -399,6 +516,10 @@ def set_level(lvl: int | str, *, propagate: bool = False) -> None:
         _get_loggers.cache_clear()
         for logger in _get_loggers():
             logger.setLevel(lvl)
+
+    if loggers:
+        for extra_name in loggers:
+            logging.getLogger(extra_name).setLevel(lvl)
 
 
 def enable_sensitive_data_filtering() -> None:
@@ -543,7 +664,7 @@ def remove_sensitive_data_pattern(name: str) -> bool:
     return heuristics.get_scanner().remove_pattern(name)
 
 
-def initialize() -> None:
+def initialize(loggers: list[str] | None = None) -> None:
     """Initialize logging configuration for the application.
 
     Resets all managed loggers by removing their existing handlers and
@@ -559,6 +680,14 @@ def initialize() -> None:
         This function should only be called once during application startup.
         Repeated calls may cause memory leaks if loggers are created between
         invocations.
+
+    Args:
+        loggers (list[str] | None): Optional list of extra logger names (e.g.
+            ``["urllib3"]``) to initialize alongside the managed set.  Each
+            named logger will have its handlers cleared and replaced with a
+            stderr ``StreamHandler`` at level ``NONE``.  These names are NOT
+            persisted to the managed-logger registry — they apply only for
+            this call. Defaults to ``None``.
 
     Returns:
         None
@@ -582,6 +711,19 @@ def initialize() -> None:
         logger.addHandler(stream_handler)
         logger.setLevel(NONE)
         logger.propagate = False
+
+    if loggers:
+        for extra_name in loggers:
+            extra_logger = logging.getLogger(extra_name)
+            extra_handlers = extra_logger.handlers[:]
+            for handler in extra_handlers:
+                extra_logger.removeHandler(handler)
+                handler.close()
+            stream_handler = logging.StreamHandler(sys.stderr)
+            stream_handler.setFormatter(logging.Formatter(logging_message_format))
+            extra_logger.addHandler(stream_handler)
+            extra_logger.setLevel(NONE)
+            extra_logger.propagate = False
 
     # Force garbage collection of closed handlers to prevent memory leaks
     gc.collect()

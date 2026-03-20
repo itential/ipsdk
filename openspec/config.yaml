@@ -1,0 +1,86 @@
+schema: spec-driven
+
+context: |
+  Repository: itential/ipsdk
+  Purpose: Python SDK for making API calls to Itential Platform and Itential Automation Gateway 4.x.
+
+  Tech stack:
+  - Python package using src/ layout under src/ipsdk
+  - Single runtime dependency: httpx
+  - Sync and async client support
+  - Python 3.10+ supported
+
+  Repository structure:
+  - Source code in src/ipsdk
+  - Tests in tests/
+  - Development guidance in docs/development.md
+  - Build/dev tooling in pyproject.toml, Makefile, tox.ini, and uv.lock
+
+  Development conventions:
+  - Use uv for environment and dependency management
+  - Use Makefile targets as the standard entry points for common tasks
+  - Prefer small, targeted changes over broad refactors
+  - Preserve backward compatibility for public SDK behavior unless the change explicitly calls for a breaking change
+  - Keep Platform and Gateway client behavior clear and intentionally separated
+  - Maintain both sync and async API parity where applicable
+  - Do not introduce unnecessary runtime dependencies
+  - Preserve sensitive-data filtering and safe logging behavior
+
+  Quality expectations:
+  - Add or update tests for every behavior change or bug fix
+  - Run pytest-based tests from tests/
+  - Keep linting clean with ruff
+  - Keep typing clean with mypy where applicable
+  - Keep security scanning clean with bandit
+  - Changes should be compatible with existing CI and tox workflows
+  - Respect existing license/header requirements and repository conventions
+
+  Important product/domain context:
+  - This SDK talks to Itential Platform and Itential Automation Gateway 4.x APIs
+  - Public factories and client behavior are part of the user-facing contract
+  - Authentication, session handling, TLS/verify behavior, timeout handling, and TTL reauthentication are contract-sensitive areas
+  - Logging behavior and redaction of sensitive values are security-sensitive areas
+
+rules:
+  proposal:
+    - State whether the change affects Platform, Gateway, or both.
+    - State whether the change affects sync clients, async clients, or both.
+    - Call out any public API impact, backward-compatibility risk, or migration concern.
+    - Include a "Non-goals" section — what this proposal explicitly does NOT do.
+    - For bug fixes, include the current behavior, expected behavior, and how the issue will be verified.
+    - Flag any implications for the PII redaction / heuristics layer.
+    - Identify whether authentication, session management, TLS verification, timeout handling, or logging behavior is affected.
+
+  design:
+    - Designs must preserve the factory-function-as-sole-entry-point invariant.
+    - New auth schemes go into AuthMixin classes in platform.py or gateway.py, not connection.py.
+    - Dynamic class composition via type() is the established pattern; prefer extending it
+      over introducing new instantiation patterns.
+    - Classes with fixed instance attributes must use __slots__.
+    - Every new public method must have @logging.trace and a Google-style docstring.
+    - If state is added to ConnectionBase.__slots__, list all slots explicitly.
+    - Designs touching the lock / double-checked locking pattern need extra scrutiny for
+      thread safety and asyncio correctness.
+    - Call out whether the change requires a CHANGELOG entry and a semver bump.
+
+  spec:
+    - Specs must include type signatures using modern union syntax (str | None, not Optional).
+    - For each factory parameter, specify: type, default, whether it affects auth selection,
+      and whether it affects URL construction.
+    - Document Platform vs Gateway behavioral differences explicitly (base URL, auth schemes,
+      default credentials).
+    - Include exception table: which exceptions each method raises and under what conditions.
+    - Note port auto-resolution behavior for any spec involving connection parameters.
+    - Specs for logging changes must describe TRACE-level output format and any new
+      PII redaction patterns added to heuristics.py.
+
+  tasks:
+    - Each task must map to exactly one module file or one test file.
+    - Include the make/tox command to verify the task is done (e.g., "verify: make coverage").
+    - Flag tasks that require both sync and async implementations as two subtasks.
+    - The license header task always comes first for any new .py file.
+    - Tasks touching authentication must include a task to update both AuthMixin AND
+      AsyncAuthMixin variants.
+    - The final task in any implementation is always: run `make ci` and confirm clean.
+    - Keep tasks small enough to be completed independently; avoid tasks with hidden
+      cross-module dependencies.

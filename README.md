@@ -3,7 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/ipsdk.svg)](https://badge.fury.io/py/ipsdk)
 [![Python Versions](https://img.shields.io/pypi/pyversions/ipsdk.svg)](https://pypi.org/project/ipsdk/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Tests](https://github.com/itential/ipsdk/workflows/Run%20CI%20pipeline/badge.svg)](https://github.com/itential/ipsdk/actions)
+[![Tests](https://github.com/itential/ipsdk/workflows/CI/badge.svg)](https://github.com/itential/ipsdk/actions)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-green)](https://github.com/itential/ipsdk)
 
 > Python SDK for making API calls to Itential Platform and Itential Automation Gateway 4.x.
@@ -153,8 +153,8 @@ ipsdk.logging.add_sensitive_data_pattern("ssn", r"\d{3}-\d{2}-\d{4}")
 ## Development
 
 ```bash
-# Install dependencies
-uv sync
+# Install dependencies and pre-commit hooks
+make install
 
 # Run checks (lint, format, security, tests, license headers)
 make ci
@@ -168,7 +168,7 @@ make security    # bandit scan
 make license     # check GPL headers
 
 # Test across Python 3.10–3.15
-uv run tox -p auto
+make tox
 ```
 
 ## License

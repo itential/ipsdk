@@ -44,8 +44,7 @@ Port auto-resolution: if `port=0` (default), uses 443 for TLS, 80 without. Ports
 
 ```bash
 # Setup: requires uv
-uv sync --all-extras --dev
-make hooks             # Install pre-commit hooks (once after cloning)
+make install           # Install dev deps and pre-commit hooks
 
 # Daily workflow
 make test              # pytest

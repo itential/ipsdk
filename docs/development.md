@@ -5,8 +5,8 @@ This project uses `uv` as the Python package manager and build tool. Here are th
 ## Setup
 
 ```bash
-# Install dependencies and create virtual environment
-$ uv sync
+# Install dependencies and pre-commit hooks
+$ make install
 ```
 
 ## Testing
@@ -29,33 +29,24 @@ $ make coverage
 
 ### Multi-Version Testing with Tox
 
-The SDK supports Python 3.10, 3.11, 3.12, and 3.13. Use tox to test across all versions:
+The SDK supports Python 3.10, 3.11, 3.12, 3.13, 3.14, and 3.15 (beta). Use tox to test across all versions:
 
 ```bash
 # Run tests across all Python versions
-$ uv run tox
 $ make tox
 
 # Run tests in parallel (faster)
 $ uv run tox -p auto
 
 # Run tests on specific Python version
-$ uv run tox -e py310    # Python 3.10
-$ make tox-py310
+$ make tox-py310    # Python 3.10
+$ make tox-py311    # Python 3.11
+$ make tox-py312    # Python 3.12
+$ make tox-py313    # Python 3.13
+$ make tox-py314    # Python 3.14
+$ uv run tox -e py315   # Python 3.15 (beta, no make target)
 
-$ uv run tox -e py311    # Python 3.11
-$ make tox-py311
-
-$ uv run tox -e py312    # Python 3.12
-$ make tox-py312
-
-$ uv run tox -e py313    # Python 3.13
-$ make tox-py313
-
-# Run quick tests (no lint/security)
-$ uv run tox -e quick
-
-# Run coverage report on Python 3.13
+# Run coverage report
 $ uv run tox -e coverage
 ```
 
@@ -103,7 +94,7 @@ The project uses **dynamic versioning** from git tags:
 
 ## Development Workflow
 
-1. **Setup**: Run `uv sync` to install dependencies and create a virtual environment
+1. **Setup**: Run `make install` to install dependencies and pre-commit hooks
 2. **Development**: Make your changes to the codebase
 3. **Format**: Run `make format` to auto-format code
 4. **Testing**: Run tests with `make test` or `uv run pytest tests`
@@ -122,9 +113,9 @@ The project uses the following development tools:
 - **ruff**: Fast Python linter and formatter (30+ rule sets)
 - **mypy**: Static type checker
 - **bandit**: Security vulnerability scanner
-- **tox**: Multi-version Python testing (3.10, 3.11, 3.12, 3.13)
+- **pre-commit**: Git hook framework for running checks before each commit
+- **tox**: Multi-version Python testing (3.10–3.15)
 - **tox-uv**: Tox integration with uv for fast environments
-- **q**: Debugging utility
 
 All tools are configured in `pyproject.toml` and can be run through `uv` or the provided Makefile targets.
 
@@ -135,7 +126,7 @@ The project uses comprehensive Ruff configuration with 30+ rule sets:
 - flake8-bugbear (B), isort (I), pylint (PL)
 - Security checks (S), annotations (ANN), async (ASYNC)
 - Line length: 88 characters (Black-compatible)
-- Target: Python 3.8+ compatibility
+- Target: Python 3.10+ compatibility
 - Per-file ignores configured for different modules
 
 ### Coverage Requirements
@@ -152,6 +143,8 @@ The SDK officially supports Python >=3.10 and is tested on:
 - Python 3.11
 - Python 3.12
 - Python 3.13
+- Python 3.14
+- Python 3.15 (beta)
 
 Testing across versions is automated in CI/CD using GitHub Actions matrix testing.
 

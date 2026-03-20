@@ -6,6 +6,7 @@
 import json
 import time
 
+from datetime import datetime
 from unittest.mock import AsyncMock
 from unittest.mock import Mock
 from unittest.mock import patch
@@ -20,6 +21,10 @@ from ipsdk.connection import ConnectionBase
 from ipsdk.http import HTTPMethod
 from ipsdk.http import Request
 from ipsdk.http import Response
+
+# Timing constants used when constructing Response objects directly in tests
+_STARTED_AT = "2024-01-01T00:00:00+00:00"
+_FINISHED_AT = "2024-01-01T00:00:01+00:00"
 
 # --------- Fixtures ---------
 
@@ -170,7 +175,9 @@ def test_request_empty_path():
 
 def test_response_creation(mock_httpx_response):
     """Test creating a Response object."""
-    response = Response(mock_httpx_response)
+    response = Response(
+        mock_httpx_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+    )
     assert response.status_code == 200
     assert response.headers == {"Content-Type": "application/json"}
     assert response.content == b'{"key": "value"}'
@@ -182,12 +189,14 @@ def test_response_creation(mock_httpx_response):
 def test_response_none_httpx_response():
     """Test Response creation with None httpx_response raises ValueError."""
     with pytest.raises(ValueError, match="httpx_response cannot be None"):
-        Response(None)
+        Response(None, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
 
 
 def test_response_json_success(mock_httpx_response):
     """Test Response json method returns parsed JSON."""
-    response = Response(mock_httpx_response)
+    response = Response(
+        mock_httpx_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+    )
     result = response.json()
     assert result == {"key": "value"}
 
@@ -197,7 +206,7 @@ def test_response_json_failure():
     mock_response = Mock(spec=httpx.Response)
     mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
 
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     with pytest.raises(ValueError, match="Failed to parse response as JSON"):
         response.json()
 
@@ -205,7 +214,7 @@ def test_response_json_failure():
 def test_response_raise_for_status():
     """Test Response raise_for_status delegates to httpx response."""
     mock_response = Mock(spec=httpx.Response)
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
 
     response.raise_for_status()
     mock_response.raise_for_status.assert_called_once()
@@ -218,13 +227,17 @@ def test_response_is_success():
     # Test successful status codes
     for status in [200, 201, 204, 299]:
         mock_response.status_code = status
-        response = Response(mock_response)
+        response = Response(
+            mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+        )
         assert response.is_success() is True
 
     # Test non-successful status codes
     for status in [199, 300, 400, 404, 500]:
         mock_response.status_code = status
-        response = Response(mock_response)
+        response = Response(
+            mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+        )
         assert response.is_success() is False
 
 
@@ -235,13 +248,17 @@ def test_response_is_error():
     # Test error status codes
     for status in [400, 401, 404, 500, 502]:
         mock_response.status_code = status
-        response = Response(mock_response)
+        response = Response(
+            mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+        )
         assert response.is_error() is True
 
     # Test non-error status codes
     for status in [200, 201, 299, 300, 399]:
         mock_response.status_code = status
-        response = Response(mock_response)
+        response = Response(
+            mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+        )
         assert response.is_error() is False
 
 
@@ -251,7 +268,7 @@ def test_response_repr():
     mock_response.status_code = 200
     mock_response.url = httpx.URL("https://example.com/api/test")
 
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     expected = "Response(status_code=200, url='https://example.com/api/test')"
     assert repr(response) == expected
 
@@ -264,7 +281,9 @@ def test_response_various_status_codes():
         mock_response = Mock(spec=httpx.Response)
         mock_response.status_code = status_code
 
-        response = Response(mock_response)
+        response = Response(
+            mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+        )
         assert response.status_code == status_code
 
         # Test success/error classification
@@ -285,13 +304,13 @@ def test_response_json_with_different_exceptions():
 
     # Test with JSONDecodeError
     mock_response.json.side_effect = json.JSONDecodeError("Invalid JSON", "", 0)
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     with pytest.raises(ValueError, match="Failed to parse response as JSON"):
         response.json()
 
     # Test with generic exception
     mock_response.json.side_effect = RuntimeError("Generic error")
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     with pytest.raises(
         ValueError, match="Failed to parse response as JSON: Generic error"
     ):
@@ -309,7 +328,7 @@ def test_response_properties_delegation():
     mock_request = Mock()
     mock_response.request = mock_request
 
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
 
     # Verify all properties are correctly delegated
     assert response.status_code == 201
@@ -318,6 +337,59 @@ def test_response_properties_delegation():
     assert response.text == "test content"
     assert response.url == httpx.URL("https://test.com")
     assert response.request is mock_request
+
+
+# --------- Response Timing Tests ---------
+
+
+def test_response_started_at():
+    """Test Response.started_at returns the value passed at construction."""
+    mock_response = Mock(spec=httpx.Response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
+    assert response.started_at == _STARTED_AT
+
+
+def test_response_finished_at():
+    """Test Response.finished_at returns the value passed at construction."""
+    mock_response = Mock(spec=httpx.Response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
+    assert response.finished_at == _FINISHED_AT
+
+
+def test_response_elapsed_ms():
+    """Test Response.elapsed_ms computes correct duration in milliseconds."""
+    mock_response = Mock(spec=httpx.Response)
+    started = "2024-01-01T00:00:00+00:00"
+    finished = "2024-01-01T00:00:01.250+00:00"
+    response = Response(mock_response, started_at=started, finished_at=finished)
+    # 1.250 seconds = 1250 ms
+    assert response.elapsed_ms == 1250
+
+
+def test_response_elapsed_ms_consistent_with_timestamps():
+    """Test elapsed_ms is consistent with started_at and finished_at."""
+    mock_response = Mock(spec=httpx.Response)
+    started = "2024-06-15T12:00:00+00:00"
+    finished = "2024-06-15T12:00:00.500+00:00"
+    response = Response(mock_response, started_at=started, finished_at=finished)
+
+    # Verify elapsed_ms matches manual computation
+    dt_started = datetime.fromisoformat(started)
+    dt_finished = datetime.fromisoformat(finished)
+    expected_ms = int((dt_finished - dt_started).total_seconds() * 1000)
+    assert response.elapsed_ms == expected_ms
+    assert response.elapsed_ms == 500
+
+
+def test_response_elapsed_ms_is_int():
+    """Test elapsed_ms is always an int (truncated, not rounded)."""
+    mock_response = Mock(spec=httpx.Response)
+    # 1900 microseconds = 1.9 ms — should truncate to 1, not round to 2
+    started = "2024-01-01T00:00:00.000000+00:00"
+    finished = "2024-01-01T00:00:00.001900+00:00"
+    response = Response(mock_response, started_at=started, finished_at=finished)
+    assert isinstance(response.elapsed_ms, int)
+    assert response.elapsed_ms == 1
 
 
 # --------- ConnectionBase Tests ---------
@@ -1091,7 +1163,9 @@ def test_response_edge_cases():
 
     for status_code in boundary_codes:
         mock_response.status_code = status_code
-        response = Response(mock_response)
+        response = Response(
+            mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT
+        )
 
         # Verify boundary conditions
         if status_code < 200:
@@ -1123,17 +1197,17 @@ def test_response_json_with_non_dict_data():
 
     # Test with JSON array
     mock_response.json.return_value = [1, 2, 3]
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     assert response.json() == [1, 2, 3]
 
     # Test with JSON string
     mock_response.json.return_value = "test string"
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     assert response.json() == "test string"
 
     # Test with JSON number
     mock_response.json.return_value = 42
-    response = Response(mock_response)
+    response = Response(mock_response, started_at=_STARTED_AT, finished_at=_FINISHED_AT)
     assert response.json() == 42
 
 
@@ -1865,3 +1939,62 @@ async def test_async_send_request_auth_lock_not_initialized():
         exceptions.IpsdkError, match="Authentication lock not initialized"
     ):
         await conn._send_request(HTTPMethod.GET, "/api/test")
+
+
+# --------- Request Timing Tests ---------
+
+
+def _make_sync_conn_with_mock_response():
+    """Return a Connection with a mocked client.send returning a 200 response."""
+    conn = Connection("example.com")
+    conn.authenticated = True
+    conn.client = Mock()
+    conn._build_request = Mock(return_value=Mock())
+
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 200
+    conn.client.send.return_value = mock_response
+    return conn
+
+
+def _make_async_conn_with_mock_response():
+    """Return an AsyncConnection with a mocked client.send returning a 200 response."""
+    conn = AsyncConnection("example.com")
+    conn.authenticated = True
+    conn.client = Mock()
+    conn._build_request = Mock(return_value=Mock())
+    conn.authenticate = AsyncMock()
+
+    mock_response = Mock(spec=httpx.Response)
+    mock_response.status_code = 200
+    conn.client.send = AsyncMock(return_value=mock_response)
+    return conn
+
+
+def _assert_timing_present(response: Response) -> None:
+    """Assert that timing attributes are present and valid on a Response."""
+    assert isinstance(response.started_at, str)
+    assert isinstance(response.finished_at, str)
+    assert isinstance(response.elapsed_ms, int)
+    assert response.elapsed_ms >= 0
+
+
+def test_sync_send_request_timing_present_all_methods():
+    """Test timing attributes on responses from all sync HTTP methods."""
+    conn = _make_sync_conn_with_mock_response()
+    _assert_timing_present(conn.get("/test"))
+    _assert_timing_present(conn.post("/test", json={"a": 1}))
+    _assert_timing_present(conn.put("/test", json={"a": 1}))
+    _assert_timing_present(conn.patch("/test", json={"a": 1}))
+    _assert_timing_present(conn.delete("/test"))
+
+
+@pytest.mark.asyncio
+async def test_async_send_request_timing_present_all_methods():
+    """Test timing attributes on responses from all async HTTP methods."""
+    conn = _make_async_conn_with_mock_response()
+    _assert_timing_present(await conn.get("/test"))
+    _assert_timing_present(await conn.post("/test", json={"a": 1}))
+    _assert_timing_present(await conn.put("/test", json={"a": 1}))
+    _assert_timing_present(await conn.patch("/test", json={"a": 1}))
+    _assert_timing_present(await conn.delete("/test"))

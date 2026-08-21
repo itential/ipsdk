@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-08-21
+
+### Added
+- `get_logger(name)`, `reset_logger(name)`, and `register_logger_prefix(prefix)` for named child loggers and an extensible managed-logger registry beyond the hardcoded `ipsdk`/`httpx` prefixes (#128)
+- Optional `loggers` parameter to `set_level()` and `initialize()` for one-shot per-call logger management without registry persistence (#128)
+- `started_at` and `finished_at` ISO 8601 UTC timestamps and an `elapsed_ms` property to `Response`, captured around request send in both sync and async connections (#126)
+- Python 3.15 beta support (#120)
+- `mypy` static type checking, wired into `make ci` and CI's quality gate (#119)
+- Python 3.14 support (#115)
+- Community compliance files: `CLA.md`, PR template, `.md`-format issue templates (#122)
+- `make install` target for one-shot dev environment setup (#125)
+- `pre-commit` hooks delegating to `make` targets (lint, format-check, license, security, typecheck) (#124)
+
+### Changed
+- `Response.__init__` now requires `started_at` and `finished_at` as keyword-only arguments (#126) — **breaking** for any direct `Response` construction outside the connection layer
+- Renamed default branch from `devel` to `main` (#121)
+- Renamed `make premerge` target to `make ci` (#112)
+- Refactored CI into a quality gate + deduplicated test matrix (#114, #116)
+- `fatal()` now raises `SystemExit` instead of calling `sys.exit()` with a `print()` (#123)
+
+### Dependencies
+- Bumped `actions/checkout` from 6 to 7 (#130)
+- Bumped `softprops/action-gh-release` from 2 to 3 (#129)
+
+### Fixed
+- All `mypy` errors across the codebase (#119)
+
+### Documentation
+- Rewrote `README.md` and `AGENTS.md` for accuracy (#111, #110, #113)
+- Aligned `pyproject.toml` with industry best practices (#118)
+
 ## [0.8.0] - 2026-02-25
 
 ### Added

@@ -6,7 +6,7 @@
 [![Tests](https://github.com/itential/ipsdk/workflows/CI/badge.svg)](https://github.com/itential/ipsdk/actions)
 [![Coverage](https://img.shields.io/badge/coverage-100%25-green)](https://github.com/itential/ipsdk)
 
-> Python SDK for making API calls to Itential Platform and Itential Automation Gateway 4.x.
+> Python SDK for making API calls to Itential Platform and Itential Gateway 4.x.
 
 Provides sync and async HTTP clients with automatic authentication, session management, and sensitive data filtering. Single runtime dependency: [httpx](https://www.python-httpx.org/).
 
